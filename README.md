@@ -6,7 +6,7 @@ Run the following commands in the root directory of this repository
 2. `cmake --build $(pwd)/build --target proxy_cpp -j $(nproc)`
 
 #### Run
-3. `./build/proxy_cpp` (Listens on port 8000)
+3. `./build/proxy_cpp` (Listens on port 8000)  
 Enter the IP address of the remote host and then the port of the remote host
 
 
