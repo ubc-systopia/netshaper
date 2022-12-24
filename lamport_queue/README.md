@@ -40,7 +40,13 @@ It simply returns the current size of the queue.
 ### Testing
 To test the queue, we created a test setup, where a producer program generates data with random sizes and pushes them into the queue. A separate consumer program dequeues random-sized portions of data in the queue. Programs are executed asynchronously in an running loop.
 
-The queue passsed the test without any error observed so far.
+To run the test use following commands:
+```
+cd test_queue
+./test.sh
+```
+The queue passsed the test without any errors observed so far.
+
 
 
 
