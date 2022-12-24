@@ -16,3 +16,30 @@ Where the `front_` determines tail of queue, where the consumer decqueues data; 
 Two cache variables, `cached_front_` and `chached_back_`, are used to optimize queue performance by using previously accessed pointers if they are still vaild.
 
 The general intuition behind the implementation is that in a SCSP queue, the front and back pointers can only be modified by the consumer and the producer respectively. Thefore, there is no need for guaranteeing sequential access when they are read by their correpsoing functions. For more information you can take a look at the [paper](https://hal.inria.fr/hal-00911893/document), where the proof of correctness is provided. 
+
+### Queue interfaces
+The queue has three interfaces:
+```C
+int lamport_queue_push(struct lamport_queue *queue, char* elem, int elem_size)
+```
+The size of element to push shoud be within the following range: `0 < elem_size < BUF_SIZE`.
+In case of failure, where there is not enough space in the queue, the interface returns `-1`.
+
+```C
+int lamport_queue_pop(struct lamport_queue *queue, char* elem, int elem_size)
+```
+The size of element to push shoud be within the following range: `0 < elem_size < BUF_SIZE`.
+In case of failure, where there is not enough data in the queue, the interface returns `-1`.
+The pointer that is passed to the queue to get data, `char* elem`, should point to a **pre allocated** memory region with a size of at least `elem_size`.
+
+```C
+int lamport_queue_size(struct lamport_queue *queue)
+```
+It simply returns the current size of the queue.
+
+
+
+
+
+
+
