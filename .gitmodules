@@ -1,0 +1,4 @@
+[submodule "msquic"]
+	path = msquic
+	url = https://github.com/ubc-systopia/msquic.git
+	branch = release/2.1

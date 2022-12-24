@@ -20,7 +20,8 @@ add-apt-repository -y https://packages.microsoft.com/ubuntu/22.04/prod/
 apt update
 
 # Install libmsquic
-apt install -y libmsquic
+apt install -y libmsquic libssl-dev
+ln -s /usr/lib/x86_64-linux-gnu/libmsquic.so.2 /usr/lib/x86_64-linux-gnu/libmsquic.so
 
 echo -e "${YELLOW}Downloading and installing ninja-build and cmake"
 apt install -y ninja-build

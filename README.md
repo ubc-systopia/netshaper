@@ -3,6 +3,7 @@
 Run the following commands in the root directory of this repository
 
 #### Prerequisites (Commands are for ubuntu)
+0. Clone this repository with `--recurse-submodules` option
 1. `./setup.sh` (Run with `sudo` or as root user)
 
 #### Compile
