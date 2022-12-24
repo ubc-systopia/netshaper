@@ -44,7 +44,7 @@ To test the queue, we created a test setup, where a producer program generates d
 
 To run the test use following commands:
 ```
-cd test_queue
+cd test
 ./test.sh
 ```
 The queue passsed the test without any errors observed so far.
