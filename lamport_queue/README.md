@@ -29,7 +29,7 @@ In case of failure, where there is not enough space in the queue, the interface 
 int lamport_queue_pop(struct lamport_queue *queue, char* elem, int elem_size)
 ```
 The size of element to push shoud be within the following range: `0 < elem_size < BUF_SIZE`.
-In case of failure, where there is not enough data in the queue, the interface returns `-1`.
+In case of failure, where there is not enough data in the queue, the interface returns `-1`.  
 The pointer that is passed to the queue to get data, `char* elem`, should point to a **pre allocated** memory region with a size of at least `elem_size`.
 
 ```C
@@ -37,6 +37,10 @@ int lamport_queue_size(struct lamport_queue *queue)
 ```
 It simply returns the current size of the queue.
 
+### Testing
+To test the queue, we created a test setup, where a producer program generates data with random sizes and pushes them into the queue. A separate consumer program dequeues random-sized portions of data in the queue. Programs are executed asynchronously in an running loop.
+
+The queue passsed the test without any error observed so far.
 
 
 
