@@ -1,9 +1,13 @@
 //
-// Created by ubuntu on 12/23/22.
+// Created by Rut Vora
 //
 
-#ifndef MINESVPN_RECEIVER_H
-#define MINESVPN_RECEIVER_H
+#ifndef MINESVPN_SHAPED_RECEIVER_H
+#define MINESVPN_SHAPED_RECEIVER_H
+
+#ifndef UNREFERENCED_PARAMETER
+#define UNREFERENCED_PARAMETER(X) (void)(X)
+#endif
 
 #include<string>
 #include "msquic.hpp"
@@ -16,6 +20,8 @@ private:
   inline static const bool autoCleanup = true;
   inline static const std::string appName = "minesVPN";
   static const uint64_t idleTimeoutMs = 1000;
+  enum logLevels {ERROR, WARNING, DEBUG};
+  inline static enum logLevels logLevel;
 
   // MsQuic is a shared library. Hence, register this application with it.
   // The name has to be unique per application on a single machine
@@ -26,8 +32,9 @@ private:
   // Specifies which Application Protocol layers are available. See RFC 7301
   // We set this to 'raw' because we deal with raw byte streams. But it could
   // be any string. For IANA validated strings: https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#alpn-protocol-ids
-  const MsQuicAlpn alpn{"raw"};
-  MsQuicListener *listener;
+  const MsQuicAlpn alpn{"sample"};
+  MsQuicConfiguration *configuration;
+  MsQuicAutoAcceptListener *listener;
 
   // Address to listen at
   QuicAddr *addr;
@@ -39,7 +46,7 @@ private:
    * certificate
    * @return TRUE if configuration is valid and loaded successfully
    */
-  BOOLEAN
+  bool
   loadConfiguration(const std::string &certFile, const std::string &keyFile);
 
   /**
@@ -47,12 +54,18 @@ private:
    * listening at
    * @param Listener The listener which triggered the event (in case of
    * multiple listeners)
-   * @param Context The context of the event
-   * @param Event The event that triggered the callback
+   * @param context The context of the event
+   * @param event The event that triggered the listenerCallback
    * @return QUIC_STATUS (SUCCESS/FAIL)
    */
-  static QUIC_STATUS callback(HQUIC Listener, void *Context,
-                              QUIC_LISTENER_EVENT *Event);
+  static QUIC_STATUS connectionHandler(MsQuicConnection *connection,
+                                       void *context,
+                                       QUIC_CONNECTION_EVENT *event);
+
+  static QUIC_STATUS streamCallbackHandler(MsQuicStream *stream,
+                                           void *context,
+                                           QUIC_STREAM_EVENT *event);
+  static void log(logLevels logLevel, const std::string& log);
 
 public:
 
@@ -60,10 +73,10 @@ public:
    * @brief Default constructor
    * @param [req] certFile Path to X.509 certificate
    * @param [req] keyFile Path to private key associated with X.509 certificate
-   * @param [opt] port Port to listen on (defaults to 8000)
+   * @param [opt] port Port to listen on (defaults to 4567)
    */
   Receiver(const std::string &certFile, const std::string &keyFile,
-           int port = 8000);
+           int port = 4567, logLevels _logLevel = DEBUG);
 
   /**
    * @brief Start Listening on this receiver
@@ -78,4 +91,4 @@ public:
 };
 
 
-#endif //MINESVPN_RECEIVER_H
+#endif //MINESVPN_SHAPED_RECEIVER_H
