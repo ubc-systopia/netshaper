@@ -19,11 +19,11 @@ private:
       QUIC_EXECUTION_PROFILE_LOW_LATENCY;
   inline static const bool autoCleanup = true;
   inline static const std::string appName = "minesVPN";
-  static const uint64_t idleTimeoutMs = 1000;
   enum logLevels {
     ERROR, WARNING, DEBUG
   };
   inline static enum logLevels logLevel;
+
 
   // MsQuic is a shared library. Hence, register this application with it.
   // The name has to be unique per application on a single machine
@@ -85,6 +85,12 @@ private:
   static void log(logLevels logLevel, const std::string &log);
 
 public:
+  // Configures the server's settings to allow for the peer to open a single
+  // bidirectional stream. By default, connections are not configured to allow
+  // any streams from the peer.
+  //
+  const int maxPeerStreams;
+  const uint64_t idleTimeoutMs;
 
   /**
    * @brief Default constructor
@@ -93,7 +99,8 @@ public:
    * @param [opt] port Port to listen on (defaults to 4567)
    */
   Receiver(const std::string &certFile, const std::string &keyFile,
-           int port = 4567, logLevels _logLevel = DEBUG);
+           int port = 4567, logLevels _logLevel = DEBUG,
+           int _maxPeerStreams = 1, uint64_t _idleTimeoutMs = 1000);
 
   /**
    * @brief Start Listening on this receiver

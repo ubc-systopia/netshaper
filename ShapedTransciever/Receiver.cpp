@@ -12,7 +12,6 @@
 // It is defined as an extern const in "msquic.hpp"
 const MsQuicApi *MsQuic = new MsQuicApi();
 
-
 void Receiver::log(logLevels level, const std::string &log) {
   std::string levelStr;
   switch (level) {
@@ -29,7 +28,7 @@ void Receiver::log(logLevels level, const std::string &log) {
   }
   if (logLevel >= level) {
 
-    std::cout << levelStr << log << std::endl;
+    std::cerr << levelStr << log << std::endl;
   }
 }
 
@@ -37,35 +36,43 @@ QUIC_STATUS Receiver::streamCallbackHandler(MsQuicStream *stream,
                                             void *context,
                                             QUIC_STREAM_EVENT *event) {
   UNREFERENCED_PARAMETER(context);
-
+  const void *streamPtr = static_cast<const void *>(stream);
+  std::stringstream ss;
+  ss << "[Stream] " << streamPtr << " ";
   switch (event->Type) {
     case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
       stream->Shutdown(0);
-      log(DEBUG, "Shutting stream down as peer aborted");
+      ss << "shut down as peer aborted";
+      log(DEBUG, ss.str());
       break;
 
     case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
       // TODO Finish Sending
-      // stream->Send(...);
-      UNREFERENCED_PARAMETER(context);
-      stream->Shutdown(0);
-      log(DEBUG, "Shutting stream down as peer sent a shutdown signal");
+
+      //Send a FIN
+      stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
+      ss << "shut down as peer sent a shutdown signal";
+      log(DEBUG, ss.str());
       break;
 
     case QUIC_STREAM_EVENT_RECEIVE:
       // TODO
-      log(DEBUG, "Received data from peer");
+      ss << "Received data from peer";
+      log(DEBUG, ss.str());
       break;
 
     case QUIC_STREAM_EVENT_SEND_COMPLETE:
       free(event->SEND_COMPLETE.ClientContext);
-      log(DEBUG, "Finished a call to streamSend");
+      ss << "Finished a call to streamSend";
+      log(DEBUG, ss.str());
       break;
 
     case QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE:
       //Automatically handled as cleanUpAutoDelete is set when creating the
       // stream class instance in connectionHandler
-      log(DEBUG, "Connection Successfully shutdown and cleaned up");
+      ss << "The underlying connection was shutdown and cleaned up "
+            "successfully";
+      log(DEBUG, ss.str());
     default:
       break;
   }
@@ -76,18 +83,24 @@ QUIC_STATUS Receiver::streamCallbackHandler(MsQuicStream *stream,
 QUIC_STATUS Receiver::connectionHandler(MsQuicConnection *connection,
                                         void *context,
                                         QUIC_CONNECTION_EVENT *event) {
-  UNREFERENCED_PARAMETER(connection);
   UNREFERENCED_PARAMETER(context);
 
-  QUIC_STATUS Status = QUIC_STATUS_NOT_SUPPORTED;
   MsQuicStream *stream = nullptr;
+  std::stringstream ss;
+  const void *connectionPtr = static_cast<const void *>(connection);
+  ss << "[Connection] " << connectionPtr << " ";
 
   switch (event->Type) {
     case QUIC_CONNECTION_EVENT_CONNECTED:
       //
       // The handshake has completed for the connection.
       //
-      log(DEBUG, "New Connection request was received");
+
+
+      ss << "Connected";
+      log(DEBUG, ss.str());
+
+
       connection->SendResumptionTicket();
       break;
 
@@ -97,20 +110,52 @@ QUIC_STATUS Receiver::connectionHandler(MsQuicConnection *connection,
                                 streamCallbackHandler);
       {
         const void *streamPtr = static_cast<const void *>(stream);
-        std::stringstream ss;
-        ss << streamPtr;
-        log(DEBUG, "Peer started new stream " + ss.str());
+
+        ss << "Stream " << streamPtr << " started";
+        log(DEBUG, ss.str());
       }
+      break;
+
+    case QUIC_CONNECTION_EVENT_RESUMED:
+      ss << "resumed";
+      log(DEBUG, ss.str());
       break;
 
     case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
       connection->Close();
-      log(DEBUG, "Shutdown complete. Connection closed");
+
+      ss << "closed successfully";
+      log(DEBUG, ss.str());
       break;
+
+    case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
+      ss << "shut down by peer";
+      log(DEBUG, ss.str());
+      break;
+
+    case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
+      //
+      // The connection has been shut down by the transport. Generally, this
+      // is the expected way for the connection to shut down with this
+      // protocol, since we let idle timeout kill the connection.
+      //
+      if (event->SHUTDOWN_INITIATED_BY_TRANSPORT.Status ==
+          QUIC_STATUS_CONNECTION_IDLE) {
+
+        ss << "shutting down on idle";
+        log(DEBUG, ss.str());
+
+
+      } else {
+        ss << "shut down by underlying transport layer";
+        log(WARNING, ss.str());
+      }
+      break;
+
     default:
       break;
   }
-  return Status;
+  return QUIC_STATUS_SUCCESS;
 }
 
 bool Receiver::loadConfiguration(const std::string &certFile,
@@ -120,11 +165,8 @@ bool Receiver::loadConfiguration(const std::string &certFile,
   settings->SetIdleTimeoutMs(idleTimeoutMs);
   settings->SetServerResumptionLevel(QUIC_SERVER_RESUME_AND_ZERORTT);
 
-  // Configures the server's settings to allow for the peer to open a single
-  // bidirectional stream. By default, connections are not configured to allow
-  // any streams from the peer.
-  //
-  settings->SetPeerBidiStreamCount(1);
+
+  settings->SetPeerBidiStreamCount(maxPeerStreams);
 
   // Load the X509 certificate
   QUIC_CREDENTIAL_CONFIG config{};
@@ -149,10 +191,13 @@ bool Receiver::loadConfiguration(const std::string &certFile,
 }
 
 Receiver::Receiver(const std::string &certFile, const std::string &keyFile,
-                   int port, logLevels level) : configuration(nullptr),
-                                                listener(nullptr),
-                                                addr(new QuicAddr(
-                                                    QUIC_ADDRESS_FAMILY_UNSPEC)) {
+                   int port, logLevels level, int _maxPeerStreams, uint64_t
+                   _idleTimeoutMs) : configuration(nullptr),
+                                     listener(nullptr),
+                                     addr(new QuicAddr(
+                                         QUIC_ADDRESS_FAMILY_UNSPEC)),
+                                     maxPeerStreams(_maxPeerStreams),
+                                     idleTimeoutMs(_idleTimeoutMs) {
   logLevel = level;
   log(DEBUG, "Loading Configuration...");
   bool success = loadConfiguration(certFile, keyFile);
