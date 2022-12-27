@@ -25,4 +25,5 @@ include_directories(msquic/src/inc)
 
 add_subdirectory(ShapedTransciever)
 
-add_executable(proxy ProxyListener.cpp main.cpp)
+add_subdirectory(UnshapedTransciever)
+
