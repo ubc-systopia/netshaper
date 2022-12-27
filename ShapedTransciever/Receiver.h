@@ -20,7 +20,9 @@ private:
   inline static const bool autoCleanup = true;
   inline static const std::string appName = "minesVPN";
   static const uint64_t idleTimeoutMs = 1000;
-  enum logLevels {ERROR, WARNING, DEBUG};
+  enum logLevels {
+    ERROR, WARNING, DEBUG
+  };
   inline static enum logLevels logLevel;
 
   // MsQuic is a shared library. Hence, register this application with it.
@@ -30,8 +32,9 @@ private:
 
   // MsQuicAlpn is the "Application Layer Protocol Negotiation" string.
   // Specifies which Application Protocol layers are available. See RFC 7301
-  // We set this to 'raw' because we deal with raw byte streams. But it could
-  // be any string. For IANA validated strings: https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#alpn-protocol-ids
+  // We set this to 'sample' to be compatible with the sample.c in
+  // msquic/src/tools/sample. But it could be any string.
+  // For IANA validated strings: https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#alpn-protocol-ids
   const MsQuicAlpn alpn{"sample"};
   MsQuicConfiguration *configuration;
   MsQuicAutoAcceptListener *listener;
@@ -55,17 +58,31 @@ private:
    * @param Listener The listener which triggered the event (in case of
    * multiple listeners)
    * @param context The context of the event
-   * @param event The event that triggered the listenerCallback
+   * @param event The event that occurred
    * @return QUIC_STATUS (SUCCESS/FAIL)
    */
   static QUIC_STATUS connectionHandler(MsQuicConnection *connection,
                                        void *context,
                                        QUIC_CONNECTION_EVENT *event);
 
+  /**
+   * @brief Callback handler for all QUIC Events on the given stream
+   * @param stream The stream on which the event occurred
+   * @param context The context of the event
+   * @param event The event that occurred
+   * @return QUIC_STATUS (SUCCESS/FAIL)
+   */
   static QUIC_STATUS streamCallbackHandler(MsQuicStream *stream,
                                            void *context,
                                            QUIC_STREAM_EVENT *event);
-  static void log(logLevels logLevel, const std::string& log);
+
+  /**
+   * @brief If log level set by user is equal or more verbose than the log
+   * level passed to this function, print the given string
+   * @param logLevel The log level of the given string
+   * @param log The string to be logged
+   */
+  static void log(logLevels logLevel, const std::string &log);
 
 public:
 
