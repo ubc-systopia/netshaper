@@ -9,7 +9,7 @@
 #define UNREFERENCED_PARAMETER(X) (void)(X)
 #endif
 
-#include<string>
+#include <string>
 #include "msquic.hpp"
 
 class Receiver {
@@ -55,9 +55,8 @@ private:
   /**
    * @brief Callback handler for all QUIC Events on the address we are
    * listening at
-   * @param Listener The listener which triggered the event (in case of
-   * multiple listeners)
-   * @param context The context of the event
+   * @param connection The connection which triggered the event
+   * @param context The Receiver class that opened this connection
    * @param event The event that occurred
    * @return QUIC_STATUS (SUCCESS/FAIL)
    */
@@ -68,7 +67,7 @@ private:
   /**
    * @brief Callback handler for all QUIC Events on the given stream
    * @param stream The stream on which the event occurred
-   * @param context The context of the event
+   * @param context The Receiver class that opened this connection
    * @param event The event that occurred
    * @return QUIC_STATUS (SUCCESS/FAIL)
    */
@@ -98,6 +97,11 @@ public:
    * @param [req] certFile Path to X.509 certificate
    * @param [req] keyFile Path to private key associated with X.509 certificate
    * @param [opt] port Port to listen on (defaults to 4567)
+   * @param [opt] _logLevel The log level (DEBUG, WARNING, ERROR)
+   * @param [opt] _maxPeerStreams The maximum number of streams the peer is
+   * allowed to start
+   * @param [opt] _idleTimeoutMs The time after which the connection will be
+   * closed
    */
   Receiver(const std::string &certFile, const std::string &keyFile,
            int port = 4567, logLevels _logLevel = DEBUG,
