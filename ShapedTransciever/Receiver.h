@@ -22,7 +22,7 @@ private:
   enum logLevels {
     ERROR, WARNING, DEBUG
   };
-  inline static enum logLevels logLevel;
+  const enum logLevels logLevel;
 
 
   // MsQuic is a shared library. Hence, register this application with it.
@@ -79,10 +79,11 @@ private:
   /**
    * @brief If log level set by user is equal or more verbose than the log
    * level passed to this function, print the given string
+   * @param receiver The receiver class where the log function was called from
    * @param logLevel The log level of the given string
    * @param log The string to be logged
    */
-  static void log(logLevels logLevel, const std::string &log);
+  void log(logLevels logLevel, const std::string &log);
 
 public:
   // Configures the server's settings to allow for the peer to open a single
