@@ -7,11 +7,6 @@
 #include <sstream>
 #include "Receiver.h"
 
-
-// Load the API table. Necessary before any calls to MsQuic
-// It is defined as an extern const in "msquic.hpp"
-const MsQuicApi *MsQuic = new MsQuicApi();
-
 void Receiver::log(logLevels level, const std::string
 &log) {
   std::string levelStr;

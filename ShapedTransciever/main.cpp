@@ -5,10 +5,15 @@
 // Demo main for ShapedTransceiver
 
 #include "Receiver.h"
+#include "Sender.h"
 #include <iostream>
 #include <csignal>
 #include <cstdarg>
 
+// Load the API table. Necessary before any calls to MsQuic
+// It is defined as an extern const in "msquic.hpp"
+// This needs to be here (on the heap)
+const MsQuicApi *MsQuic = new MsQuicApi();
 
 void addSignal(sigset_t *set, int numSignals, ...) {
   va_list args;
@@ -19,7 +24,7 @@ void addSignal(sigset_t *set, int numSignals, ...) {
 
 }
 
-int main() {
+void RunReceiver() {
   Receiver receiver("server.cert", "server.key");
   receiver.startListening();
   std::cout << "Use ^C (Ctrl+C) to exit" << std::endl;
@@ -43,6 +48,39 @@ int main() {
       receiver.stopListening();
       exit(0);
     }
+  }
+}
+
+void RunSender() {
+  Sender sender{"localhost", 4567, true};
+  auto stream = sender.startStream();
+  std::string str = "Data...";
+  auto *data = reinterpret_cast<uint8_t *>(str.data());
+
+  // We add +1 to account for the trailing \0 in C Strings
+  sender.send(stream, str.size() + 1, data);
+
+  std::string s;
+  std::cin >> s;
+  std::cout << s;
+}
+
+int main(int argc, char **argv) {
+  std::string usage = "Usage: ./shapedTransciever <option> "
+                      "\n Options: "
+                      "\n\t-s : Run the sender"
+                      "\n\t-r : Run the receiver";
+
+  if (argc != 2) {
+    std::cout << usage << std::endl;
+    return 1;
+  }
+  if(argv[1][1] == 's') {
+    RunSender();
+  } else if(argv[1][1] == 'r') {
+    RunReceiver();
+  } else {
+    std::cout << usage << std::endl;
   }
   return 0;
 }

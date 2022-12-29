@@ -6,9 +6,6 @@
 #include <sstream>
 #include <iostream>
 
-const MsQuicApi *MsQuic = new MsQuicApi();
-
-
 void Sender::log(logLevels level, const std::string &log) {
   std::string levelStr;
   switch (level) {
