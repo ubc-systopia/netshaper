@@ -22,7 +22,7 @@ private:
   enum logLevels {
     ERROR, WARNING, DEBUG
   };
-  inline static enum logLevels logLevel;
+  enum logLevels logLevel;
   const uint64_t idleTimeoutMs;
   bool connected = false;
 
@@ -92,7 +92,7 @@ public:
    * @param buffer The data to be sent
    * @return
    */
-  bool send(MsQuicStream *stream, const std::string &buffer);
+  bool send(MsQuicStream *stream, size_t length, uint8_t *data);
 
   /**
    * @brief Default constructor for the sender

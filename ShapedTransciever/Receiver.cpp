@@ -59,12 +59,22 @@ QUIC_STATUS Receiver::streamCallbackHandler(MsQuicStream *stream,
 
     case QUIC_STREAM_EVENT_RECEIVE:
       // TODO
-      ss << "Received data from peer";
+    {
+      auto bufferCount = event->RECEIVE.BufferCount;
+      ss << "Received data from peer: ";
+      for(int i = 0;i < bufferCount; i++) {
+        int length = event->RECEIVE.Buffers[i].Length;
+        ss << " \n\t Length: " << length;
+        ss << "\n\t Data: ";
+        for(int j = 0; j < length; j++) {
+          ss << event->RECEIVE.Buffers[i].Buffer[j];
+        }
+      }
       receiver->log(DEBUG, ss.str());
+    }
       break;
 
     case QUIC_STREAM_EVENT_SEND_COMPLETE:
-      free(event->SEND_COMPLETE.ClientContext);
       ss << "Finished a call to streamSend";
       receiver->log(DEBUG, ss.str());
       break;

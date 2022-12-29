@@ -44,9 +44,13 @@ QUIC_STATUS Sender::streamCallbackHandler(MsQuicStream *stream,
       sender->log(DEBUG, ss.str());
       break;
 
+    case QUIC_STREAM_EVENT_PEER_ACCEPTED:
+      ss << "Stream accepted by peer";
+      sender->log(DEBUG, ss.str());
+      break;
+
     case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
       // TODO Finish Sending
-
       //Send a FIN
       stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
       ss << "shut down as peer sent a shutdown signal";
@@ -60,7 +64,7 @@ QUIC_STATUS Sender::streamCallbackHandler(MsQuicStream *stream,
       break;
 
     case QUIC_STREAM_EVENT_SEND_COMPLETE:
-      free(event->SEND_COMPLETE.ClientContext);
+//      free(event->SEND_COMPLETE.ClientContext);
       ss << "Finished a call to streamSend";
       sender->log(DEBUG, ss.str());
       break;
@@ -71,6 +75,13 @@ QUIC_STATUS Sender::streamCallbackHandler(MsQuicStream *stream,
       ss << "The underlying connection was shutdown and cleaned up "
             "successfully";
       sender->log(DEBUG, ss.str());
+      break;
+
+    case QUIC_STREAM_EVENT_START_COMPLETE:
+      ss << "started";
+      sender->log(DEBUG, ss.str());
+      break;
+
     default:
       break;
   }
@@ -96,7 +107,6 @@ QUIC_STATUS Sender::connectionHandler(MsQuicConnection *connection,
       ss << "Connected";
       sender->log(DEBUG, ss.str());
       sender->connected = true;
-
       break;
 
     case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
@@ -209,36 +219,45 @@ Sender::Sender(const std::string &serverName, uint16_t port,
 }
 
 MsQuicStream *Sender::startStream() {
+  while (!connected);  // TODO: Improve this with wait and conditional
   MsQuicStream *stream;
   stream = new MsQuicStream{*connection, QUIC_STREAM_OPEN_FLAG_NONE,
-                            autoCleanup ?
-                            CleanUpAutoDelete : CleanUpManual,
-                            streamCallbackHandler, this};
-  while (!connected);  // TODO: Improve this with wait and conditional variables
-  if (!stream->Start()) {
+                            autoCleanup ? CleanUpAutoDelete : CleanUpManual,
+                            streamCallbackHandler, this
+  };
+  // variables
+  if (QUIC_FAILED(stream->Start())) {
     log(ERROR, "Stream could not be started");
     throw std::runtime_error("Stream could not be started");
   }
   const void *streamPtr = static_cast<const void *>(stream);
-  std::stringstream ss;
-  ss << "[Stream] " << streamPtr << " started";
-  log(DEBUG, ss.str());
   return stream;
 }
 
-bool Sender::send(MsQuicStream * stream, const std::string& buffer) {
-  auto SendBufferRaw = (uint8_t *)malloc(sizeof(QUIC_BUFFER) + buffer.length());
-  auto SendBuffer = (QUIC_BUFFER *)SendBufferRaw;
-  SendBuffer->Buffer = SendBufferRaw + sizeof(QUIC_BUFFER);
-  SendBuffer->Length = buffer.length();
+bool Sender::send(MsQuicStream *stream, size_t length, uint8_t *data) {
+  auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
+  if (SendBuffer == nullptr) {
+    log(ERROR, "Memory allocation for the send buffer failed");
+    return false;
+  }
+
+  SendBuffer->Buffer = data;
+  SendBuffer->Length = length;
+
   const void *streamPtr = static_cast<const void *>(stream);
   std::stringstream ss;
   ss << "[Stream ]" << streamPtr;
-  if(QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, this))) {
+  const void *bufferPtr = static_cast<const void *>(SendBuffer->Buffer);
+  ss << " sending buffer: " << bufferPtr;
+  log(DEBUG, ss.str());
+
+  if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, this))) {
     ss << " could not send data";
     log(ERROR, ss.str());
+    free(SendBuffer);
     return false;
   }
+
   ss << " Data sent successfully";
   log(DEBUG, ss.str());
   return true;
