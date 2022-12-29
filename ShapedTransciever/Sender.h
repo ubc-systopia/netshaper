@@ -13,15 +13,45 @@
 #include <string>
 
 class Sender {
+public:
+  enum logLevels {
+    ERROR, WARNING, DEBUG
+  };
+
+  /**
+   * @brief Start a new stream on this sender/connection
+   * @return The stream pointer
+   */
+  MsQuicStream *startStream();
+
+  /**
+   * @brief Send data on the given stream
+   * @param stream The stream to send the data on
+   * @param buffer The data to be sent
+   * @return
+   */
+  bool send(MsQuicStream *stream, size_t length, uint8_t *data);
+
+  /**
+   * @brief Default constructor for the sender
+   * @param serverName The server/receiver to connect to
+   * @param port The port of the server/receiver to connect to
+   * @param noServerValidation Don't validate server certificate if true
+   * @param [opt] _logLevel The log level (DEBUG, WARNING, ERROR)
+   * @param [opt] _idleTimeoutMs The time after which the connection will be
+   * closed
+   */
+  Sender(const std::string &serverName, uint16_t port,
+         bool noServerValidation = false, logLevels _logLevel = DEBUG,
+         uint64_t _idleTimeoutMs = 1000);
+
+
 private:
   // Configuration parameters
   inline static const QUIC_EXECUTION_PROFILE profile =
       QUIC_EXECUTION_PROFILE_LOW_LATENCY;
   inline static const bool autoCleanup = true;
   inline static const std::string appName = "minesVPN";
-  enum logLevels {
-    ERROR, WARNING, DEBUG
-  };
   enum logLevels logLevel;
   const uint64_t idleTimeoutMs;
   bool connected = false;
@@ -78,34 +108,6 @@ private:
    * @param log The string to be logged
    */
   void log(logLevels logLevel, const std::string &log);
-
-public:
-  /**
-   * @brief Start a new stream on this sender/connection
-   * @return The stream pointer
-   */
-  MsQuicStream *startStream();
-
-  /**
-   * @brief Send data on the given stream
-   * @param stream The stream to send the data on
-   * @param buffer The data to be sent
-   * @return
-   */
-  bool send(MsQuicStream *stream, size_t length, uint8_t *data);
-
-  /**
-   * @brief Default constructor for the sender
-   * @param serverName The server/receiver to connect to
-   * @param port The port of the server/receiver to connect to
-   * @param noServerValidation Don't validate server certificate if true
-   * @param [opt] _logLevel The log level (DEBUG, WARNING, ERROR)
-   * @param [opt] _idleTimeoutMs The time after which the connection will be
-   * closed
-   */
-  Sender(const std::string &serverName, uint16_t port,
-         bool noServerValidation = false, logLevels _logLevel = DEBUG,
-         uint64_t _idleTimeoutMs = 1000);
 };
 
 

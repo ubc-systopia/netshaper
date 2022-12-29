@@ -227,7 +227,6 @@ MsQuicStream *Sender::startStream() {
     log(ERROR, "Stream could not be started");
     throw std::runtime_error("Stream could not be started");
   }
-  const void *streamPtr = static_cast<const void *>(stream);
   return stream;
 }
 
