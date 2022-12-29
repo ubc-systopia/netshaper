@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include "Receiver.h"
 
 void Receiver::log(logLevels level, const std::string
@@ -31,7 +32,7 @@ void Receiver::log(logLevels level, const std::string
 QUIC_STATUS Receiver::streamCallbackHandler(MsQuicStream *stream,
                                             void *context,
                                             QUIC_STREAM_EVENT *event) {
-  auto *receiver = (Receiver *)context;
+  auto *receiver = (Receiver *) context;
 
   const void *streamPtr = static_cast<const void *>(stream);
   std::stringstream ss;
@@ -52,16 +53,17 @@ QUIC_STATUS Receiver::streamCallbackHandler(MsQuicStream *stream,
       receiver->log(DEBUG, ss.str());
       break;
 
-    case QUIC_STREAM_EVENT_RECEIVE:
-      // TODO
-    {
+    case QUIC_STREAM_EVENT_RECEIVE: {
       auto bufferCount = event->RECEIVE.BufferCount;
       ss << "Received data from peer: ";
-      for(int i = 0;i < bufferCount; i++) {
-        int length = event->RECEIVE.Buffers[i].Length;
+      for (int i = 0; i < bufferCount; i++) {
+        receiver->onReceive(event->RECEIVE.Buffers[i].Buffer,
+                            event->RECEIVE.Buffers[i].Length);
+
+        auto length = event->RECEIVE.Buffers[i].Length;
         ss << " \n\t Length: " << length;
         ss << "\n\t Data: ";
-        for(int j = 0; j < length; j++) {
+        for (int j = 0; j < length; j++) {
           ss << event->RECEIVE.Buffers[i].Buffer[j];
         }
       }
@@ -90,9 +92,9 @@ QUIC_STATUS Receiver::streamCallbackHandler(MsQuicStream *stream,
 QUIC_STATUS Receiver::connectionHandler(MsQuicConnection *connection,
                                         void *context,
                                         QUIC_CONNECTION_EVENT *event) {
-  auto *receiver = (Receiver *)context;
+  auto *receiver = (Receiver *) context;
 
-  MsQuicStream *stream = nullptr;
+  MsQuicStream *stream;
   std::stringstream ss;
   const void *connectionPtr = static_cast<const void *>(connection);
   ss << "[Connection] " << connectionPtr << " ";
@@ -198,15 +200,17 @@ bool Receiver::loadConfiguration(const std::string &certFile,
 }
 
 Receiver::Receiver(const std::string &certFile, const std::string &keyFile,
-                   int port, logLevels level, int _maxPeerStreams, uint64_t
+                   int port, std::function<void(uint8_t *buffer,
+                                                size_t length)> onReceiveFunc,
+                   logLevels level, int _maxPeerStreams, uint64_t
                    _idleTimeoutMs) : configuration(nullptr),
                                      listener(nullptr),
                                      addr(new QuicAddr(
                                          QUIC_ADDRESS_FAMILY_UNSPEC)),
                                      maxPeerStreams(_maxPeerStreams),
                                      idleTimeoutMs(_idleTimeoutMs),
-                                     logLevel(level){
-
+                                     logLevel(level) {
+  onReceive = std::move(onReceiveFunc);
   log(DEBUG, "Loading Configuration...");
   bool success = loadConfiguration(certFile, keyFile);
   if (!success) {

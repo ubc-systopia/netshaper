@@ -15,6 +15,8 @@
 // This needs to be here (on the heap)
 const MsQuicApi *MsQuic = new MsQuicApi();
 
+// Receiver
+
 void addSignal(sigset_t *set, int numSignals, ...) {
   va_list args;
   va_start(args, numSignals);
@@ -24,8 +26,14 @@ void addSignal(sigset_t *set, int numSignals, ...) {
 
 }
 
+void onReceive(uint8_t *buffer, size_t length) {
+  (void) (buffer);
+  (void) (length);
+  std::cout << "Data received..." << std::endl;
+}
+
 void RunReceiver() {
-  Receiver receiver("server.cert", "server.key");
+  Receiver receiver("server.cert", "server.key", 4567, onReceive);
   receiver.startListening();
   std::cout << "Use ^C (Ctrl+C) to exit" << std::endl;
 
@@ -51,6 +59,8 @@ void RunReceiver() {
   }
 }
 
+// Sender
+
 void RunSender() {
   Sender sender{"localhost", 4567, true};
   auto stream = sender.startStream();
@@ -65,6 +75,8 @@ void RunSender() {
   std::cout << s;
 }
 
+// Main
+
 int main(int argc, char **argv) {
   std::string usage = "Usage: ./shapedTransciever <option> "
                       "\n Options: "
@@ -75,9 +87,9 @@ int main(int argc, char **argv) {
     std::cout << usage << std::endl;
     return 1;
   }
-  if(argv[1][1] == 's') {
+  if (argv[1][1] == 's') {
     RunSender();
-  } else if(argv[1][1] == 'r') {
+  } else if (argv[1][1] == 'r') {
     RunReceiver();
   } else {
     std::cout << usage << std::endl;
