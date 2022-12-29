@@ -1,1 +1,1 @@
-add_executable(proxy ProxyListener.cpp main.cpp)
+add_executable(unshapedTransciever Sender.cpp Receiver.cpp main.cpp)
