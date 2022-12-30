@@ -6,6 +6,8 @@ set(CMAKE_C_STANDARD 17)
 
 set(CMAKE_BUILD_TYPE Debug)
 
+link_directories(/snap/cmake/current/usr/lib/x86_64-linux-gnu)
+
 # Disable in-source builds to prevent source tree corruption.
 if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     message(FATAL_ERROR "
