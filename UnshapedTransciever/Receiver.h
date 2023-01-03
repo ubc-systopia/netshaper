@@ -23,101 +23,102 @@
 #include <functional>
 
 namespace UnshapedTransciever {
-    class Receiver {
-    public:
-        enum logLevels {
-            ERROR, WARNING, DEBUG
-        };
-
-
-        /**
-         * @brief Default constructor for the ProxyListener
-         * @param bindAddr [opt] The address to listen to for proxying (defaults to "0.0.0.0")
-         * @param localPort [opt] The port to listen to for proxying (defaults to 8000)
-         * @param [opt] onReceiveFunc The function to be called when a buffer is
-         * received. Pass a free function as a function pointer, a class member
-         * function by using std::bind or lambda functions
-         * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
-         */
-        explicit Receiver(std::string bindAddr = "",
-                          int localPort = 8000,
-                          std::function<void(int fromSocket, uint8_t *buffer,
-                                             size_t length)> onReceiveFunc = [](
-                                  auto &&...) {}, logLevels level = DEBUG);
-
-        /**
-         * @brief Start listening on given bind Address and port
-         * Will throw an error if startup fails. Else will go into a loop
-         */
-        void startListening();
-
-        /**
-         * @brief Wrapper for send()
-         * @param toSocket Send data to given socket
-         * @param buffer The buffer to be sent
-         * @param length The length of the buffer to be sent
-         * @return
-         */
-        ssize_t sendData(int toSocket, uint8_t *buffer, size_t length);
-
-        ~Receiver();
-
-
-    private:
-        std::string bindAddr;
-        int localPort;
-        int localSocket;
-        int inetFamily = 0; //Valid values are AF_INET or AF_INET6
-        const enum logLevels logLevel;
-
-        /**
-         * @brief If log level set by user is equal or more verbose than the log
-         * level passed to this function, print the given string
-         * @param level The log level of the given string
-         * @param log The string to be logged
-         */
-        void log(logLevels level, const std::string &log);
-
-        /** Opens a socket listening on bindAddr:localPort
-         *
-         * @return valid localSocket that the proxy is listening on
-         */
-        int openSocket();
-
-        /**
-         * @brief check if the given IP address is IPv4 or IPv6
-         * @return returns the value AF_INET or AF_INET6 depending on the input
-         * IP address
-         */
-        int checkIPVersion(const std::string &);
-
-        /**
-         * @brief Handles the given client (called from serverLoop)
-         * @param clientSocket The socket where the client connected
-         */
-        void handleClient(int clientSocket);
-
-        /**
-         * @brief Main loop of the server. Spawns of child processes for each new
-         * client
-         */
-        [[noreturn]] void serverLoop();
-
-        /**
-         * @brief Receive data from the given socket and call onReceive
-         * @param socket The socket to read the data from
-         */
-        void receiveData(int socket);
-
-        /**
-         * @brief The function that is called on each buffer that is received
-         * @param fromSocket The socket from which the buffer was received
-         * @param buffer The byte-array that was received
-         * @param length The length of the data in buffer
-         */
-        std::function<void(int fromSocket, uint8_t *buffer, size_t length)> onReceive;
-
+  class Receiver {
+  public:
+    enum logLevels {
+      ERROR, WARNING, DEBUG
     };
+
+
+    /**
+     * @brief Default constructor for the ProxyListener
+     * @param bindAddr [opt] The address to listen to for proxying (defaults to "0.0.0.0")
+     * @param localPort [opt] The port to listen to for proxying (defaults to 8000)
+     * @param [opt] onReceiveFunc The function to be called when a buffer is
+     * received. Pass a free function as a function pointer, a class member
+     * function by using std::bind or lambda functions
+     * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
+     */
+    explicit Receiver(std::string bindAddr = "",
+                      int localPort = 8000,
+                      std::function<void(int fromSocket, uint8_t *buffer,
+                                         size_t length)> onReceiveFunc = [](
+                          auto &&...) {}, logLevels level = DEBUG);
+
+    /**
+     * @brief Start listening on given bind Address and port
+     * Will throw an error if startup fails. Else will go into a loop
+     */
+    void startListening();
+
+    /**
+     * @brief Wrapper for send()
+     * @param toSocket Send data to given socket
+     * @param buffer The buffer to be sent
+     * @param length The length of the buffer to be sent
+     * @return
+     */
+    ssize_t sendData(int toSocket, uint8_t *buffer, size_t length);
+
+    ~Receiver();
+
+
+  private:
+    std::string bindAddr;
+    int localPort;
+    int localSocket;
+    int inetFamily = 0; //Valid values are AF_INET or AF_INET6
+    const enum logLevels logLevel;
+
+    /**
+     * @brief If log level set by user is equal or more verbose than the log
+     * level passed to this function, print the given string
+     * @param level The log level of the given string
+     * @param log The string to be logged
+     */
+    void log(logLevels level, const std::string &log);
+
+    /** Opens a socket listening on bindAddr:localPort
+     *
+     * @return valid localSocket that the proxy is listening on
+     */
+    int openSocket();
+
+    /**
+     * @brief check if the given IP address is IPv4 or IPv6
+     * @return returns the value AF_INET or AF_INET6 depending on the input
+     * IP address
+     */
+    int checkIPVersion(const std::string &);
+
+    /**
+     * @brief Handles the given client (called from serverLoop)
+     * @param clientSocket The socket where the client connected
+     */
+    void handleClient(int clientSocket);
+
+    /**
+     * @brief Main loop of the server. Spawns of child processes for each new
+     * client
+     */
+    [[noreturn]] void serverLoop();
+
+    /**
+     * @brief Receive data from the given socket and call onReceive
+     * @param socket The socket to read the data from
+     */
+    void receiveData(int socket);
+
+    /**
+     * @brief The function that is called on each buffer that is received
+     * @param fromSocket The socket from which the buffer was received
+     * @param buffer The byte-array that was received
+     * @param length The length of the data in buffer
+     */
+    std::function<void(int fromSocket, uint8_t *buffer,
+                       size_t length)> onReceive;
+
+  };
 }
 
 #endif //MINESVPN_RECEIVER_H

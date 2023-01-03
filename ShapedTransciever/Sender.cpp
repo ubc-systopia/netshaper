@@ -7,256 +7,256 @@
 #include <iostream>
 
 namespace ShapedTransciever {
-    void Sender::log(logLevels level, const std::string &log) {
-        std::string levelStr;
-        switch (level) {
-            case DEBUG:
-                levelStr = "DEBUG: ";
-                break;
-            case ERROR:
-                levelStr = "ERROR: ";
-                break;
-            case WARNING:
-                levelStr = "WARNING: ";
-                break;
+  void Sender::log(logLevels level, const std::string &log) {
+    std::string levelStr;
+    switch (level) {
+      case DEBUG:
+        levelStr = "DEBUG: ";
+        break;
+      case ERROR:
+        levelStr = "ERROR: ";
+        break;
+      case WARNING:
+        levelStr = "WARNING: ";
+        break;
 
-        }
-        if (logLevel >= level) {
-
-            std::cerr << levelStr << log << std::endl;
-        }
     }
+    if (logLevel >= level) {
 
-    QUIC_STATUS Sender::streamCallbackHandler(MsQuicStream *stream,
-                                              void *context,
-                                              QUIC_STREAM_EVENT *event) {
+      std::cerr << levelStr << log << std::endl;
+    }
+  }
 
-        auto *sender = (Sender *) context;
-        const void *streamPtr = static_cast<const void *>(stream);
-        std::stringstream ss;
-        ss << "[Stream] " << streamPtr << " ";
-        switch (event->Type) {
-            case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
-                stream->Shutdown(0);
-                ss << "shut down as peer aborted";
-                sender->log(DEBUG, ss.str());
-                break;
+  QUIC_STATUS Sender::streamCallbackHandler(MsQuicStream *stream,
+                                            void *context,
+                                            QUIC_STREAM_EVENT *event) {
 
-            case QUIC_STREAM_EVENT_PEER_ACCEPTED:
-                ss << "Stream accepted by peer";
-                sender->log(DEBUG, ss.str());
-                break;
+    auto *sender = (Sender *) context;
+    const void *streamPtr = static_cast<const void *>(stream);
+    std::stringstream ss;
+    ss << "[Stream] " << streamPtr << " ";
+    switch (event->Type) {
+      case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
+        stream->Shutdown(0);
+        ss << "shut down as peer aborted";
+        sender->log(DEBUG, ss.str());
+        break;
 
-            case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
-                // TODO Finish Sending
-                //Send a FIN
-                stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
-                ss << "shut down as peer sent a shutdown signal";
-                sender->log(DEBUG, ss.str());
-                break;
+      case QUIC_STREAM_EVENT_PEER_ACCEPTED:
+        ss << "Stream accepted by peer";
+        sender->log(DEBUG, ss.str());
+        break;
 
-            case QUIC_STREAM_EVENT_RECEIVE:
-                // TODO
-                ss << "Received data from peer";
-                sender->log(DEBUG, ss.str());
-                break;
+      case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
+        // TODO Finish Sending
+        //Send a FIN
+        stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
+        ss << "shut down as peer sent a shutdown signal";
+        sender->log(DEBUG, ss.str());
+        break;
 
-            case QUIC_STREAM_EVENT_SEND_COMPLETE:
+      case QUIC_STREAM_EVENT_RECEIVE:
+        // TODO
+        ss << "Received data from peer";
+        sender->log(DEBUG, ss.str());
+        break;
+
+      case QUIC_STREAM_EVENT_SEND_COMPLETE:
 //      free(event->SEND_COMPLETE.ClientContext);
-                ss << "Finished a call to streamSend";
-                sender->log(DEBUG, ss.str());
-                break;
+        ss << "Finished a call to streamSend";
+        sender->log(DEBUG, ss.str());
+        break;
 
-            case QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE:
-                //Automatically handled as cleanUpAutoDelete is set when creating the
-                // stream class instance in connectionHandler
-                ss << "The underlying connection was shutdown and cleaned up "
-                      "successfully";
-                sender->log(DEBUG, ss.str());
-                break;
+      case QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE:
+        //Automatically handled as cleanUpAutoDelete is set when creating the
+        // stream class instance in connectionHandler
+        ss << "The underlying connection was shutdown and cleaned up "
+              "successfully";
+        sender->log(DEBUG, ss.str());
+        break;
 
-            case QUIC_STREAM_EVENT_START_COMPLETE:
-                ss << "started";
-                sender->log(DEBUG, ss.str());
-                break;
+      case QUIC_STREAM_EVENT_START_COMPLETE:
+        ss << "started";
+        sender->log(DEBUG, ss.str());
+        break;
 
-            default:
-                break;
+      default:
+        break;
+    }
+    return QUIC_STATUS_SUCCESS;
+
+  }
+
+  QUIC_STATUS Sender::connectionHandler(MsQuicConnection *connection,
+                                        void *context,
+                                        QUIC_CONNECTION_EVENT *event) {
+
+    auto *sender = (Sender *) context;
+    MsQuicStream *stream;
+    std::stringstream ss;
+    const void *connectionPtr = static_cast<const void *>(connection);
+    ss << "[Connection] " << connectionPtr << " ";
+
+    switch (event->Type) {
+      case QUIC_CONNECTION_EVENT_CONNECTED:
+        //
+        // The handshake has completed for the connection.
+        //
+        ss << "Connected";
+        sender->log(DEBUG, ss.str());
+        sender->connected = true;
+        break;
+
+      case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
+        stream = new MsQuicStream(event->PEER_STREAM_STARTED.Stream,
+                                  CleanUpAutoDelete,
+                                  streamCallbackHandler);
+        {
+          const void *streamPtr = static_cast<const void *>(stream);
+
+          ss << "Stream " << streamPtr << " started";
+          sender->log(DEBUG, ss.str());
         }
-        return QUIC_STATUS_SUCCESS;
+        break;
 
+      case QUIC_CONNECTION_EVENT_RESUMED:
+        ss << "resumed";
+        sender->log(DEBUG, ss.str());
+        break;
+
+      case QUIC_CONNECTION_EVENT_RESUMPTION_TICKET_RECEIVED:
+        ss << "Received the following resumption ticket: ";
+        for (int i = 0; i < event->RESUMPTION_TICKET_RECEIVED
+            .ResumptionTicketLength; i++) {
+          ss << event->RESUMPTION_TICKET_RECEIVED.ResumptionTicket[i];
+        }
+        sender->log(DEBUG, ss.str());
+        break;
+
+      case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
+        connection->Close();
+
+        ss << "closed successfully";
+        sender->log(DEBUG, ss.str());
+        break;
+
+      case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
+        ss << "shut down by peer";
+        sender->log(DEBUG, ss.str());
+        break;
+
+      case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
+        //
+        // The connection has been shut down by the transport. Generally, this
+        // is the expected way for the connection to shut down with this
+        // protocol, since we let idle timeout kill the connection.
+        //
+        if (event->SHUTDOWN_INITIATED_BY_TRANSPORT.Status ==
+            QUIC_STATUS_CONNECTION_IDLE) {
+
+          ss << "shutting down on idle";
+          sender->log(DEBUG, ss.str());
+
+
+        } else {
+          ss << "shut down by underlying transport layer";
+          sender->log(WARNING, ss.str());
+        }
+        break;
+
+      default:
+        break;
+    }
+    return QUIC_STATUS_SUCCESS;
+  }
+
+  bool Sender::loadConfiguration(bool noServerValidation) {
+    auto *settings = new MsQuicSettings;
+    settings->SetIdleTimeoutMs(idleTimeoutMs);
+
+    // Configure default client configuration
+    QUIC_CREDENTIAL_CONFIG config{};
+    config.Type = QUIC_CREDENTIAL_TYPE_NONE;
+    config.Flags = QUIC_CREDENTIAL_FLAG_CLIENT;
+    if (noServerValidation) {
+      config.Flags |= QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
     }
 
-    QUIC_STATUS Sender::connectionHandler(MsQuicConnection *connection,
-                                          void *context,
-                                          QUIC_CONNECTION_EVENT *event) {
+    MsQuicCredentialConfig credConfig(config);
 
-        auto *sender = (Sender *) context;
-        MsQuicStream *stream;
-        std::stringstream ss;
-        const void *connectionPtr = static_cast<const void *>(connection);
-        ss << "[Connection] " << connectionPtr << " ";
+    configuration = new MsQuicConfiguration(reg, alpn, *settings,
+                                            credConfig);
+    if (configuration->IsValid()) {
+      log(DEBUG, "Configuration loaded successfully!");
+      return true;
+    }
+    log(ERROR, "Error loading configuration");
+    return false;
+  }
 
-        switch (event->Type) {
-            case QUIC_CONNECTION_EVENT_CONNECTED:
-                //
-                // The handshake has completed for the connection.
-                //
-                ss << "Connected";
-                sender->log(DEBUG, ss.str());
-                sender->connected = true;
-                break;
-
-            case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
-                stream = new MsQuicStream(event->PEER_STREAM_STARTED.Stream,
-                                          CleanUpAutoDelete,
-                                          streamCallbackHandler);
-                {
-                    const void *streamPtr = static_cast<const void *>(stream);
-
-                    ss << "Stream " << streamPtr << " started";
-                    sender->log(DEBUG, ss.str());
-                }
-                break;
-
-            case QUIC_CONNECTION_EVENT_RESUMED:
-                ss << "resumed";
-                sender->log(DEBUG, ss.str());
-                break;
-
-            case QUIC_CONNECTION_EVENT_RESUMPTION_TICKET_RECEIVED:
-                ss << "Received the following resumption ticket: ";
-                for (int i = 0; i < event->RESUMPTION_TICKET_RECEIVED
-                        .ResumptionTicketLength; i++) {
-                    ss << event->RESUMPTION_TICKET_RECEIVED.ResumptionTicket[i];
-                }
-                sender->log(DEBUG, ss.str());
-                break;
-
-            case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
-                connection->Close();
-
-                ss << "closed successfully";
-                sender->log(DEBUG, ss.str());
-                break;
-
-            case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
-                ss << "shut down by peer";
-                sender->log(DEBUG, ss.str());
-                break;
-
-            case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
-                //
-                // The connection has been shut down by the transport. Generally, this
-                // is the expected way for the connection to shut down with this
-                // protocol, since we let idle timeout kill the connection.
-                //
-                if (event->SHUTDOWN_INITIATED_BY_TRANSPORT.Status ==
-                    QUIC_STATUS_CONNECTION_IDLE) {
-
-                    ss << "shutting down on idle";
-                    sender->log(DEBUG, ss.str());
-
-
-                } else {
-                    ss << "shut down by underlying transport layer";
-                    sender->log(WARNING, ss.str());
-                }
-                break;
-
-            default:
-                break;
-        }
-        return QUIC_STATUS_SUCCESS;
+  Sender::Sender(const std::string &serverName, uint16_t port,
+                 bool noServerValidation,
+                 logLevels _logLevel,
+                 uint64_t _idleTimeoutMs) : idleTimeoutMs
+                                                (_idleTimeoutMs), configuration
+                                                (nullptr), connection(nullptr) {
+    logLevel = _logLevel;
+    loadConfiguration(noServerValidation);
+    connection = new MsQuicConnection(reg, autoCleanup ? CleanUpAutoDelete :
+                                           CleanUpManual,
+                                      connectionHandler, this);
+    connection->Start(*configuration, serverName.c_str(), port);
+    if (!connection->IsValid()) {
+      std::stringstream ss;
+      ss << "Connection to " << serverName << ":" << port << " failed!";
+      log(ERROR, ss.str());
+      connection->Close();
+      throw std::runtime_error("Connection Failed!");
     }
 
-    bool Sender::loadConfiguration(bool noServerValidation) {
-        auto *settings = new MsQuicSettings;
-        settings->SetIdleTimeoutMs(idleTimeoutMs);
+  }
 
-        // Configure default client configuration
-        QUIC_CREDENTIAL_CONFIG config{};
-        config.Type = QUIC_CREDENTIAL_TYPE_NONE;
-        config.Flags = QUIC_CREDENTIAL_FLAG_CLIENT;
-        if (noServerValidation) {
-            config.Flags |= QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
-        }
+  MsQuicStream *Sender::startStream() {
+    while (!connected);  // TODO: Improve this with wait and conditional
+    MsQuicStream *stream;
+    stream = new MsQuicStream{*connection, QUIC_STREAM_OPEN_FLAG_NONE,
+                              autoCleanup ? CleanUpAutoDelete : CleanUpManual,
+                              streamCallbackHandler, this
+    };
+    // variables
+    if (QUIC_FAILED(stream->Start())) {
+      log(ERROR, "Stream could not be started");
+      throw std::runtime_error("Stream could not be started");
+    }
+    return stream;
+  }
 
-        MsQuicCredentialConfig credConfig(config);
-
-        configuration = new MsQuicConfiguration(reg, alpn, *settings,
-                                                credConfig);
-        if (configuration->IsValid()) {
-            log(DEBUG, "Configuration loaded successfully!");
-            return true;
-        }
-        log(ERROR, "Error loading configuration");
-        return false;
+  bool Sender::send(MsQuicStream *stream, size_t length, uint8_t *data) {
+    auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
+    if (SendBuffer == nullptr) {
+      log(ERROR, "Memory allocation for the send buffer failed");
+      return false;
     }
 
-    Sender::Sender(const std::string &serverName, uint16_t port,
-                   bool noServerValidation,
-                   logLevels _logLevel,
-                   uint64_t _idleTimeoutMs) : idleTimeoutMs
-                                                      (_idleTimeoutMs), configuration
-                                                      (nullptr), connection(nullptr) {
-        logLevel = _logLevel;
-        loadConfiguration(noServerValidation);
-        connection = new MsQuicConnection(reg, autoCleanup ? CleanUpAutoDelete :
-                                               CleanUpManual,
-                                          connectionHandler, this);
-        connection->Start(*configuration, serverName.c_str(), port);
-        if (!connection->IsValid()) {
-            std::stringstream ss;
-            ss << "Connection to " << serverName << ":" << port << " failed!";
-            log(ERROR, ss.str());
-            connection->Close();
-            throw std::runtime_error("Connection Failed!");
-        }
+    SendBuffer->Buffer = data;
+    SendBuffer->Length = length;
 
+    const void *streamPtr = static_cast<const void *>(stream);
+    std::stringstream ss;
+    ss << "[Stream ]" << streamPtr;
+    const void *bufferPtr = static_cast<const void *>(SendBuffer->Buffer);
+    ss << " sending buffer: " << bufferPtr;
+    log(DEBUG, ss.str());
+
+    if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, this))) {
+      ss << " could not send data";
+      log(ERROR, ss.str());
+      free(SendBuffer);
+      return false;
     }
 
-    MsQuicStream *Sender::startStream() {
-        while (!connected);  // TODO: Improve this with wait and conditional
-        MsQuicStream *stream;
-        stream = new MsQuicStream{*connection, QUIC_STREAM_OPEN_FLAG_NONE,
-                                  autoCleanup ? CleanUpAutoDelete : CleanUpManual,
-                                  streamCallbackHandler, this
-        };
-        // variables
-        if (QUIC_FAILED(stream->Start())) {
-            log(ERROR, "Stream could not be started");
-            throw std::runtime_error("Stream could not be started");
-        }
-        return stream;
-    }
-
-    bool Sender::send(MsQuicStream *stream, size_t length, uint8_t *data) {
-        auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
-        if (SendBuffer == nullptr) {
-            log(ERROR, "Memory allocation for the send buffer failed");
-            return false;
-        }
-
-        SendBuffer->Buffer = data;
-        SendBuffer->Length = length;
-
-        const void *streamPtr = static_cast<const void *>(stream);
-        std::stringstream ss;
-        ss << "[Stream ]" << streamPtr;
-        const void *bufferPtr = static_cast<const void *>(SendBuffer->Buffer);
-        ss << " sending buffer: " << bufferPtr;
-        log(DEBUG, ss.str());
-
-        if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, this))) {
-            ss << " could not send data";
-            log(ERROR, ss.str());
-            free(SendBuffer);
-            return false;
-        }
-
-        ss << " Data sent successfully";
-        log(DEBUG, ss.str());
-        return true;
-    }
+    ss << " Data sent successfully";
+    log(DEBUG, ss.str());
+    return true;
+  }
 }

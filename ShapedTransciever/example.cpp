@@ -33,7 +33,8 @@ void onReceive(uint8_t *buffer, size_t length) {
 }
 
 void RunReceiver() {
-  ShapedTransciever::Receiver receiver("server.cert", "server.key", 4567, onReceive);
+  ShapedTransciever::Receiver receiver("server.cert", "server.key", 4567,
+                                       onReceive);
   receiver.startListening();
   std::cout << "Use ^C (Ctrl+C) to exit" << std::endl;
 

@@ -18,7 +18,7 @@ Enter the IP address of the remote host and then the port of the remote host
 
 ##### ShapedTransciever Example
 _(Can run either as a client or a server)_  
-3. Generate a self-signed certificate using `openssl req  -nodes -new -x509  -keyout ./build/bin/ShapedTransciever/server.key -out ./build/bin/ShapedTransciever/server.cert`  
+3. Generate a self-signed certificate using `openssl req  -nodes -new -x509  -keyout ./build/ShapedTransciever/server.key -out ./build/ShapedTransciever/server.cert`  
 4. `./build/bin/ShapedTransciever/shapedTransciever <option>`  
   Options:  
   `-c` (for client)  
