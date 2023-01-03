@@ -33,7 +33,7 @@ void onReceive(uint8_t *buffer, size_t length) {
 }
 
 void RunReceiver() {
-  Receiver receiver("server.cert", "server.key", 4567, onReceive);
+  ShapedTransciever::Receiver receiver("server.cert", "server.key", 4567, onReceive);
   receiver.startListening();
   std::cout << "Use ^C (Ctrl+C) to exit" << std::endl;
 
@@ -62,7 +62,7 @@ void RunReceiver() {
 // Sender
 
 void RunSender() {
-  Sender sender{"localhost", 4567, true};
+  ShapedTransciever::Sender sender{"localhost", 4567, true};
   auto stream = sender.startStream();
   std::string str = "Data...";
   auto *data = reinterpret_cast<uint8_t *>(str.data());

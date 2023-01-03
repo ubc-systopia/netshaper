@@ -5,8 +5,8 @@
 #include "Sender.h"
 #include "Receiver.h"
 
-Receiver *receiver;
-Sender *sender;
+UnshapedTransciever::Receiver *receiver;
+UnshapedTransciever::Sender *sender;
 
 int clientSocket;
 
@@ -32,8 +32,8 @@ int main() {
   std::cin >> remotePort;
 
 
-  receiver = new Receiver{"", 8000, receivedData};
-  sender = new Sender{remoteHost, remotePort, sendData};
+  receiver = new UnshapedTransciever::Receiver{"", 8000, receivedData};
+  sender = new UnshapedTransciever::Sender{remoteHost, remotePort, sendData};
 
   receiver->startListening();
 
