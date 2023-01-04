@@ -29,3 +29,9 @@ add_subdirectory(ShapedTransciever)
 
 add_subdirectory(UnshapedTransciever)
 
+# Build example
+add_executable(example_peer_1 example_peer_1.cpp)
+target_link_libraries(example_peer_1 shapedTransciever unshapedTransciever)
+
+add_executable(example_peer_2 example_peer_2.cpp)
+target_link_libraries(example_peer_2 shapedTransciever unshapedTransciever)
