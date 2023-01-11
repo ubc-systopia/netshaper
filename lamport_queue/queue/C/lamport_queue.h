@@ -1,3 +1,7 @@
+/*
+  Created by Amir Sabzi
+*/
+
 // To understand the code, please read the paper: https://hal.inria.fr/hal-00911893/document
 
 #include <assert.h>
