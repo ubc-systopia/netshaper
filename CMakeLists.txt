@@ -28,10 +28,14 @@ include_directories(msquic/src/inc)
 add_subdirectory(ShapedTransciever)
 
 add_subdirectory(UnshapedTransciever)
+add_subdirectory(lamport_queue/queue)
 
 # Build example
-add_executable(example_peer_1 example_peer_1.cpp)
-target_link_libraries(example_peer_1 shapedTransciever unshapedTransciever)
+add_executable(example_peer_1_unshaped example_peer_1_unshaped.cpp)
+target_link_libraries(example_peer_1_unshaped unshapedTransciever lamportQueue)
+
+add_executable(example_peer_1_shaped example_peer_1_shaped.cpp)
+target_link_libraries(example_peer_1_shaped shapedTransciever lamportQueue)
 
 add_executable(example_peer_2 example_peer_2.cpp)
 target_link_libraries(example_peer_2 shapedTransciever unshapedTransciever)
