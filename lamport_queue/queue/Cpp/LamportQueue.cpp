@@ -22,15 +22,17 @@ int LamportQueue::push(uint8_t* elem, size_t elem_size){
   b = this->back_.load(std::memory_order_relaxed);
   f = this->cached_front_;
   int free_space = this->get_free_space_local(f, b);
-  if(free_space <= elem_size){
+  if(free_space < elem_size){
     this->cached_front_ = f = this->front_.load(std::memory_order_acquire);
   }
   free_space = this->get_free_space_local(f, b);
-  if(free_space <= elem_size){
+  if(free_space < elem_size){
     return -1;
   }
   std::memcpy(this->data_ + b, elem, elem_size);
   this->back_.store((b + elem_size) % BUFFER_SIZE, std::memory_order_release);
+  int free_space_after = this->get_free_space_local(f, (b + elem_size) % BUFFER_SIZE);
+  assert(free_space_after < free_space);
   return 0;
 }
 
@@ -70,7 +72,7 @@ int LamportQueue::mod(int a, int b){
 }
 
 int LamportQueue::get_free_space_local(size_t f, size_t b){
-  return BUFFER_SIZE - this->mod((b-f) , BUFFER_SIZE);
+  return BUFFER_SIZE - this->mod((b-f) , BUFFER_SIZE) - 1;
 } 
 
 int LamportQueue::get_queue_size_local(size_t f, size_t b){

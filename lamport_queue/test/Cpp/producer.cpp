@@ -28,7 +28,6 @@ int main(int argc, char** argv) {
         return -1;
     }
     while(1){
-      sleep(2);
       size_t data_size = rand() % 200 + 1;
       uint8_t *data = new uint8_t[data_size];
       std::memset(data, 'a', data_size);
@@ -36,8 +35,8 @@ int main(int argc, char** argv) {
       // std::cout << "Producer: queue_size " << lq->size() << std::endl; 
       // std::cout << "Producer: buffer_free_size: " << buffer_free_size << std::endl;
 
-      if(buffer_free_size > data_size){
-        std::cout << "Producer: data_size: " << data_size << std::endl;
+      if(buffer_free_size >= data_size){
+        // std::cout << "Producer: data_size: " << data_size << std::endl;
         if(lq->push(data, data_size) == -1){
           std::cout << "Queue is full" << std::endl;
           return -1;

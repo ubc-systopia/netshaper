@@ -45,7 +45,6 @@ double max(double a, double b){
 
 int main(int argc, char *argv[]){
   if(argc != 1){
-    std::cout << "Usage: " << argv[0] << " <number of elements>" << std::endl;
     return -1;
   }
 
@@ -83,7 +82,7 @@ int main(int argc, char *argv[]){
       continue;
     }
 
-    std::cout << "Consumer: data_size: " << data_size << std::endl;
+    // std::cout << "Consumer: data_size: " << data_size << std::endl;
     if(lq->pop(data, data_size) == -1){
       std::cout << "Queue is empty" << std::endl;
       return -1;
