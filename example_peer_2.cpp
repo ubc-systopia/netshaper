@@ -38,12 +38,13 @@ int main() {
   unshapedSender = new UnshapedTransciever::Sender{remoteHost, remotePort};
 
   // Start listening for connections from the other middlebox
-  shapedReceiver = new ShapedTransciever::Receiver{"server.cert", "server.key",
-                                                   4567,
-                                                   receivedShapedData,
-                                                   ShapedTransciever::Receiver::DEBUG,
-                                                   1,
-                                                   100000};
+  shapedReceiver =
+      new ShapedTransciever::Receiver{"server.cert", "server.key",
+                                      4567,
+                                      receivedShapedData,
+                                      ShapedTransciever::Receiver::WARNING,
+                                      1,
+                                      100000};
   shapedReceiver->startListening();
 
   // Dummy blocking function
