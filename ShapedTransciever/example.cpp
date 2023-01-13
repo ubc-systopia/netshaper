@@ -26,7 +26,8 @@ void addSignal(sigset_t *set, int numSignals, ...) {
 
 }
 
-void onReceive(uint8_t *buffer, size_t length) {
+void onReceive(MsQuicStream *stream, uint8_t *buffer, size_t length) {
+  (void) (stream);
   (void) (buffer);
   (void) (length);
   std::cout << "Data received..." << std::endl;

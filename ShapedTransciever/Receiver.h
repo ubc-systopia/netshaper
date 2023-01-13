@@ -41,7 +41,8 @@ namespace ShapedTransciever {
      * closed
      */
     Receiver(const std::string &certFile, const std::string &keyFile,
-             int port = 4567, std::function<void(uint8_t *buffer,
+             int port = 4567, std::function<void(MsQuicStream *stream, uint8_t
+    *buffer,
                                                  size_t length)> onReceiveFunc
     = [](auto &&...) {},
              logLevels _logLevel = DEBUG, int _maxPeerStreams = 1,
@@ -132,7 +133,8 @@ namespace ShapedTransciever {
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
-    std::function<void(uint8_t *buffer, size_t length)> onReceive;
+    std::function<void(MsQuicStream *stream, uint8_t *buffer, size_t length)>
+        onReceive;
   };
 }
 

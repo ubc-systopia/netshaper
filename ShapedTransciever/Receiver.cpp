@@ -58,7 +58,7 @@ namespace ShapedTransciever {
         auto bufferCount = event->RECEIVE.BufferCount;
         ss << "Received data from peer: ";
         for (int i = 0; i < bufferCount; i++) {
-          receiver->onReceive(event->RECEIVE.Buffers[i].Buffer,
+          receiver->onReceive(stream, event->RECEIVE.Buffers[i].Buffer,
                               event->RECEIVE.Buffers[i].Length);
 
           auto length = event->RECEIVE.Buffers[i].Length;
@@ -201,7 +201,8 @@ namespace ShapedTransciever {
   }
 
   Receiver::Receiver(const std::string &certFile, const std::string &keyFile,
-                     int port, std::function<void(uint8_t *buffer,
+                     int port, std::function<void(MsQuicStream *stream,
+                                                  uint8_t *buffer,
                                                   size_t length)> onReceiveFunc,
                      logLevels level, int _maxPeerStreams, uint64_t
                      _idleTimeoutMs) : configuration(nullptr),
