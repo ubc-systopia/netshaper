@@ -35,7 +35,7 @@ private:
   size_t cached_back_;
   uint8_t data_[BUFFER_SIZE]{};
 
-  size_t mod(size_t a, size_t b);
+  size_t mod(ssize_t a, ssize_t b);
 
   size_t get_queue_size_local(size_t f, size_t b);
 
