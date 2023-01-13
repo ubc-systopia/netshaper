@@ -6,6 +6,7 @@
 
 #include <sstream>
 #include <thread>
+#include <unordered_map>
 #include "ShapedTransciever/Sender.h"
 #include "lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "shaper/NoiseGenerator.h"
@@ -26,8 +27,10 @@ ShapedTransciever::Sender *shapedSender;
 // current code does not implement it either.
 int numStreams;
 
-LamportQueue **queues;  // Receive buffer (queue) for each client
-MsQuicStream **streams; // Array of outgoing numStream QUIC Streams
+std::unordered_map<int, LamportQueue *> *socketToQueue;
+std::unordered_map<LamportQueue *, int> *queueToSocket;
+std::unordered_map<LamportQueue *, MsQuicStream *> *queueToStream;
+MsQuicStream *dummyStream;
 
 // Max data that can be sent out now
 std::atomic<size_t> sendingCredit;
@@ -37,9 +40,8 @@ std::atomic<size_t> sendingCredit;
 // TODO: Do this for each receiver
 size_t getAggregatedQueueSize() {
   size_t aggregatedSize = 0;
-  for (int i = 0; i < numStreams; i++) {
-    size_t queueSize = queues[i]->size();
-    aggregatedSize += queueSize;
+  for (auto &iterator: *queueToSocket) {
+    aggregatedSize += iterator.first->size();
   }
   return aggregatedSize;
 }
@@ -61,13 +63,14 @@ size_t getAggregatedQueueSize() {
 // Send dataSize bytes of data out to the other middlebox
 void sendData(size_t dataSize) {
   // TODO: Add prioritisation
-  for (int i = 0; i < numStreams; i++) {
+  for (auto &iterator: *queueToSocket) {
     if (dataSize == 0) break;
-    auto size = queues[i]->size();
+    auto size = iterator.first->size();
+    if (size == 0) continue; //TODO: Send at least 1 byte
     auto sizeToSend = std::min(dataSize, size);
     auto buffer = (uint8_t *) malloc(sizeToSend);
-    queues[i]->pop(buffer, sizeToSend);
-    shapedSender->send(streams[i], sizeToSend, buffer);
+    iterator.first->pop(buffer, sizeToSend);
+    shapedSender->send((*queueToStream)[iterator.first], sizeToSend, buffer);
     dataSize -= sizeToSend;
   }
 }
@@ -88,9 +91,11 @@ void sendData(size_t dataSize) {
       size_t dummySize = std::max((size_t) 0, credit - aggregatedSize);
       if (dummySize > 0) {
         // Send dummy
+
         auto dummy =
-            (uint8_t *) calloc(credit - aggregatedSize, sizeof(uint8_t));
-        shapedSender->send(streams[numStreams],
+            (uint8_t *) malloc(credit - aggregatedSize);
+        memset(dummy, 'a', credit - aggregatedSize);
+        shapedSender->send(dummyStream,
                            credit - aggregatedSize, dummy);
       }
 
@@ -101,30 +106,9 @@ void sendData(size_t dataSize) {
   }
 }
 
-int main() {
-  // Initialise a fixed number of buffers/queues at the beginning (as shared
-  // memory)
-  std::cout << "Enter the maximum number of clients that should be supported:"
-               " " << std::endl;
-  std::cin >> numStreams;
-  queues =
-      (LamportQueue **) malloc(numStreams * sizeof(LamportQueue *));
-
-  // Additional stream is for dummy
-  streams =
-      (MsQuicStream **) malloc((numStreams + 1) * sizeof(MsQuicStream *));
-
-
-  NoiseGenerator noiseGenerator{0.01, 100};
-
-  // Connect to the other middlebox
-  shapedSender = new ShapedTransciever::Sender{"localhost", 4567,
-                                               true,
-                                               ShapedTransciever::Sender::WARNING,
-                                               100000};
-
-  // Create numStreams number of shared memory and initialise Lamport Queues
-  // for each stream
+// Create numStreams number of shared memory and initialise Lamport Queues
+// for each stream
+inline void initaliseSHM() {
   for (int i = 0; i < numStreams; i++) {
     // String stream used to create keys for sharedMemory
     std::stringstream ss;
@@ -149,15 +133,37 @@ int main() {
     // SHM is deleted once all attached processes exit
     shmctl(shmId, IPC_RMID, nullptr);
 
-    // Initialise a queue class at that shared memory
-    queues[i] = (LamportQueue *) shmAddr;
+    // Put the queue in the map
+    (*queueToSocket)[(LamportQueue *) shmAddr] = 0;
 
     // Data streams
-    streams[i] = shapedSender->startStream();
+    (*queueToStream)[(LamportQueue *) shmAddr] = shapedSender->startStream();
   }
+}
 
-  // Dummy stream
-  streams[numStreams] = shapedSender->startStream();
+int main() {
+  // Initialise a fixed number of buffers/queues at the beginning (as shared
+  // memory)
+  std::cout << "Enter the maximum number of clients that should be supported:"
+               " " << std::endl;
+  std::cin >> numStreams;
+
+  socketToQueue = new std::unordered_map<int, LamportQueue *>(numStreams);
+  queueToSocket = new std::unordered_map<LamportQueue *, int>(numStreams);
+  queueToStream =
+      new std::unordered_map<LamportQueue *, MsQuicStream *>(numStreams);
+
+  NoiseGenerator noiseGenerator{0.01, 100};
+  // Connect to the other middlebox
+  shapedSender = new ShapedTransciever::Sender{"localhost", 4567,
+                                               true,
+                                               ShapedTransciever::Sender::WARNING,
+                                               100000};
+
+  initaliseSHM();
+
+  // Start the dummy stream
+  dummyStream = shapedSender->startStream();
 
   std::thread dpCreditor(DPCreditor, std::ref(noiseGenerator), 1000000);
   dpCreditor.detach();
