@@ -1,0 +1,1 @@
+add_library(DPShaper STATIC NoiseGenerator.cpp)
