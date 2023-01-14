@@ -65,7 +65,7 @@ size_t LamportQueue::free_space() {
   return this->get_free_space_local(f, b);
 }
 
-size_t LamportQueue::mod(size_t a, size_t b) {
+size_t LamportQueue::mod(ssize_t a, ssize_t b) {
   ssize_t r = a % b;
   return r < 0 ? r + b : r;
 }
