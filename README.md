@@ -12,17 +12,27 @@ Run the following commands in the root directory of this repository
 #### Run
 
 ##### End-to-end example
-_Note: This example does not do any shaping currently. Just forwards data in the following path:_
-`client--->middlebox1--->middlebox2--->server` (note that it is unidirectional)  
-Open a new terminal for each device (if testing on localhost only)  
+_Note: It is unidirectional only  
+Open 6 new terminal instances (if testing on localhost)  
   
 3. Terminal 1: `nc -l -p 5555` (Acts as a simple tcp server)
-4. Terminal 2: `./build/example_peer_2` (Middlebox on the server side)  
+4. Terminal 2: `./build/example_peer_2_unshaped` (Unshaped Sender component of 
+the middlebox on the 
+server 
+side)  
 Enter `127.0.0.1` followed by `5555` (the netcat server we initialised 
    in Terminal 1)
-5. Terminal 3: `./build/example_peer_1` (Middlebox on client side)  
-6. Terminal 4: `nc localhost 8000` (The client)  
-7. Type anything in the 4th terminal and press 'Enter', it will appear in the 1st terminal
+5. Terminal 3: `./build/example_peer_2_shaped` (Shaped Receiver 
+component in the middlebox on client side)  
+6. Terminal 4: `./build/example_peer_1_unshaped` (Unshaped Receiver in the 
+middlebox on the client side)  
+_Enter the number of max clients you want to support_
+7. Terminal 5: `./build/example_peer_1_shaped` (Shaped Sender in the 
+middlebox on the client side)  
+_Enter the number of max clients you want to support (same as in Terminal 5)_
+7. Terminal 6: `nc localhost 8000` (The client)  
+7. Type anything in the 4th terminal and press 'Enter', it will appear in 
+the 1st terminal, alongside dummy data (currently set to multiple 'a's)
 
 ##### UnshapedTransceiever Example
 _(Runs as a simple proxy that can handle one client at a time)_  
