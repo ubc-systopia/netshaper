@@ -7,7 +7,7 @@
 #include "UnshapedTransciever/Receiver.h"
 #include "lamport_queue/queue/Cpp/LamportQueue.hpp"
 
-std::string appName = "minesVPN";
+std::string appName = "minesVPNPeer1";
 
 // We fix the number of streams beforehand to avoid side-channels caused by
 // the additional size of the stream header.

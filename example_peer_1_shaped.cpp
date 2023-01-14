@@ -11,7 +11,7 @@
 #include "lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "shaper/NoiseGenerator.h"
 
-std::string appName = "minesVPN";
+std::string appName = "minesVPNPeer1";
 
 // Load the API table. Necessary before any calls to MsQuic
 // It is defined as an extern const in "msquic.hpp"
@@ -108,7 +108,7 @@ void sendData(size_t dataSize) {
 
 // Create numStreams number of shared memory and initialise Lamport Queues
 // for each stream
-inline void initaliseSHM() {
+inline void initialiseSHM() {
   for (int i = 0; i < numStreams; i++) {
     // String stream used to create keys for sharedMemory
     std::stringstream ss;
@@ -160,7 +160,7 @@ int main() {
                                                ShapedTransciever::Sender::WARNING,
                                                100000};
 
-  initaliseSHM();
+  initialiseSHM();
 
   // Start the dummy stream
   dummyStream = shapedSender->startStream();

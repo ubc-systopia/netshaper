@@ -40,5 +40,8 @@ add_executable(example_peer_1_shaped example_peer_1_shaped.cpp)
 target_link_libraries(example_peer_1_shaped shapedTransciever lamportQueue
         DPShaper)
 
-add_executable(example_peer_2 example_peer_2.cpp)
-target_link_libraries(example_peer_2 shapedTransciever unshapedTransciever)
+add_executable(example_peer_2_shaped example_peer_2_shaped.cpp)
+target_link_libraries(example_peer_2_shaped shapedTransciever lamportQueue)
+
+add_executable(example_peer_2_unshaped example_peer_2_unshaped.cpp)
+target_link_libraries(example_peer_2_unshaped unshapedTransciever lamportQueue)
