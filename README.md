@@ -2,20 +2,27 @@
 
 Run the following commands in the root directory of this repository
 
-#### Prerequisites (Commands are for ubuntu)
+## Prerequisites (Commands are for ubuntu)
 
 0. Clone this repository with `--recurse-submodules` option
 1. `./setup.sh` (Run with `sudo` or as root user)
 
-#### Compile
+## Compile
 
 2. `./build.sh`
 
-#### Run
+## Run
 
-##### End-to-end example
+### End-to-end example
 
-_Note: It is unidirectional only  
+_Note: It is unidirectional only_
+
+#### Automated test script
+
+3. `./test.sh` (_Note: It is still buggy_)
+
+#### Manual testing (preferred)
+
 Open 6 new terminal instances (if testing on localhost)
 
 3. Generate a self-signed certificate
@@ -40,14 +47,14 @@ Open 6 new terminal instances (if testing on localhost)
 10. Type anything in the 4th terminal and press 'Enter', it will appear in
     the 1st terminal, alongside dummy data (currently set to multiple 'a's)
 
-##### UnshapedTransceiever Example
+### UnshapedTransceiever Example
 
 _(Runs as a simple proxy that can handle one client at a time)_
 
 3. `./build/UnshapedTransceiver/unshapedTransciever` (Listens on port 8000)  
    Enter the IP address of the remote host and then the port of the remote host
 
-##### ShapedTransciever Example
+### ShapedTransciever Example
 
 _(Can run either as a client or a server)_
 

@@ -7,6 +7,8 @@
 #include <sstream>
 #include <thread>
 #include <unordered_map>
+#include <csignal>
+#include <cstdarg>
 #include "ShapedTransciever/Sender.h"
 #include "lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "shaper/NoiseGenerator.h"
@@ -94,7 +96,7 @@ void sendData(size_t dataSize) {
 
         auto dummy =
             (uint8_t *) malloc(credit - aggregatedSize);
-        memset(dummy, 'a', credit - aggregatedSize);
+        memset(dummy, 0, credit - aggregatedSize);
         shapedSender->send(dummyStream,
                            credit - aggregatedSize, dummy);
       }
@@ -141,6 +143,36 @@ inline void initialiseSHM() {
   }
 }
 
+void addSignal(sigset_t *set, int numSignals, ...) {
+  va_list args;
+  va_start(args, numSignals);
+  for (int i = 0; i < numSignals; i++) {
+    sigaddset(set, va_arg(args, int));
+  }
+
+}
+
+void waitForSignal() {
+  sigset_t set;
+  int sig;
+  int ret_val;
+  sigemptyset(&set);
+
+  addSignal(&set, 6, SIGINT, SIGKILL, SIGTERM, SIGABRT, SIGSTOP,
+            SIGTSTP);
+  sigprocmask(SIG_BLOCK, &set, nullptr);
+
+  ret_val = sigwait(&set, &sig);
+  if (ret_val == -1)
+    perror("The signal wait failed\n");
+  else {
+    if (sigismember(&set, sig)) {
+      std::cout << "\nExiting with signal " << sig << std::endl;
+      exit(0);
+    }
+  }
+}
+
 int main() {
   // Initialise a fixed number of buffers/queues at the beginning (as shared
   // memory)
@@ -157,7 +189,7 @@ int main() {
   // Connect to the other middlebox
   shapedSender = new ShapedTransciever::Sender{"localhost", 4567,
                                                true,
-                                               ShapedTransciever::Sender::WARNING,
+                                               ShapedTransciever::Sender::DEBUG,
                                                100000};
 
   initialiseSHM();
@@ -170,7 +202,6 @@ int main() {
   std::thread sendingThread(sendShapedData, 500000);
   sendingThread.detach();
 
-  // Dummy blocking function
-  std::string s;
-  std::cin >> s;
+  //Wait for signal to exit
+  waitForSignal();
 }
