@@ -26,12 +26,15 @@ jobs:
     - name: Setup pre-requisites
       run: sudo ./.github/workflows/setup.sh
 
-    - name: Configure CMake
-      run: cmake -G Ninja -B ${{github.workspace}}/build
+    - name: Configure CMake and Build
+      run: ./build.sh
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build
-
+#    - name: Configure CMake
+#      run: cmake -G Ninja -B ${{github.workspace}}/build
+#
+#    - name: Build
+#      run: cmake --build ${{github.workspace}}/build
+#
 #    - name: Test
 #      working-directory: ${{github.workspace}}/build
 #      # Execute tests defined by the CMake configuration.
