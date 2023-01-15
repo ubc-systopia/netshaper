@@ -9,7 +9,7 @@ RED='\033[0;31m'
 OFF='\033[0m'
 
 echo -e "${YELLOW}Installing prerequisites (G++, openSSL-1.1)"
-apt update && apt install -y zstd g++
+apt-get update && apt-get install -y zstd g++ cmake
 wget -O - https://mirror.cmt.de/archlinux/core/os/x86_64/openssl-1.1-1.1.1.s-4-x86_64.pkg.tar.zst | unzstd --stdout | tar -xvf -
 chmod 644 usr/lib/lib*
 cp usr/lib/lib* /usr/lib/x86_64-linux-gnu/
@@ -24,15 +24,15 @@ curl -sSL https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trust
 add-apt-repository -y https://packages.microsoft.com/ubuntu/22.04/prod/
 
 # Update apt repo
-apt update
+apt-get update
 
 # Install libmsquic
-apt install -y libmsquic libssl-dev
+apt-get install -y libmsquic libssl-dev
 ln -s /usr/lib/x86_64-linux-gnu/libmsquic.so.2 /usr/lib/x86_64-linux-gnu/libmsquic.so
 
 echo -e "${YELLOW}Downloading and installing ninja-build and cmake"
-apt install -y ninja-build
-snap install cmake --classic
+apt-get install -y ninja-build
+# snap install cmake --classic
 
 
 echo -e "${GREEN}Setup complete"
