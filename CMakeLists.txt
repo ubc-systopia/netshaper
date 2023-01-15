@@ -10,16 +10,16 @@ link_directories(/snap/cmake/current/usr/lib/x86_64-linux-gnu)
 
 # Disable in-source builds to prevent source tree corruption.
 if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
-    message(FATAL_ERROR "
+  message(FATAL_ERROR "
 FATAL: In-source builds are not allowed.
        You should create a separate directory for build files.
 ")
 endif ()
 
 if (UNIX)
-    set(CX_PLATFORM "linux")
+  set(CX_PLATFORM "linux")
 else ()
-    message(FATAL_ERROR "FATAL: Only Linux is supported at this time")
+  message(FATAL_ERROR "FATAL: Only Linux is supported at this time")
 endif ()
 message(STATUS "QUIC Platform: ${CX_PLATFORM}")
 
@@ -38,7 +38,7 @@ target_link_libraries(example_peer_1_unshaped unshapedTransciever lamportQueue)
 
 add_executable(example_peer_1_shaped example_peer_1_shaped.cpp)
 target_link_libraries(example_peer_1_shaped shapedTransciever lamportQueue
-        DPShaper)
+    DPShaper)
 
 add_executable(example_peer_2_shaped example_peer_2_shaped.cpp)
 target_link_libraries(example_peer_2_shaped shapedTransciever lamportQueue)
