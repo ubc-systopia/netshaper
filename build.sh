@@ -9,6 +9,6 @@ RED='\033[0;31m'
 OFF='\033[0m'
 
 # Build the proxy application
-cmake -G Ninja -S $(pwd) -B $(pwd)/build
+cmake -G 'Unix Makefiles' -S $(pwd) -B $(pwd)/build
 cmake --build $(pwd)/build -j $(nproc)
 
