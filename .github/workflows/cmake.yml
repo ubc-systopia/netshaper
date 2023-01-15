@@ -20,6 +20,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Checkout msquic submodule
+      run: git submodule update --init
+
     - name: Setup pre-requisites
       run: sudo ./.github/workflows/setup.sh
 
