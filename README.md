@@ -7,7 +7,7 @@ Run the following commands in the root directory of this repository
 1. `./setup.sh` (Run with `sudo` or as root user)
 
 #### Compile
-2. `./build.sh` (Expects you to have libssl.so.1.1 and libcrypto.so.1.1)  
+2. `./build.sh`  
 
 #### Run
 

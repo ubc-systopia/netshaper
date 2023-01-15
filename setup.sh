@@ -8,10 +8,17 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 OFF='\033[0m'
 
+echo -e "${YELLOW}Installing prerequisites (G++, openSSL-1.1)"
+apt update && apt install -y zstd g++
+wget -O - https://mirror.cmt.de/archlinux/core/os/x86_64/openssl-1.1-1.1.1.s-4-x86_64.pkg.tar.zst | unzstd --stdout | tar -xvf -
+chmod 644 usr/lib/lib*
+cp usr/lib/lib* /usr/lib/x86_64-linux-gnu/
+rm -rf usr
+
 echo -e "${YELLOW}Downloading and installing msQUIC"
 
 # Install Microsoft Production repo key
-curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+curl -sSL https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trusted.gpg.d/microsoft.asc
 
 # Add Microsoft production repository
 add-apt-repository -y https://packages.microsoft.com/ubuntu/22.04/prod/
