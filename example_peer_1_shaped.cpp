@@ -95,10 +95,10 @@ void sendData(size_t dataSize) {
         // Send dummy
 
         auto dummy =
-            (uint8_t *) malloc(credit - aggregatedSize);
-        memset(dummy, 0, credit - aggregatedSize);
+            (uint8_t *) malloc(dummySize);
+        memset(dummy, 0, dummySize);
         shapedSender->send(dummyStream,
-                           credit - aggregatedSize, dummy);
+                           dummySize, dummy);
       }
 
       sendData(dataSize);

@@ -8,8 +8,9 @@ peer_2_shaped="10"
 peer_1_unshaped="1"
 peer_1_shaped="1"
 echo_string="Is this working?"
+
 # Time the script will wait for network connections to establish at each point)
-# TODO: Figure out why only sleep_time = 2 or 3 work.
+# sleep_time is the time in seconds for which it will wait
 sleep_time=2
 
 # /dev/null to ignore all output
@@ -35,35 +36,35 @@ printf "\n\n\n\n\n\n\n" |
   openssl req -nodes -new -x509 -keyout server.key -out server.cert \
   &> $output_redirect
 
-# Run the tcp receiver (This is job 1)
+# Run the tcp receiver
 echo -e "${YELLOW}Starting TCP Receiver${OFF}"
 nc -l -d -p 5555 >output &
 
-# Run the unshaped sender of peer 2 (This is job 2)
+# Run the unshaped sender of peer 2
 echo -e "${YELLOW}Starting Unshaped Sender (Peer 2)${OFF}"
 printf '%s\n' "$peer_2_unshaped" |
   ../build/example_peer_2_unshaped &> $output_redirect &
 sleep $sleep_time
 
-# Run the shaped receiver of peer 2 (This is job 3)
+# Run the shaped receiver of peer 2
 echo -e "${YELLOW}Starting Shaped Receiver (Peer 2)${OFF}"
 printf '%s\n' "$peer_2_shaped" |
   ../build/example_peer_2_shaped &> $output_redirect &
 sleep $sleep_time
 
-# Run the unshaped receiver of peer 1 (This is job 4)
+# Run the unshaped receiver of peer 1
 echo -e "${YELLOW}Starting Unshaped Receiver (Peer 1)${OFF}"
 printf '%s\n' "$peer_1_unshaped" |
   ../build/example_peer_1_unshaped &> $output_redirect &
 sleep $sleep_time
 
-# Run the shaped sender of peer 1 (This is job 5)
+# Run the shaped sender of peer 1
 echo -e "${YELLOW}Starting Shaped Sender (Peer 1)${OFF}"
 printf '%s\n' "$peer_1_shaped" |
   ../build/example_peer_1_shaped &> $output_redirect &
 sleep $sleep_time
 
-# Run the tcp sender (This is job 6)
+# Run the tcp sender
 echo -e "${YELLOW}Starting TCP Sender and sending data${OFF}"
 printf '%s\n' "$echo_string" | nc -N localhost 8000
 echo -e "${YELLOW}Waiting for message to propagate${OFF}"
