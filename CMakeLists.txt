@@ -33,15 +33,15 @@ add_subdirectory(lamport_queue/queue)
 add_subdirectory(shaper)
 
 # Build example
-add_executable(example_peer_1_unshaped example_peer_1_unshaped.cpp)
+add_executable(example_peer_1_unshaped example_peer_1_unshaped.cpp helpers.cpp helpers.h)
 target_link_libraries(example_peer_1_unshaped unshapedTransciever lamportQueue)
 
-add_executable(example_peer_1_shaped example_peer_1_shaped.cpp)
+add_executable(example_peer_1_shaped example_peer_1_shaped.cpp helpers.cpp helpers.h)
 target_link_libraries(example_peer_1_shaped shapedTransciever lamportQueue
     DPShaper)
 
-add_executable(example_peer_2_shaped example_peer_2_shaped.cpp)
+add_executable(example_peer_2_shaped example_peer_2_shaped.cpp helpers.cpp helpers.h)
 target_link_libraries(example_peer_2_shaped shapedTransciever lamportQueue)
 
-add_executable(example_peer_2_unshaped example_peer_2_unshaped.cpp)
+add_executable(example_peer_2_unshaped example_peer_2_unshaped.cpp helpers.cpp helpers.h)
 target_link_libraries(example_peer_2_unshaped unshapedTransciever lamportQueue)

@@ -7,9 +7,12 @@
 #include <sstream>
 #include <thread>
 #include <unordered_map>
+#include <csignal>
+#include <cstdarg>
 #include "ShapedTransciever/Sender.h"
 #include "lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "shaper/NoiseGenerator.h"
+#include "helpers.h"
 
 std::string appName = "minesVPNPeer1";
 
@@ -27,9 +30,8 @@ ShapedTransciever::Sender *shapedSender;
 // current code does not implement it either.
 int numStreams;
 
-std::unordered_map<int, LamportQueue *> *socketToQueue;
-std::unordered_map<LamportQueue *, int> *queueToSocket;
-std::unordered_map<LamportQueue *, MsQuicStream *> *queueToStream;
+std::unordered_map<queuePair, MsQuicStream *, queuePairHash> *queuesToStream;
+std::unordered_map<MsQuicStream *, queuePair> *streamToQueues;
 MsQuicStream *dummyStream;
 
 // Max data that can be sent out now
@@ -40,8 +42,8 @@ std::atomic<size_t> sendingCredit;
 // TODO: Do this for each receiver
 size_t getAggregatedQueueSize() {
   size_t aggregatedSize = 0;
-  for (auto &iterator: *queueToSocket) {
-    aggregatedSize += iterator.first->size();
+  for (auto &iterator: *queuesToStream) {
+    aggregatedSize += iterator.first.toShaped->size();
   }
   return aggregatedSize;
 }
@@ -63,14 +65,14 @@ size_t getAggregatedQueueSize() {
 // Send dataSize bytes of data out to the other middlebox
 void sendData(size_t dataSize) {
   // TODO: Add prioritisation
-  for (auto &iterator: *queueToSocket) {
+  for (auto &iterator: *queuesToStream) {
     if (dataSize == 0) break;
-    auto size = iterator.first->size();
+    auto size = iterator.first.toShaped->size();
     if (size == 0) continue; //TODO: Send at least 1 byte
     auto sizeToSend = std::min(dataSize, size);
     auto buffer = (uint8_t *) malloc(sizeToSend);
-    iterator.first->pop(buffer, sizeToSend);
-    shapedSender->send((*queueToStream)[iterator.first], sizeToSend, buffer);
+    iterator.first.toShaped->pop(buffer, sizeToSend);
+    shapedSender->send(iterator.second, buffer, sizeToSend);
     dataSize -= sizeToSend;
   }
 }
@@ -93,10 +95,14 @@ void sendData(size_t dataSize) {
         // Send dummy
 
         auto dummy =
-            (uint8_t *) malloc(credit - aggregatedSize);
-        memset(dummy, 'a', credit - aggregatedSize);
-        shapedSender->send(dummyStream,
-                           credit - aggregatedSize, dummy);
+            (uint8_t *) malloc(dummySize);
+        if (dummy != nullptr) {
+          memset(dummy, 0, dummySize);
+          shapedSender->send(dummyStream,
+                             dummy, dummySize);
+        } else {
+          std::cerr << "Could not allocate memory for dummy data!" << std::endl;
+        }
       }
 
       sendData(dataSize);
@@ -106,38 +112,87 @@ void sendData(size_t dataSize) {
   }
 }
 
+// Dummy onResponse function
+// TODO: Ensure the response is sent to the correct queuePair. This requires
+//  the response be received on the correct stream
+void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
+  (void) (stream);
+  for (auto &iterator: *streamToQueues) {
+    if (iterator.second.fromShaped != nullptr)
+      iterator.second.fromShaped->push(buffer, length);
+  }
+  std::cout << "Received response from Server" << std::endl;
+}
+
 // Create numStreams number of shared memory and initialise Lamport Queues
 // for each stream
 inline void initialiseSHM() {
-  for (int i = 0; i < numStreams; i++) {
+  for (int i = 0; i < numStreams * 2; i += 2) {
     // String stream used to create keys for sharedMemory
-    std::stringstream ss;
-    ss << appName << i;
+    std::stringstream ss1, ss2;
+    ss1 << appName << i;
+    ss2 << appName << i + 1;
 
     // Create a shared memory
-    int shmId = shmget((int) std::hash<std::string>()(ss.str()),
-                       sizeof(class LamportQueue), IPC_CREAT | 0644);
-    if (shmId < 0) {
+    int shmId1 = shmget((int) std::hash<std::string>()(ss1.str()),
+                        sizeof(class LamportQueue), IPC_CREAT | 0644);
+    int shmId2 = shmget((int) std::hash<std::string>()(ss2.str()),
+                        sizeof(class LamportQueue), IPC_CREAT | 0644);
+    if (shmId1 < 0 || shmId2 < 0) {
       std::cerr << "Failed to create shared memory!" << std::endl;
       exit(1);
     }
 
     // Attach to the given shared memory
-    void *shmAddr = shmat(shmId, nullptr, 0);
-    if (shmAddr == (void *) -1) {
+    void *shmAddr1 = shmat(shmId1, nullptr, 0);
+    void *shmAddr2 = shmat(shmId2, nullptr, 0);
+    if (shmAddr1 == (void *) -1 || shmAddr2 == (void *) -1) {
       std::cerr << "Failed to attach shared memory!" << std::endl;
       exit(1);
     }
 
     // Marks the shm for deletion
     // SHM is deleted once all attached processes exit
-    shmctl(shmId, IPC_RMID, nullptr);
+    shmctl(shmId1, IPC_RMID, nullptr);
+    shmctl(shmId2, IPC_RMID, nullptr);
 
-    // Put the queue in the map
-    (*queueToSocket)[(LamportQueue *) shmAddr] = 0;
+    auto queue1 = (LamportQueue *) shmAddr1;
+    auto queue2 = (LamportQueue *) shmAddr2;
+    auto stream = shapedSender->startStream();
 
     // Data streams
-    (*queueToStream)[(LamportQueue *) shmAddr] = shapedSender->startStream();
+    (*queuesToStream)[{queue1, queue2}] = stream;
+    (*streamToQueues)[stream] = {queue1, queue2};
+  }
+}
+
+void addSignal(sigset_t *set, int numSignals, ...) {
+  va_list args;
+  va_start(args, numSignals);
+  for (int i = 0; i < numSignals; i++) {
+    sigaddset(set, va_arg(args, int));
+  }
+
+}
+
+void waitForSignal() {
+  sigset_t set;
+  int sig;
+  int ret_val;
+  sigemptyset(&set);
+
+  addSignal(&set, 6, SIGINT, SIGKILL, SIGTERM, SIGABRT, SIGSTOP,
+            SIGTSTP);
+  sigprocmask(SIG_BLOCK, &set, nullptr);
+
+  ret_val = sigwait(&set, &sig);
+  if (ret_val == -1)
+    perror("The signal wait failed\n");
+  else {
+    if (sigismember(&set, sig)) {
+      std::cout << "\nExiting with signal " << sig << std::endl;
+      exit(0);
+    }
   }
 }
 
@@ -148,16 +203,17 @@ int main() {
                " " << std::endl;
   std::cin >> numStreams;
 
-  socketToQueue = new std::unordered_map<int, LamportQueue *>(numStreams);
-  queueToSocket = new std::unordered_map<LamportQueue *, int>(numStreams);
-  queueToStream =
-      new std::unordered_map<LamportQueue *, MsQuicStream *>(numStreams);
+  queuesToStream =
+      new std::unordered_map<queuePair,
+          MsQuicStream *, queuePairHash>(numStreams);
+  streamToQueues =
+      new std::unordered_map<MsQuicStream *, queuePair>(numStreams);
 
   NoiseGenerator noiseGenerator{0.01, 100};
   // Connect to the other middlebox
-  shapedSender = new ShapedTransciever::Sender{"localhost", 4567,
+  shapedSender = new ShapedTransciever::Sender{"localhost", 4567, onResponse,
                                                true,
-                                               ShapedTransciever::Sender::WARNING,
+                                               ShapedTransciever::Sender::DEBUG,
                                                100000};
 
   initialiseSHM();
@@ -170,7 +226,6 @@ int main() {
   std::thread sendingThread(sendShapedData, 500000);
   sendingThread.detach();
 
-  // Dummy blocking function
-  std::string s;
-  std::cin >> s;
+  //Wait for signal to exit
+  waitForSignal();
 }

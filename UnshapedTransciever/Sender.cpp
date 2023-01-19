@@ -13,7 +13,8 @@
 
 namespace UnshapedTransciever {
   Sender::Sender(std::string remoteHost, int remotePort,
-                 std::function<void(uint8_t *buffer, size_t length)>
+                 std::function<void(UnshapedTransciever::Sender *,
+                                    uint8_t *buffer, size_t length)>
                  onReceiveFunc, logLevels level)
       : logLevel(level), remoteSocket(-1) {
     onReceive = std::move(onReceiveFunc);
@@ -114,7 +115,7 @@ namespace UnshapedTransciever {
       std::stringstream ss;
       ss << "Received data on socket: " << remoteSocket;
       log(DEBUG, ss.str());
-      onReceive(buffer, bytesReceived);
+      onReceive(this, buffer, bytesReceived);
     }
 
     if (bytesReceived < 0) {

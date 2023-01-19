@@ -41,8 +41,8 @@ namespace ShapedTransciever {
      * closed
      */
     Receiver(const std::string &certFile, const std::string &keyFile,
-             int port = 4567, std::function<void(MsQuicStream *stream, uint8_t
-    *buffer,
+             int port = 4567, std::function<void(MsQuicStream *stream,
+                                                 uint8_t *buffer,
                                                  size_t length)> onReceiveFunc
     = [](auto &&...) {},
              logLevels _logLevel = DEBUG, int _maxPeerStreams = 1,

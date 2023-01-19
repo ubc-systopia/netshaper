@@ -5,6 +5,7 @@
 #include "Sender.h"
 #include <sstream>
 #include <iostream>
+#include <utility>
 
 namespace ShapedTransciever {
   void Sender::log(logLevels level, const std::string &log) {
@@ -55,10 +56,22 @@ namespace ShapedTransciever {
         sender->log(DEBUG, ss.str());
         break;
 
-      case QUIC_STREAM_EVENT_RECEIVE:
-        // TODO
-        ss << "Received data from peer";
+      case QUIC_STREAM_EVENT_RECEIVE: {
+        auto bufferCount = event->RECEIVE.BufferCount;
+        ss << "Received data from peer: ";
+        for (int i = 0; i < bufferCount; i++) {
+          sender->onResponse(stream, event->RECEIVE.Buffers[i].Buffer,
+                             event->RECEIVE.Buffers[i].Length);
+
+          auto length = event->RECEIVE.Buffers[i].Length;
+          ss << " \n\t Length: " << length;
+          ss << "\n\t Data: ";
+          for (int j = 0; j < length; j++) {
+            ss << event->RECEIVE.Buffers[i].Buffer[j];
+          }
+        }
         sender->log(DEBUG, ss.str());
+      }
         break;
 
       case QUIC_STREAM_EVENT_SEND_COMPLETE:
@@ -195,11 +208,15 @@ namespace ShapedTransciever {
   }
 
   Sender::Sender(const std::string &serverName, uint16_t port,
+                 std::function<void(MsQuicStream *stream,
+                                    uint8_t *buffer,
+                                    size_t length)> onResponseFunc,
                  bool noServerValidation,
                  logLevels _logLevel,
                  uint64_t _idleTimeoutMs) : idleTimeoutMs
                                                 (_idleTimeoutMs), configuration
                                                 (nullptr), connection(nullptr) {
+    onResponse = std::move(onResponseFunc);
     logLevel = _logLevel;
     loadConfiguration(noServerValidation);
     connection = new MsQuicConnection(reg, autoCleanup ? CleanUpAutoDelete :
@@ -231,7 +248,7 @@ namespace ShapedTransciever {
     return stream;
   }
 
-  bool Sender::send(MsQuicStream *stream, size_t length, uint8_t *data) {
+  bool Sender::send(MsQuicStream *stream, uint8_t *data, size_t length) {
     auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
     if (SendBuffer == nullptr) {
       log(ERROR, "Memory allocation for the send buffer failed");
