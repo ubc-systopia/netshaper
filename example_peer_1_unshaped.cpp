@@ -28,8 +28,13 @@ std::unordered_map<queuePair, int, queuePairHash> *queuesToSocket;
 UnshapedTransciever::Receiver *unshapedReceiver;
 
 //Temporary single client socket
+// TODO: Replace this with proper socket management for multiple end-hosts
 int theOnlySocket = -1;
 
+// Testing loop that sends all responses to the only available socket
+// TODO: Use proper socket management to send response to correct socket.
+//  This requires that the response is received on the correct stream and
+//  then put in the correct queue
 [[noreturn]] void receivedResponse(__useconds_t interval) {
   while (true) {
     std::this_thread::sleep_for(std::chrono::microseconds(interval));

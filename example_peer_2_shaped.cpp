@@ -45,6 +45,9 @@ bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length) {
 }
 
 // Hacky response loop
+// Reads all queues and sends the data on the related stream if it exists,
+// else on any stream (For testing only)
+// TODO: Replace this with a proper loop for multiple clients and servers
 [[noreturn]] void sendResponseLoop(__useconds_t interval) {
   while (true) {
     std::this_thread::sleep_for(std::chrono::microseconds(interval));
@@ -192,6 +195,7 @@ int main() {
   shapedReceiver->startListening();
 
   // Loop to send response back for the stream
+  // TODO: Make this DP
   std::thread sendResp(sendResponseLoop, 100000);
   sendResp.detach();
 

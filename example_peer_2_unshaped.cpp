@@ -70,6 +70,7 @@ bool assignQueues(UnshapedTransciever::Sender *sender) {
   });
 }
 
+// Push received response to queue dedicated to this sender
 void onReceive(UnshapedTransciever::Sender *sender,
                uint8_t *buffer, size_t length) {
   (*senderToQueues)[sender].toShaped->push(buffer, length);
@@ -110,6 +111,7 @@ int main() {
 
   // Dummy infinite loop that sends all received data to the single
   // unshapedSender for testing purpose only
+  // TODO: Replace this with a proper per-end-host sending mechanism
   while (true) {
     usleep(100000);
     for (auto &iterator: *queuesToSender) {
