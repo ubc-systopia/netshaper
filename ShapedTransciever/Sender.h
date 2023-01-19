@@ -11,6 +11,7 @@
 
 #include "msquic.hpp"
 #include <string>
+#include <functional>
 
 namespace ShapedTransciever {
   class Sender {
@@ -31,7 +32,7 @@ namespace ShapedTransciever {
      * @param buffer The data to be sent
      * @return
      */
-    bool send(MsQuicStream *stream, size_t length, uint8_t *data);
+    bool send(MsQuicStream *stream, uint8_t *data, size_t length);
 
     /**
      * @brief Default constructor for the sender
@@ -43,6 +44,9 @@ namespace ShapedTransciever {
      * closed
      */
     Sender(const std::string &serverName, uint16_t port,
+           std::function<void(MsQuicStream *stream,
+                              uint8_t *buffer,
+                              size_t length)> onResponseFunc,
            bool noServerValidation = false, logLevels _logLevel = DEBUG,
            uint64_t _idleTimeoutMs = 1000);
 
@@ -109,6 +113,14 @@ namespace ShapedTransciever {
      * @param log The string to be logged
      */
     void log(logLevels logLevel, const std::string &log);
+
+    /**
+     * @brief The function that is called on each buffer that is received
+     * @param buffer The byte-array that was received
+     * @param length The length of the data in buffer
+     */
+    std::function<void(MsQuicStream *stream, uint8_t *buffer, size_t length)>
+        onResponse;
   };
 }
 

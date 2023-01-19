@@ -15,7 +15,9 @@ ssize_t receivedData(int fromSocket, uint8_t *buffer, size_t length) {
   return sender->sendData(buffer, length);
 }
 
-ssize_t sendData(uint8_t *buffer, size_t length) {
+ssize_t sendData(UnshapedTransciever::Sender *receivedResponseFrom,
+                 uint8_t *buffer, size_t length) {
+  (void) (receivedResponseFrom);
   return receiver->sendData(clientSocket, buffer, length);
 }
 

@@ -32,7 +32,7 @@ namespace UnshapedTransciever {
      * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
      */
     Sender(std::string remoteHost, int remotePort,
-           std::function<void(uint8_t *buffer,
+           std::function<void(UnshapedTransciever::Sender *, uint8_t *buffer,
                               size_t length)> onReceiveFunc = [](
                auto &&...) {}, logLevels level = DEBUG);
 
@@ -83,7 +83,8 @@ namespace UnshapedTransciever {
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
-    std::function<void(uint8_t *buffer, size_t length)> onReceive;
+    std::function<void(UnshapedTransciever::Sender *, uint8_t *buffer, size_t
+    length)> onReceive;
   };
 }
 

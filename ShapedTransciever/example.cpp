@@ -64,13 +64,13 @@ void RunReceiver() {
 // Sender
 
 void RunSender() {
-  ShapedTransciever::Sender sender{"localhost", 4567, true};
+  ShapedTransciever::Sender sender{"localhost", 4567, [](auto &&...) {}, true};
   auto stream = sender.startStream();
   std::string str = "Data...";
   auto *data = reinterpret_cast<uint8_t *>(str.data());
 
   // We add +1 to account for the trailing \0 in C Strings
-  sender.send(stream, str.size() + 1, data);
+  sender.send(stream, data, str.size() + 1);
 
   std::string s;
   std::cin >> s;
