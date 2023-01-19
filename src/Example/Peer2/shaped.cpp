@@ -166,19 +166,23 @@ void receivedShapedData(MsQuicStream *stream, uint8_t *buffer, size_t
 length) {
   uint64_t streamID;
   stream->GetID(&streamID);
-
+  // std::cout << "Received message length: " << length << " , control message size: " << sizeof(struct controlMessage) << std::endl;
   // Check if this is first byte from the other middlebox
   if (controlStream == nullptr) {
     std::cout << "Setting control stream" << std::endl;
-    auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer);
-    if (ctrlMsg->streamType == Control) {
-      controlStream = stream;
-      controlStreamID = streamID;
-    } else {
-      std::cerr << "Received data before Control Stream was established!" <<
-                std::endl;
-    }
-    return;
+    int numMessages  = length/sizeof(struct controlMessage);
+
+    // struct controlMessage *messages[length/sizeof(struct controlMessage)];
+    for(int i = 0; i < numMessages; i++){
+      auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer + (sizeof(struct controlMessage) * i));
+      if (ctrlMsg->streamType == Control) {
+        controlStream = stream;
+        controlStreamID = streamID;
+      } else if (ctrlMsg->streamType == Dummy) {
+        dummyStreamID = ctrlMsg->streamID;
+      }
+    } 
+    return; 
   } else if (controlStream == stream) {
     // A message from the controlStream
     std::cout << "Received information on dummy in control stream" << std::endl;

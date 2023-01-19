@@ -253,7 +253,7 @@ int main() {
 
   // Start the dummy stream
   startDummyStream();
-
+  sleep(2);
   std::thread dpCreditor(DPCreditor, std::ref(noiseGenerator), 1000000);
   dpCreditor.detach();
   std::thread sendingThread(sendShapedData, 500000);
