@@ -25,23 +25,13 @@ message(STATUS "QUIC Platform: ${CX_PLATFORM}")
 
 include_directories(msquic/src/inc)
 
-add_subdirectory(ShapedTransciever)
+add_subdirectory(src/Modules/ShapedTransciever)
+add_subdirectory(src/Modules/UnshapedTransciever)
+add_subdirectory(src/Modules/lamport_queue/queue)
+add_subdirectory(src/Modules/shaper)
+add_subdirectory(src/Modules/util)
 
-add_subdirectory(UnshapedTransciever)
-
-add_subdirectory(lamport_queue/queue)
-add_subdirectory(shaper)
 
 # Build example
-add_executable(example_peer_1_unshaped example_peer_1_unshaped.cpp helpers.cpp helpers.h)
-target_link_libraries(example_peer_1_unshaped unshapedTransciever lamportQueue)
-
-add_executable(example_peer_1_shaped example_peer_1_shaped.cpp helpers.cpp helpers.h)
-target_link_libraries(example_peer_1_shaped shapedTransciever lamportQueue
-    DPShaper)
-
-add_executable(example_peer_2_shaped example_peer_2_shaped.cpp helpers.cpp helpers.h)
-target_link_libraries(example_peer_2_shaped shapedTransciever lamportQueue)
-
-add_executable(example_peer_2_unshaped example_peer_2_unshaped.cpp helpers.cpp helpers.h)
-target_link_libraries(example_peer_2_unshaped unshapedTransciever lamportQueue)
+add_subdirectory(src/Example/Peer1)
+add_subdirectory(src/Example/Peer2)

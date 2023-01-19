@@ -9,9 +9,9 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
-#include "UnshapedTransciever/Receiver.h"
-#include "lamport_queue/queue/Cpp/LamportQueue.hpp"
-#include "helpers.h"
+#include "../../Modules/UnshapedTransciever/Receiver.h"
+#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../Modules/util/helpers.h"
 
 std::string appName = "minesVPNPeer1";
 

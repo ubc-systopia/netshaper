@@ -9,10 +9,10 @@
 #include <unordered_map>
 #include <csignal>
 #include <cstdarg>
-#include "ShapedTransciever/Sender.h"
-#include "lamport_queue/queue/Cpp/LamportQueue.hpp"
-#include "shaper/NoiseGenerator.h"
-#include "helpers.h"
+#include "../../Modules/ShapedTransciever/Sender.h"
+#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../Modules/shaper/NoiseGenerator.h"
+#include "../../Modules/util/helpers.h"
 
 std::string appName = "minesVPNPeer1";
 

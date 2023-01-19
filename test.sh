@@ -52,25 +52,25 @@ exec {serverPipeFd}>$serverPipe
 # Run the unshaped sender of peer 2
 echo -e "${YELLOW}Starting Unshaped Sender (Peer 2)${OFF}"
 printf '%s\n' "$peer_2_unshaped" |
-  ../build/example_peer_2_unshaped &>$output_redirect &
+  ../build/src/Example/Peer2/peer_2_unshaped &>$output_redirect &
 sleep $sleep_time
 
 # Run the shaped receiver of peer 2
 echo -e "${YELLOW}Starting Shaped Receiver (Peer 2)${OFF}"
 printf '%s\n' "$peer_2_shaped" |
-  ../build/example_peer_2_shaped &>$output_redirect &
+  ../build/src/Example/Peer2/peer_2_shaped &>$output_redirect &
 sleep $sleep_time
 
 # Run the unshaped receiver of peer 1
 echo -e "${YELLOW}Starting Unshaped Receiver (Peer 1)${OFF}"
 printf '%s\n' "$peer_1_unshaped" |
-  ../build/example_peer_1_unshaped &>$output_redirect &
+  ../build/src/Example/Peer1/peer_1_unshaped &>$output_redirect &
 sleep $sleep_time
 
 # Run the shaped sender of peer 1
 echo -e "${YELLOW}Starting Shaped Sender (Peer 1)${OFF}"
 printf '%s\n' "$peer_1_shaped" |
-  ../build/example_peer_1_shaped &>$output_redirect &
+  ../build/src/Example/Peer1/peer_1_shaped &>$output_redirect &
 sleep $sleep_time
 
 # Run the tcp client

@@ -6,9 +6,9 @@
 
 #include <sstream>
 #include <algorithm>
-#include "UnshapedTransciever/Sender.h"
-#include "lamport_queue/queue/Cpp/LamportQueue.hpp"
-#include "helpers.h"
+#include "../../Modules/UnshapedTransciever/Sender.h"
+#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../Modules/util/helpers.h"
 
 std::string appName = "minesVPNPeer2";
 

@@ -1,7 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
-
+import numpy as np
 
 sample_size = 10000
 mu = 1.3
