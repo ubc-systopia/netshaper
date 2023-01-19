@@ -11,7 +11,7 @@
 #include <chrono>
 #include "../../Modules/UnshapedTransciever/Receiver.h"
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
-#include "../../Modules/util/helpers.h"
+#include "../util/helpers.h"
 
 std::string appName = "minesVPNPeer1";
 

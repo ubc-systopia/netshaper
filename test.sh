@@ -18,7 +18,7 @@ sleep_time=2
 
 # /dev/null to ignore all serverOutput
 # /dev/stdout to show all serverOutput
-output_redirect="/dev/null"
+output_redirect="/dev/stdout"
 
 # Colour codes
 RED='\033[0;31m'
@@ -71,7 +71,7 @@ sleep $sleep_time
 echo -e "${YELLOW}Starting Shaped Sender (Peer 1)${OFF}"
 printf '%s\n' "$peer_1_shaped" |
   ../build/src/Example/Peer1/peer_1_shaped &>$output_redirect &
-sleep $sleep_time
+sleep $((sleep_time + 5))
 
 # Run the tcp client
 echo -e "${YELLOW}Starting TCP Sender and sending data${OFF}"

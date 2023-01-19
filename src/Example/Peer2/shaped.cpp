@@ -12,7 +12,7 @@
 #include <thread>
 #include "../../Modules/ShapedTransciever/Receiver.h"
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
-#include "../../Modules/util/helpers.h"
+#include "../util/helpers.h"
 #include "../../Modules/shaper/NoiseGenerator.h"
 
 std::string appName = "minesVPNPeer2";
@@ -29,75 +29,11 @@ ShapedTransciever::Receiver *shapedReceiver;
 std::unordered_map<MsQuicStream *, queuePair> *streamToQueues;
 std::unordered_map<queuePair, MsQuicStream *, queuePairHash> *queuesToStream;
 
-bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length) {
-  auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
-  if (SendBuffer == nullptr) {
-    return false;
-  }
+MsQuicStream *controlStream;
+uint64_t controlStreamID;
+MsQuicStream *dummyStream;
+uint64_t dummyStreamID;
 
-  SendBuffer->Buffer = data;
-  SendBuffer->Length = length;
-
-  if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE))) {
-    free(SendBuffer);
-    return false;
-  }
-  return true;
-}
-
-// Hacky response loop
-// Reads all queues and sends the data on the related stream if it exists,
-// else on any stream (For testing only)
-// TODO: Replace this with a proper loop for multiple clients and servers
-[[noreturn]] void sendResponseLoop(__useconds_t interval) {
-  while (true) {
-    std::this_thread::sleep_for(std::chrono::microseconds(interval));
-    for (auto &iterator: *queuesToStream) {
-      auto size = iterator.first.toShaped->size();
-      if (size > 0) {
-        std::cout << "Got data in queue: " << iterator.first.toShaped <<
-                  std::endl;
-        auto buffer = (uint8_t *) malloc(size);
-        iterator.first.toShaped->pop(buffer, size);
-        MsQuicStream *stream = iterator.second;
-        if (stream == nullptr) {
-          for (auto &itr: *streamToQueues) {
-            if (itr.first != nullptr) {
-              stream = itr.first;
-              break;
-            }
-          }
-        }
-        sendResponse(stream, buffer, size);
-      }
-    }
-  }
-}
-
-inline bool assignQueues(MsQuicStream *stream) {
-  // Find an unused queuePair and map it
-  return std::ranges::any_of(*queuesToStream, [&](auto &iterator) {
-    // iterator.first is queuePair, iterator.second is sender
-    if (iterator.second == nullptr) {
-      // No sender attached to this queue pair
-      (*streamToQueues)[stream] = iterator.first;
-      (*queuesToStream)[iterator.first] = stream;
-      return true;
-    }
-    return false;
-  });
-}
-
-void receivedShapedData(MsQuicStream *stream, uint8_t *buffer, size_t
-length) {
-  if ((*streamToQueues)[stream].fromShaped == nullptr) {
-    if (!assignQueues(stream))
-      std::cerr << "More streams than expected!" << std::endl;
-  }
-  std::cout << "Received Data..." << std::endl;
-  (*streamToQueues)[stream].fromShaped->push(buffer, length);
-//  return unshapedSender->sendData(buffer, length);
-}
 
 // Create numStreams number of shared memory and initialise Lamport Queues
 // for each stream
@@ -167,6 +103,111 @@ void waitForSignal() {
   }
 }
 
+bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length) {
+  auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
+  if (SendBuffer == nullptr) {
+    return false;
+  }
+
+  SendBuffer->Buffer = data;
+  SendBuffer->Length = length;
+
+  if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE))) {
+    free(SendBuffer);
+    return false;
+  }
+  return true;
+}
+
+// Hacky response loop
+// Reads all queues and sends the data on the related stream if it exists,
+// else on any stream (For testing only)
+// TODO: Replace this with a proper loop for multiple clients and servers
+[[noreturn]] void sendResponseLoop(__useconds_t interval) {
+  while (true) {
+    std::this_thread::sleep_for(std::chrono::microseconds(interval));
+    for (auto &iterator: *queuesToStream) {
+      auto size = iterator.first.toShaped->size();
+      if (size > 0) {
+        std::cout << "Got data in queue: " << iterator.first.toShaped <<
+                  std::endl;
+        auto buffer = (uint8_t *) malloc(size);
+        iterator.first.toShaped->pop(buffer, size);
+        MsQuicStream *stream = iterator.second;
+        if (stream == nullptr) {
+          for (auto &itr: *streamToQueues) {
+            if (itr.first != nullptr) {
+              stream = itr.first;
+              break;
+            }
+          }
+        }
+        sendResponse(stream, buffer, size);
+      }
+    }
+  }
+}
+
+inline bool assignQueues(MsQuicStream *stream) {
+  // Find an unused queuePair and map it
+  return std::ranges::any_of(*queuesToStream, [&](auto &iterator) {
+    // iterator.first is queuePair, iterator.second is sender
+    if (iterator.second == nullptr) {
+      // No sender attached to this queue pair
+      (*streamToQueues)[stream] = iterator.first;
+      (*queuesToStream)[iterator.first] = stream;
+      return true;
+    }
+    return false;
+  });
+}
+
+void receivedShapedData(MsQuicStream *stream, uint8_t *buffer, size_t
+length) {
+  uint64_t streamID;
+  stream->GetID(&streamID);
+
+  // Check if this is first byte from the other middlebox
+  if (controlStream == nullptr) {
+    std::cout << "Setting control stream" << std::endl;
+    auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer);
+    if (ctrlMsg->streamType == Control) {
+      controlStream = stream;
+      controlStreamID = streamID;
+    } else {
+      std::cerr << "Received data before Control Stream was established!" <<
+                std::endl;
+    }
+    return;
+  } else if (controlStream == stream) {
+    // A message from the controlStream
+    std::cout << "Received information on dummy in control stream" << std::endl;
+    auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer);
+    if (ctrlMsg->streamType == Dummy) {
+      dummyStreamID = ctrlMsg->streamID;
+    }
+    return;
+  }
+
+  // Not a control stream...
+
+  std::cout << "Received data on " << streamID << std::endl;
+  if (streamID == dummyStreamID) {
+    // Dummy Data
+    // TODO: Maybe make a queue and drop it in the unshaped side?
+    std::cout << "Received dummy data..." << std::endl;
+    if (dummyStream == nullptr) dummyStream = stream;
+    return;
+  }
+
+  std::cout << "Received actual data..." << std::endl;
+  if ((*streamToQueues)[stream].fromShaped == nullptr) {
+    if (!assignQueues(stream))
+      std::cerr << "More streams than expected!" << std::endl;
+  }
+  (*streamToQueues)[stream].fromShaped->push(buffer, length);
+}
+
 int main() {
   int numStreams; // Max number of streams each client can initiate
 
@@ -190,7 +231,7 @@ int main() {
       new ShapedTransciever::Receiver{"server.cert", "server.key",
                                       4567,
                                       receivedShapedData,
-                                      ShapedTransciever::Receiver::DEBUG,
+                                      ShapedTransciever::Receiver::WARNING,
                                       numStreams + 1,
                                       100000};
   shapedReceiver->startListening();

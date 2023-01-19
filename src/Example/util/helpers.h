@@ -5,7 +5,7 @@
 #ifndef MINESVPN_HELPERS_H
 #define MINESVPN_HELPERS_H
 
-#include "../lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 
 struct queuePair {
   LamportQueue *fromShaped;
@@ -22,6 +22,19 @@ struct queuePairHash {
     return std::hash<LamportQueue *>()(pair.fromShaped) ^
            std::hash<LamportQueue *>()(pair.toShaped);
   }
+};
+
+
+enum StreamType {
+  Control, Dummy, Data
+};
+struct controlMessage {
+  uint64_t streamID;
+  enum StreamType streamType;
+  char srcIP[16];
+  int srcPort;
+  char destIP[16];
+  int destPort;
 };
 
 

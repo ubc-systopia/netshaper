@@ -29,7 +29,7 @@ add_subdirectory(src/Modules/ShapedTransciever)
 add_subdirectory(src/Modules/UnshapedTransciever)
 add_subdirectory(src/Modules/lamport_queue/queue)
 add_subdirectory(src/Modules/shaper)
-add_subdirectory(src/Modules/util)
+add_subdirectory(src/Example/util)
 
 
 # Build example
