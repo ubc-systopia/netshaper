@@ -1,5 +1,5 @@
 add_executable(peer_2_shaped shaped.cpp)
-target_link_libraries(peer_2_shaped shapedTransciever lamportQueue helpers)
+target_link_libraries(peer_2_shaped shapedTransciever lamportQueue helpers DPShaper)
 
 add_executable(peer_2_unshaped unshaped.cpp)
 target_link_libraries(peer_2_unshaped unshapedTransciever lamportQueue helpers)

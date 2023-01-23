@@ -25,6 +25,7 @@ const MsQuicApi *MsQuic = new MsQuicApi();
 
 
 ShapedTransciever::Receiver *shapedReceiver;
+int numStreams; // Max number of streams each client can initiate
 
 std::unordered_map<MsQuicStream *, queuePair> *streamToQueues;
 std::unordered_map<queuePair, MsQuicStream *, queuePairHash> *queuesToStream;
@@ -35,9 +36,13 @@ MsQuicStream *dummyStream;
 uint64_t dummyStreamID;
 
 
+// The credit for sender such that it is the credit is maximum data it can send at any given time.
+std::atomic<size_t> sendingCredit;
+
+
 // Create numStreams number of shared memory and initialise Lamport Queues
 // for each stream
-inline void initialiseSHM(int numStreams) {
+inline void initialiseSHM() {
   for (int i = 0; i < numStreams * 2; i += 2) {
     // String stream used to create keys for sharedMemory
     std::stringstream ss1, ss2;
@@ -161,7 +166,7 @@ inline bool assignQueues(MsQuicStream *stream) {
     return false;
   });
 }
-
+  
 void receivedShapedData(MsQuicStream *stream, uint8_t *buffer, size_t
 length) {
   uint64_t streamID;
@@ -175,6 +180,7 @@ length) {
     // struct controlMessage *messages[length/sizeof(struct controlMessage)];
     for(int i = 0; i < numMessages; i++){
       auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer + (sizeof(struct controlMessage) * i));
+      // auto ctrlMsg = static_cast<struct controlMessage *>(buffer + (sizeof(struct controlMessage) * i));
       if (ctrlMsg->streamType == Control) {
         controlStream = stream;
         controlStreamID = streamID;
@@ -212,8 +218,82 @@ length) {
   (*streamToQueues)[stream].fromShaped->push(buffer, length);
 }
 
+// Get the total size of all queues. It is all of the data we have to send in next rounds. 
+size_t getAggregatedQueueSize() {
+  size_t aggregatedSize = 0;
+  for (auto &iterator: *queuesToStream) {
+    aggregatedSize += iterator.first.toShaped->size();
+  }
+  return aggregatedSize;
+}
+
+
+void sendDummy(size_t dummySize){
+  // We do not have dummy stream yet
+  if(dummyStream == nullptr) return;
+  auto buffer = (uint8_t *) malloc(dummySize);
+  if(!sendResponse(dummyStream, buffer, dummySize)) {
+    std::cerr << "Failed to send dummy data" << std::endl;
+  }
+}
+
+
+void sendData(size_t dataSize) {
+  for (auto &iterator: *queuesToStream) {
+    // We have sent enough
+    if(dataSize == 0) break;
+    auto queueSize = iterator.first.toShaped->size();
+
+    // No data in this queue, check others
+    if(queueSize == 0) continue;
+
+    auto SizeToSendFromQueue = std::min(queueSize, dataSize);
+    auto buffer = (uint8_t *) malloc(SizeToSendFromQueue);
+    iterator.first.toShaped->pop(buffer, SizeToSendFromQueue);
+    if(!sendResponse(iterator.second, buffer, SizeToSendFromQueue)) {
+      std::cerr << "Failed to send data" << std::endl;
+    }
+    dataSize -= SizeToSendFromQueue;
+  }
+}
+
+[[noreturn]] void DPCreditor(NoiseGenerator &noiseGenerator,
+                             __useconds_t interval) {
+  while (true) {
+    auto aggregatedSize = getAggregatedQueueSize();
+    auto DPDecision = noiseGenerator.getDPDecision(aggregatedSize);
+    size_t creditSnapshot = sendingCredit.load(std::memory_order_acquire); 
+    creditSnapshot += DPDecision;
+    sendingCredit.store(creditSnapshot, std::memory_order_release);
+    std::this_thread::sleep_for(std::chrono::microseconds(interval));
+  }
+}
+
+[[noreturn]] void sendShapedData(size_t dataSize) {
+  while (true) {
+    auto creditSnapshot = sendingCredit.load(std::memory_order_acquire);
+    auto aggregatedSize = getAggregatedQueueSize();
+    if (creditSnapshot == 0){
+      // Do not send data
+      continue;
+    } else {
+      size_t dataSize = std::min(creditSnapshot, aggregatedSize);
+      size_t dummySize = std::max(0, (int) ( creditSnapshot - aggregatedSize));
+      if (dataSize > 0) {
+        sendData(dataSize);
+        creditSnapshot -= dataSize;
+      } 
+      if (dummySize > 0) {
+        sendDummy(dummySize);
+        creditSnapshot -= dummySize;
+      }
+    }
+    sendingCredit.store(creditSnapshot, std::memory_order_release);
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+  }
+}
+
 int main() {
-  int numStreams; // Max number of streams each client can initiate
 
   std::cout << "Enter the maximum number of streams each client can initiate "
                "(does not include dummy streams): "
@@ -227,7 +307,7 @@ int main() {
   streamToQueues =
       new std::unordered_map<MsQuicStream *, queuePair>(numStreams);
 
-  initialiseSHM(numStreams);
+  initialiseSHM();
 
   // Start listening for connections from the other middlebox
   // Add additional stream for dummy data
@@ -242,6 +322,7 @@ int main() {
 
   // Loop to send response back for the stream
   // TODO: Make this DP
+  NoiseGenerator noiseGenerator{0.01, 100};
   std::thread sendResp(sendResponseLoop, 100000);
   sendResp.detach();
 

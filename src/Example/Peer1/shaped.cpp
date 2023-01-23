@@ -241,11 +241,17 @@ int main() {
 
   NoiseGenerator noiseGenerator{0.01, 100};
   // Connect to the other middlebox
+
+  // Two middle-boxes are connected in a client-server setup, where peer1 middlebox is
+  // the client and peer2 middlebox is the server. In middlebox 1 we have shapedSende and
+  // in middlebox 2 we have shapedReceiver
   shapedSender = new ShapedTransciever::Sender{"localhost", 4567, onResponse,
                                                true,
                                                ShapedTransciever::Sender::WARNING,
                                                100000};
 
+  // We map a pair of queues over the shared memory region to every stream
+  // CAUTION: we assume the shared queues are already initialized in unshaped process
   initialiseSHM();
 
   // Start the control stream
