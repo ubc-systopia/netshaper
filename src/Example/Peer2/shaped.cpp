@@ -134,7 +134,7 @@ bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length) {
     for (auto &iterator: *queuesToStream) {
       auto size = iterator.first.toShaped->size();
       if (size > 0) {
-        std::cout << "Got data in queue: " << iterator.first.toShaped <<
+        std::cout << "Peer2:shaped: Got data in queue: " << iterator.first.toShaped <<
                   std::endl;
         auto buffer = (uint8_t *) malloc(size);
         iterator.first.toShaped->pop(buffer, size);
@@ -174,7 +174,7 @@ length) {
   // std::cout << "Received message length: " << length << " , control message size: " << sizeof(struct controlMessage) << std::endl;
   // Check if this is first byte from the other middlebox
   if (controlStream == nullptr) {
-    std::cout << "Setting control stream" << std::endl;
+    std::cout << "Peer2:Shaped: Setting control stream" << std::endl;
     int numMessages  = length/sizeof(struct controlMessage);
 
     // struct controlMessage *messages[length/sizeof(struct controlMessage)];
@@ -191,7 +191,7 @@ length) {
     return; 
   } else if (controlStream == stream) {
     // A message from the controlStream
-    std::cout << "Received information on dummy in control stream" << std::endl;
+    std::cout << "Peer2:Shaped: Received information on dummy in control stream" << std::endl;
     auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer);
     if (ctrlMsg->streamType == Dummy) {
       dummyStreamID = ctrlMsg->streamID;
@@ -201,16 +201,16 @@ length) {
 
   // Not a control stream...
 
-  std::cout << "Received data on " << streamID << std::endl;
+  // std::cout << "Peer2:Shaped: Received data on " << streamID << std::endl;
   if (streamID == dummyStreamID) {
     // Dummy Data
     // TODO: Maybe make a queue and drop it in the unshaped side?
-    std::cout << "Received dummy data..." << std::endl;
+    std::cout << "Peer2:Shaped: Received dummy on: "<< dummyStreamID << std::endl;
     if (dummyStream == nullptr) dummyStream = stream;
     return;
   }
-
-  std::cout << "Received actual data..." << std::endl;
+  uint64_t tmpStreamID;
+  std::cout << "Peer2:Shaped: Received actual data on: " << stream->GetID(&tmpStreamID) << std::endl;
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
     if (!assignQueues(stream))
       std::cerr << "More streams than expected!" << std::endl;
@@ -232,6 +232,7 @@ void sendDummy(size_t dummySize){
   // We do not have dummy stream yet
   if(dummyStream == nullptr) return;
   auto buffer = (uint8_t *) malloc(dummySize);
+  memset(buffer, 0, dummySize);
   if(!sendResponse(dummyStream, buffer, dummySize)) {
     std::cerr << "Failed to send dummy data" << std::endl;
   }
@@ -239,17 +240,28 @@ void sendDummy(size_t dummySize){
 
 
 void sendData(size_t dataSize) {
+  uint64_t tmpStreamID;
   for (auto &iterator: *queuesToStream) {
-    // We have sent enough
-    if(dataSize == 0) break;
+    if(iterator.second == nullptr) {
+      // No stream attached to this queue pair
+      continue;
+    }
     auto queueSize = iterator.first.toShaped->size();
-
     // No data in this queue, check others
     if(queueSize == 0) continue;
+
+    std::cout << "Peer2:Shaped: not-null Queue size is: " << queueSize << std::endl;
+    // We have sent enough
+    if(dataSize == 0) break;
+
+
 
     auto SizeToSendFromQueue = std::min(queueSize, dataSize);
     auto buffer = (uint8_t *) malloc(SizeToSendFromQueue);
     iterator.first.toShaped->pop(buffer, SizeToSendFromQueue);
+    iterator.second->GetID(&tmpStreamID);
+    std::cout << "Peer2:Shaped: Sending data to the stream: " << tmpStreamID << std::endl;
+    std::cout << "Peer2:Shaped: data is: " << buffer << std::endl;
     if(!sendResponse(iterator.second, buffer, SizeToSendFromQueue)) {
       std::cerr << "Failed to send data" << std::endl;
     }
@@ -269,7 +281,7 @@ void sendData(size_t dataSize) {
   }
 }
 
-[[noreturn]] void sendShapedData(size_t dataSize) {
+[[noreturn]] void sendShapedData(__useconds_t interval) {
   while (true) {
     auto creditSnapshot = sendingCredit.load(std::memory_order_acquire);
     auto aggregatedSize = getAggregatedQueueSize();
@@ -277,9 +289,11 @@ void sendData(size_t dataSize) {
       // Do not send data
       continue;
     } else {
-      size_t dataSize = std::min(creditSnapshot, aggregatedSize);
+      // size_t dataSize = std::min(creditSnapshot, aggregatedSize);
+      size_t dataSize = aggregatedSize;
       size_t dummySize = std::max(0, (int) ( creditSnapshot - aggregatedSize));
       if (dataSize > 0) {
+        std::cout << "Peer2:Shaped: Sending data of size: " << dataSize << std::endl;
         sendData(dataSize);
         creditSnapshot -= dataSize;
       } 
@@ -289,7 +303,7 @@ void sendData(size_t dataSize) {
       }
     }
     sendingCredit.store(creditSnapshot, std::memory_order_release);
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    std::this_thread::sleep_for(std::chrono::microseconds(interval));
   }
 }
 
@@ -323,9 +337,14 @@ int main() {
   // Loop to send response back for the stream
   // TODO: Make this DP
   NoiseGenerator noiseGenerator{0.01, 100};
-  std::thread sendResp(sendResponseLoop, 100000);
-  sendResp.detach();
+  // std::thread sendResp(sendResponseLoop, 100000);
+  // sendResp.detach();
 
+  std::thread dpCreditor(DPCreditor, std::ref(noiseGenerator), 1000000);
+  dpCreditor.detach();
+
+  std::thread sendShaped(sendShapedData, 500000);
+  sendShaped.detach();
   // Wait for signal to exit
   waitForSignal();
 }

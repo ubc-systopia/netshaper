@@ -39,6 +39,11 @@ MsQuicStream *controlStream;
 std::atomic<size_t> sendingCredit;
 
 
+// Control and Dummy stream IDs
+uint64_t controlStreamID;
+uint64_t dummyStreamID;
+
+
 void addSignal(sigset_t *set, int numSignals, ...) {
   va_list args;
   va_start(args, numSignals);
@@ -147,6 +152,9 @@ void sendData(size_t dataSize) {
     auto sizeToSend = std::min(dataSize, size);
     auto buffer = (uint8_t *) malloc(sizeToSend);
     iterator.first.toShaped->pop(buffer, sizeToSend);
+    uint64_t tmpStreamID;
+    iterator.second->GetID(&tmpStreamID);
+    std::cout << "Sending actual Data on: " << tmpStreamID << std::endl;
     shapedSender->send(iterator.second, buffer, sizeToSend);
     dataSize -= sizeToSend;
   }
@@ -175,7 +183,7 @@ void sendData(size_t dataSize) {
           memset(dummy, 0, dummySize);
           uint64_t dummyStreamID;
           dummyStream->GetID(&dummyStreamID);
-          std::cout << "Sending dummy on " << dummyStreamID << std::endl;
+          std::cout << "Peer1:Shaped: Sending dummy on " << dummyStreamID << std::endl;
           shapedSender->send(dummyStream,
                              dummy, dummySize);
         } else {
@@ -194,12 +202,22 @@ void sendData(size_t dataSize) {
 // TODO: Ensure the response is sent to the correct queuePair. This requires
 //  the response be received on the correct stream
 void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
-  (void) (stream);
-  for (auto &iterator: *streamToQueues) {
-    if (iterator.second.fromShaped != nullptr)
-      iterator.second.fromShaped->push(buffer, length);
+  // (void) (stream);
+  uint64_t tmp_streamID;
+  stream->GetID(&tmp_streamID);
+  std::cout << "Peer1:Shaped: Received response on stream " << tmp_streamID << std::endl;
+  if (tmp_streamID != dummyStreamID && tmp_streamID != controlStreamID) {
+    for (auto &iterator: *streamToQueues) {
+      if (iterator.second.fromShaped != nullptr)
+        iterator.second.fromShaped->push(buffer, length);
+    }
+    std::cout << "Peer1:Shaped: Received response from Server" << std::endl;
+  } else if (tmp_streamID == dummyStreamID) {
+    std::cout << "Peer1:Shaped: Received dummy from QUIC Server" << std::endl;
+  } else if (tmp_streamID == controlStreamID) {
+    std::cout << "Peer1:Shaped: Received control message from QUIC Server"
+              << std::endl;
   }
-  std::cout << "Received response from Server" << std::endl;
 }
 
 inline void startControlStream() {
@@ -207,6 +225,8 @@ inline void startControlStream() {
   auto *message =
       (struct controlMessage *) malloc(sizeof(struct controlMessage));
   controlStream->GetID(&message->streamID);
+  // save the control stream ID for later
+  controlStreamID = message->streamID;
   message->streamType = Control;
   shapedSender->send(controlStream,
                      reinterpret_cast<uint8_t *>(message),
@@ -219,6 +239,8 @@ inline void startDummyStream() {
   auto *message =
       (struct controlMessage *) malloc(sizeof(struct controlMessage));
   dummyStream->GetID(&message->streamID);
+  // save the dummy stream ID for later
+  dummyStreamID = message->streamID;
   message->streamType = Dummy;
   shapedSender->send(controlStream,
                      reinterpret_cast<uint8_t *>(message),
