@@ -161,6 +161,14 @@ inline bool assignQueues(MsQuicStream *stream) {
       // No sender attached to this queue pair
       (*streamToQueues)[stream] = iterator.first;
       (*queuesToStream)[iterator.first] = stream;
+      std::cout<< "Peer2:Shaped: Assigned queues to one stream: " << std::endl;
+      // Lets check we have at least one stream to send data on
+      for (auto &itr: *queuesToStream) {
+        if (itr.second != nullptr) {
+          std::cout << "Peer2:Shaped: Found a stream to send data on in assignQueues function" <<
+                    std::endl;
+        }
+      }
       return true;
     }
     return false;
@@ -212,6 +220,7 @@ length) {
   uint64_t tmpStreamID;
   std::cout << "Peer2:Shaped: Received actual data on: " << stream->GetID(&tmpStreamID) << std::endl;
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
+    std::cout<< "Peer2:Shaped: Assigning queues to stream: " << tmpStreamID << std::endl;
     if (!assignQueues(stream))
       std::cerr << "More streams than expected!" << std::endl;
   }
@@ -226,7 +235,7 @@ size_t getAggregatedQueueSize() {
   }
   return aggregatedSize;
 }
-
+ 
 
 void sendDummy(size_t dummySize){
   // We do not have dummy stream yet
@@ -239,13 +248,26 @@ void sendDummy(size_t dummySize){
 }
 
 
-void sendData(size_t dataSize) {
+
+int sendData(size_t dataSize) {
   uint64_t tmpStreamID;
+  // check to see we have at least one stream to send data on
   for (auto &iterator: *queuesToStream) {
-    if(iterator.second == nullptr) {
-      // No stream attached to this queue pair
-      continue;
+    if(iterator.second != nullptr) {
+      std::cout << "Peer2:Shaped: Found a stream to send data on in sendData function" << std::endl;
+      std::cout<< "Peer2:Shaped: The size of queue mapped to this steam is: " << iterator.first.toShaped->size() << std::endl;
+      std::cout << "Peer2:Shaped: the aggregated queue size is: " << getAggregatedQueueSize() << std::endl;
+      uint64_t tmpStreamID;
+      iterator.second->GetID(&tmpStreamID);
+      std::cout << "Peer2:Shaped: The stream ID is: " << tmpStreamID << std::endl;
+      break;
     }
+  }
+  for (auto &iterator: *queuesToStream) {
+    // if(iterator.second == nullptr) {
+    //   // No stream attached to this queue pair
+    //   continue;
+    // }
     auto queueSize = iterator.first.toShaped->size();
     // No data in this queue, check others
     if(queueSize == 0) continue;
@@ -254,19 +276,25 @@ void sendData(size_t dataSize) {
     // We have sent enough
     if(dataSize == 0) break;
 
-
-
     auto SizeToSendFromQueue = std::min(queueSize, dataSize);
     auto buffer = (uint8_t *) malloc(SizeToSendFromQueue);
     iterator.first.toShaped->pop(buffer, SizeToSendFromQueue);
-    iterator.second->GetID(&tmpStreamID);
+    // We find the queue that has data, lets find the stream which is not null to send data on it.
+    MsQuicStream * stream = nullptr;
+    for(auto &streamIterator: *queuesToStream) {
+      if(streamIterator.second == nullptr) continue;
+      stream = streamIterator.second; 
+    }
+    stream->GetID(&tmpStreamID);
     std::cout << "Peer2:Shaped: Sending data to the stream: " << tmpStreamID << std::endl;
     std::cout << "Peer2:Shaped: data is: " << buffer << std::endl;
-    if(!sendResponse(iterator.second, buffer, SizeToSendFromQueue)) {
+    if(!sendResponse(stream, buffer, SizeToSendFromQueue)) {
       std::cerr << "Failed to send data" << std::endl;
     }
     dataSize -= SizeToSendFromQueue;
   }
+  // We expext the data size to be zero if we have sent all the data
+  return dataSize;
 }
 
 [[noreturn]] void DPCreditor(NoiseGenerator &noiseGenerator,
@@ -289,12 +317,14 @@ void sendData(size_t dataSize) {
       // Do not send data
       continue;
     } else {
-      // size_t dataSize = std::min(creditSnapshot, aggregatedSize);
-      size_t dataSize = aggregatedSize;
+      size_t dataSize = std::min(creditSnapshot, aggregatedSize);
+      // size_t dataSize = aggregatedSize;
       size_t dummySize = std::max(0, (int) ( creditSnapshot - aggregatedSize));
       if (dataSize > 0) {
         std::cout << "Peer2:Shaped: Sending data of size: " << dataSize << std::endl;
-        sendData(dataSize);
+        if(sendData(dataSize) != 0) {
+          std::cerr << "Peer2:Shaped: Failed to send all data" << std::endl;
+        }
         creditSnapshot -= dataSize;
       } 
       if (dummySize > 0) {
