@@ -51,7 +51,7 @@ int theOnlySocket = -1;
   }
 }
 
-inline bool assignQueue(int fromSocket) {
+inline bool assignQueue(int fromSocket, std::string &clientAddress) {
   // Find an unused queue and map it
   return std::ranges::any_of(*queuesToSocket, [&](auto &iterator) {
     // iterator.first is queuePair, iterator.second is socket
@@ -59,6 +59,14 @@ inline bool assignQueue(int fromSocket) {
       // No socket attached to this queue pair
       (*socketToQueues)[fromSocket] = iterator.first;
       (*queuesToSocket)[iterator.first] = fromSocket;
+      // Set client of queue to current (new) client
+      auto address = clientAddress.substr(0, clientAddress.find(':'));
+      auto port = clientAddress.substr(address.size() + 1);
+      std::strcpy(iterator.first.fromShaped->clientAddress, address.c_str());
+      std::strcpy(iterator.first.fromShaped->clientPort, port.c_str());
+      std::strcpy(iterator.first.toShaped->clientAddress, address.c_str());
+      std::strcpy(iterator.first.toShaped->clientPort, port.c_str());
+
       theOnlySocket = fromSocket; // TODO: Remove this
       return true;
     }
@@ -67,9 +75,10 @@ inline bool assignQueue(int fromSocket) {
 }
 
 // onReceive function for received Data
-ssize_t receivedUnshapedData(int fromSocket, uint8_t *buffer, size_t length) {
+ssize_t receivedUnshapedData(int fromSocket, std::string &clientAddress,
+                             uint8_t *buffer, size_t length) {
   if ((*socketToQueues)[fromSocket].toShaped == nullptr) {
-    if (!assignQueue(fromSocket))
+    if (!assignQueue(fromSocket, clientAddress))
       std::cerr << "More clients than expected!" << std::endl;
   }
 
@@ -78,7 +87,6 @@ ssize_t receivedUnshapedData(int fromSocket, uint8_t *buffer, size_t length) {
   (*socketToQueues)[fromSocket].toShaped->push(buffer, length);
   return 0;
 }
-
 
 // Create numStreams number of shared memory and initialise Lamport Queues
 // for each stream

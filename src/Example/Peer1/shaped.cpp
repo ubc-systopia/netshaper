@@ -149,12 +149,20 @@ void sendData(size_t dataSize) {
     if (dataSize == 0) break;
     auto size = iterator.first.toShaped->size();
     if (size == 0) continue; //TODO: Send at least 1 byte
+
+    // Send a control message identifying stream with the actual client
+    uint64_t tmpStreamID;
+    iterator.second->GetID(&tmpStreamID);
+    struct controlMessage ctrlMsg{tmpStreamID, Data};
+    std::strcpy(ctrlMsg.srcIP, iterator.first.toShaped->clientAddress);
+    std::strcpy(ctrlMsg.srcPort, iterator.first.toShaped->clientPort);
+
     auto sizeToSend = std::min(dataSize, size);
     auto buffer = (uint8_t *) malloc(sizeToSend);
     iterator.first.toShaped->pop(buffer, sizeToSend);
-    uint64_t tmpStreamID;
-    iterator.second->GetID(&tmpStreamID);
-    std::cout << "Sending actual Data on: " << tmpStreamID << std::endl;
+
+    std::cout << "Sending data of " << ctrlMsg.srcIP << ":" << ctrlMsg.srcPort
+              << " on: " << tmpStreamID << std::endl;
     shapedSender->send(iterator.second, buffer, sizeToSend);
     dataSize -= sizeToSend;
   }
@@ -181,9 +189,9 @@ void sendData(size_t dataSize) {
             (uint8_t *) malloc(dummySize);
         if (dummy != nullptr) {
           memset(dummy, 0, dummySize);
-          uint64_t dummyStreamID;
           dummyStream->GetID(&dummyStreamID);
-          std::cout << "Peer1:Shaped: Sending dummy on " << dummyStreamID << std::endl;
+          std::cout << "Peer1:Shaped: Sending dummy on " << dummyStreamID
+                    << std::endl;
           shapedSender->send(dummyStream,
                              dummy, dummySize);
         } else {
@@ -205,7 +213,8 @@ void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
   // (void) (stream);
   uint64_t tmp_streamID;
   stream->GetID(&tmp_streamID);
-  std::cout << "Peer1:Shaped: Received response on stream " << tmp_streamID << std::endl;
+  std::cout << "Peer1:Shaped: Received response on stream " << tmp_streamID
+            << std::endl;
   if (tmp_streamID != dummyStreamID && tmp_streamID != controlStreamID) {
     for (auto &iterator: *streamToQueues) {
       if (iterator.second.fromShaped != nullptr)

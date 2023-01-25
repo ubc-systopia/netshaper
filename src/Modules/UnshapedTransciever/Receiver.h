@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <unistd.h>
+#include <sys/socket.h>
 #include <functional>
 
 namespace UnshapedTransciever {
@@ -41,7 +42,8 @@ namespace UnshapedTransciever {
      */
     explicit Receiver(std::string bindAddr = "",
                       int localPort = 8000,
-                      std::function<void(int fromSocket, uint8_t *buffer,
+                      std::function<void(int fromSocket, std::string
+                      &clientAddress, uint8_t *buffer,
                                          size_t length)> onReceiveFunc = [](
                           auto &&...) {}, logLevels level = DEBUG);
 
@@ -95,7 +97,7 @@ namespace UnshapedTransciever {
      * @brief Handles the given client (called from serverLoop)
      * @param clientSocket The socket where the client connected
      */
-    void handleClient(int clientSocket);
+    void handleClient(int clientSocket, std::string &clientAddress);
 
     /**
      * @brief Main loop of the server. Spawns of child processes for each new
@@ -107,7 +109,10 @@ namespace UnshapedTransciever {
      * @brief Receive data from the given socket and call onReceive
      * @param socket The socket to read the data from
      */
-    void receiveData(int socket);
+    void receiveData(int socket, std::string &clientAddress);
+
+    // Returns a string of the form "address:port"
+    static std::string getAddress(struct sockaddr &sockAddr);
 
     /**
      * @brief The function that is called on each buffer that is received
@@ -115,8 +120,8 @@ namespace UnshapedTransciever {
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
-    std::function<void(int fromSocket, uint8_t *buffer,
-                       size_t length)> onReceive;
+    std::function<void(int fromSocket, std::string &clientAddress,
+                       uint8_t *buffer, size_t length)> onReceive;
 
   };
 }

@@ -32,9 +32,9 @@ struct controlMessage {
   uint64_t streamID;
   enum StreamType streamType;
   char srcIP[16];
-  int srcPort;
+  char srcPort[6];
   char destIP[16];
-  int destPort;
+  char destPort[6];
 };
 
 

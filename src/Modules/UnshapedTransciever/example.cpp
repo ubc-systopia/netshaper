@@ -10,7 +10,9 @@ UnshapedTransciever::Sender *sender;
 
 int clientSocket;
 
-ssize_t receivedData(int fromSocket, uint8_t *buffer, size_t length) {
+ssize_t receivedData(int fromSocket, std::string &clientAddress,
+                     uint8_t *buffer, size_t length) {
+  (void) (clientAddress);
   clientSocket = fromSocket;
   return sender->sendData(buffer, length);
 }

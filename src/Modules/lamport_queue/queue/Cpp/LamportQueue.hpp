@@ -17,16 +17,43 @@
 
 class LamportQueue {
 public:
+  /**
+   * Default constructor
+   */
   explicit LamportQueue();
 
-  // ~LmportQueue();
+  /**
+   *
+   * @param elem byteArray
+   * @param elem_size number of bytes to copy from the given byteArray
+   * @return -1 if failed, 0 if successful. Can fail if queue does not have
+   * enough space
+   */
   int push(uint8_t *elem, size_t elem_size);
 
+  /**
+   *
+   * @param elem The empty buffer to be filled
+   * @param elem_size Number of bytes to fill in that buffer (caller has to
+   * ensure the buffer has enough space)
+   * @return -1 if not enough bytes in the queue (will not partially fill the
+   * buffer)
+   */
   int pop(uint8_t *elem, size_t elem_size);
 
+  /**
+   * @brief Gives current size of the queue
+   * @return The current size of the queue (number of bytes available)
+   */
   size_t size();
 
   size_t free_space();
+
+  /**
+   * @brief The current client this queue is bound to
+   */
+  char clientAddress[16];
+  char clientPort[6];
 
 private:
   std::atomic<size_t> front_;
