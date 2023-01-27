@@ -13,8 +13,11 @@
 
 namespace UnshapedTransciever {
   Receiver::Receiver(std::string bindAddr, int localPort,
-                     std::function<void(int fromSocket, uint8_t *buffer,
-                                        size_t length)> onReceiveFunc,
+                     std::function<void(int fromSocket,
+                                        std::string &clientAddress,
+                                        uint8_t *buffer, size_t length,
+                                        enum connectionStatus connStatus)>
+                     onReceiveFunc,
                      logLevels level) : logLevel(level) {
     if (bindAddr.empty()) bindAddr = "0.0.0.0";
     inetFamily = checkIPVersion(bindAddr);
@@ -121,32 +124,57 @@ namespace UnshapedTransciever {
 
   }
 
+  // Returns a string of the form "address:port"
+  std::string Receiver::getAddress(struct sockaddr &sockAddr) {
+    std::stringstream ss;
+    if (sockAddr.sa_family == AF_INET) {
+      auto addrStruct = reinterpret_cast<struct sockaddr_in *>(&sockAddr);
+      char addr[INET_ADDRSTRLEN];
+      if (inet_ntop(AF_INET, &addrStruct->sin_addr, addr, INET_ADDRSTRLEN) ==
+          nullptr)
+        throw std::domain_error("Could not parse address");
+      ss << std::string(addr) << ":" << ntohs(addrStruct->sin_port);
+    } else if (sockAddr.sa_family == AF_INET6) {
+      auto addrStruct = reinterpret_cast<struct sockaddr_in6 *>(&sockAddr);
+      char addr[INET6_ADDRSTRLEN];
+      if (inet_ntop(AF_INET, &addrStruct->sin6_addr, addr, INET6_ADDRSTRLEN) ==
+          nullptr)
+        throw std::domain_error("Could not parse address");
+      ss << std::string(addr) << ":" << ntohs(addrStruct->sin6_port);
+    }
+    return ss.str();
+  }
+
   [[noreturn]] void Receiver::serverLoop() {
     struct sockaddr_storage clientAddress{};
     socklen_t addrLen = sizeof(clientAddress);
 
     log(DEBUG, "Starting Receiver loop");
     while (true) {
-      int clientSocket = accept(localSocket, (struct sockaddr *) &clientAddress,
-                                &addrLen);
+      int clientSocket =
+          accept(localSocket, (struct sockaddr *) &clientAddress,
+                 &addrLen);
 
-      std::thread clientHandler(&Receiver::handleClient, this, clientSocket);
+      std::string address =
+          getAddress(*(struct sockaddr *) (&clientAddress));
+      std::thread clientHandler(&Receiver::handleClient, this, clientSocket,
+                                std::ref(address));
       clientHandler.detach();
 
     }
 
   }
 
-  void Receiver::handleClient(int clientSocket) {
+  void Receiver::handleClient(int clientSocket, std::string &clientAddress) {
     std::stringstream ss;
     ss << "Client connected on socket " << clientSocket;
     log(DEBUG, ss.str());
-
+    onReceive(clientSocket, clientAddress, nullptr, 0, NEW);
     // Read data from the client socket
-    receiveData(clientSocket);
+    receiveData(clientSocket, clientAddress);
   }
 
-  void Receiver::receiveData(int socket) {
+  void Receiver::receiveData(int socket, std::string &clientAddress) {
     ssize_t bytesReceived;  // Number of bytes received
     uint8_t buffer[BUF_SIZE];
 
@@ -155,7 +183,7 @@ namespace UnshapedTransciever {
       std::stringstream ss;
       ss << "Data received on socket " << socket;
       log(DEBUG, ss.str());
-      onReceive(socket, buffer, bytesReceived);
+      onReceive(socket, clientAddress, buffer, bytesReceived, ONGOING);
     }
 
     if (bytesReceived < 0) {
@@ -167,6 +195,7 @@ namespace UnshapedTransciever {
     log(DEBUG, ss.str());
     shutdown(socket, SHUT_RDWR);
     close(socket);
+    onReceive(socket, clientAddress, nullptr, 0, TERMINATED);
   }
 
   ssize_t Receiver::sendData(int toSocket, uint8_t *buffer, size_t length) {

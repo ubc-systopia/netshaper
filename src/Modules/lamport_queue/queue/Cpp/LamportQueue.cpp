@@ -4,7 +4,7 @@
 
 #include "LamportQueue.hpp"
 
-LamportQueue::LamportQueue() {
+LamportQueue::LamportQueue(uint64_t queueID) : queueID(queueID) {
   front_ = 0;
   back_ = 0;
   cached_front_ = 0;
