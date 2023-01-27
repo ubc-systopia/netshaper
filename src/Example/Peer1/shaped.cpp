@@ -134,7 +134,6 @@ size_t getAggregatedQueueSize() {
   while (true) {
     auto aggregatedSize = getAggregatedQueueSize();
     auto DPDecision = noiseGenerator.getDPDecision(aggregatedSize);
-//    std::cout << "DP Decision: " << DPDecision << std::endl;
     size_t credit = sendingCredit.load(std::memory_order_acquire);
     credit += DPDecision;
     sendingCredit.store(credit, std::memory_order_release);
@@ -181,7 +180,6 @@ void sendData(size_t dataSize) {
             (uint8_t *) malloc(dummySize);
         if (dummy != nullptr) {
           memset(dummy, 0, dummySize);
-          uint64_t dummyStreamID;
           dummyStream->GetID(&dummyStreamID);
           std::cout << "Peer1:Shaped: Sending dummy on " << dummyStreamID << std::endl;
           shapedSender->send(dummyStream,
@@ -265,7 +263,8 @@ int main() {
   // Connect to the other middlebox
 
   // Two middle-boxes are connected in a client-server setup, where peer1 middlebox is
-  // the client and peer2 middlebox is the server. In middlebox 1 we have shapedSende and
+  // the client and peer2 middlebox is the server. In middlebox 1 we have
+  // shapedSender and
   // in middlebox 2 we have shapedReceiver
   shapedSender = new ShapedTransciever::Sender{"localhost", 4567, onResponse,
                                                true,

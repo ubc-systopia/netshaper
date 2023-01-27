@@ -18,7 +18,7 @@ sleep_time=2
 
 # /dev/null to ignore all serverOutput
 # /dev/stdout to show all serverOutput
-output_redirect="/dev/stdout"
+output_redirect="/dev/null"
 
 # Colour codes
 RED='\033[0;31m'

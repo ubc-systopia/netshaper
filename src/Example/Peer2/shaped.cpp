@@ -162,7 +162,7 @@ inline bool assignQueues(MsQuicStream *stream) {
       (*streamToQueues)[stream] = iterator.first;
       (*queuesToStream)[iterator.first] = stream;
       std::cout<< "Peer2:Shaped: Assigned queues to one stream: " << std::endl;
-      // Lets check we have at least one stream to send data on
+      // Let's check we have at least one stream to send data on
       for (auto &itr: *queuesToStream) {
         if (itr.second != nullptr) {
           std::cout << "Peer2:Shaped: Found a stream to send data on in assignQueues function" <<
@@ -183,7 +183,7 @@ length) {
   // Check if this is first byte from the other middlebox
   if (controlStream == nullptr) {
     std::cout << "Peer2:Shaped: Setting control stream" << std::endl;
-    int numMessages  = length/sizeof(struct controlMessage);
+    size_t numMessages = length / sizeof(struct controlMessage);
 
     // struct controlMessage *messages[length/sizeof(struct controlMessage)];
     for(int i = 0; i < numMessages; i++){
@@ -227,7 +227,7 @@ length) {
   (*streamToQueues)[stream].fromShaped->push(buffer, length);
 }
 
-// Get the total size of all queues. It is all of the data we have to send in next rounds. 
+// Get the total size of all queues. It is all the data we have to send in next rounds.
 size_t getAggregatedQueueSize() {
   size_t aggregatedSize = 0;
   for (auto &iterator: *queuesToStream) {
@@ -248,18 +248,21 @@ void sendDummy(size_t dummySize){
 }
 
 
-
-int sendData(size_t dataSize) {
+size_t sendData(size_t dataSize) {
   uint64_t tmpStreamID;
   // check to see we have at least one stream to send data on
   for (auto &iterator: *queuesToStream) {
-    if(iterator.second != nullptr) {
-      std::cout << "Peer2:Shaped: Found a stream to send data on in sendData function" << std::endl;
-      std::cout<< "Peer2:Shaped: The size of queue mapped to this steam is: " << iterator.first.toShaped->size() << std::endl;
-      std::cout << "Peer2:Shaped: the aggregated queue size is: " << getAggregatedQueueSize() << std::endl;
-      uint64_t tmpStreamID;
+    if (iterator.second != nullptr) {
+      std::cout
+          << "Peer2:Shaped: Found a stream to send data on in sendData function"
+          << std::endl;
+      std::cout << "Peer2:Shaped: The size of queue mapped to this steam is: "
+                << iterator.first.toShaped->size() << std::endl;
+      std::cout << "Peer2:Shaped: the aggregated queue size is: "
+                << getAggregatedQueueSize() << std::endl;
       iterator.second->GetID(&tmpStreamID);
-      std::cout << "Peer2:Shaped: The stream ID is: " << tmpStreamID << std::endl;
+      std::cout << "Peer2:Shaped: The stream ID is: " << tmpStreamID
+                << std::endl;
       break;
     }
   }
@@ -293,7 +296,7 @@ int sendData(size_t dataSize) {
     }
     dataSize -= SizeToSendFromQueue;
   }
-  // We expext the data size to be zero if we have sent all the data
+  // We expect the data size to be zero if we have sent all the data
   return dataSize;
 }
 
