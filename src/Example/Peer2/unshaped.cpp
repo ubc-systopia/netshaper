@@ -22,41 +22,38 @@ std::unordered_map<queuePair, UnshapedTransciever::Sender *, queuePairHash>
 std::unordered_map<UnshapedTransciever::Sender *, queuePair> *senderToQueues;
 
 
-// Create numStreams number of shared memory and initialise Lamport Queues
-// for each stream
+/**
+ * @brief Create numStreams number of shared memory streams and initialise
+ * Lamport Queues for each stream
+ */
 inline void initialiseSHM(int numStreams) {
+  int shmId = shmget((int) std::hash<std::string>()(appName),
+                     numStreams * 2 * sizeof(class LamportQueue),
+                     IPC_CREAT | 0644);
+  if (shmId < 0) {
+    std::cerr << "Failed to create shared memory!" << std::endl;
+    exit(1);
+  }
+  auto shmAddr = static_cast<uint8_t *>(shmat(shmId, nullptr, 0));
+  if (shmAddr == (void *) -1) {
+    std::cerr << "Failed to attach shared memory!" << std::endl;
+    exit(1);
+  }
   for (int i = 0; i < numStreams * 2; i += 2) {
-    // String stream used to create keys for sharedMemory
-    std::stringstream ss1, ss2;
-    ss1 << appName << i;
-    ss2 << appName << i + 1;
-
-    // Create a shared memory
-    int shmId1 = shmget((int) std::hash<std::string>()(ss1.str()),
-                        sizeof(class LamportQueue), IPC_CREAT | 0644);
-    int shmId2 = shmget((int) std::hash<std::string>()(ss2.str()),
-                        sizeof(class LamportQueue), IPC_CREAT | 0644);
-    if (shmId1 < 0 || shmId2 < 0) {
-      std::cerr << "Failed to create shared memory!" << std::endl;
-      exit(1);
-    }
-
-    // Attach to the given shared memory
-    void *shmAddr1 = shmat(shmId1, nullptr, 0);
-    void *shmAddr2 = shmat(shmId2, nullptr, 0);
-    if (shmAddr1 == (void *) -1 || shmAddr2 == (void *) -1) {
-      std::cerr << "Failed to attach shared memory!" << std::endl;
-      exit(1);
-    }
-
-    // Data streams
-    auto queue1 = new(shmAddr1) LamportQueue();
-    auto queue2 = new(shmAddr2) LamportQueue();
+    auto queue1 =
+        new(shmAddr + (i * sizeof(class LamportQueue))) LamportQueue();
+    auto queue2 =
+        new(shmAddr + ((i + 1) * sizeof(class LamportQueue))) LamportQueue();
     // TODO: Set different senders
     (*queuesToSender)[{queue1, queue2}] = nullptr;
   }
 }
 
+/**
+ * @brief assign a new queue for a new client
+ * @param sender The instance of Sender to assign
+ * @return true if queue was assigned successfully
+ */
 bool assignQueues(UnshapedTransciever::Sender *sender) {
   return std::ranges::any_of(*queuesToSender, [&](auto &iterator) {
     // iterator.first is queuePair, iterator.second is sender

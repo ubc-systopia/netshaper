@@ -6,6 +6,8 @@
 #define MINESVPN_HELPERS_H
 
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include <csignal>
+#include <cstdarg>
 
 struct queuePair {
   LamportQueue *fromShaped;
@@ -36,6 +38,19 @@ struct controlMessage {
   char destIP[16];
   char destPort[6];
 };
+
+/**
+ * @brief Add given signal to the signal set
+ * @param set The signal set to add the signal in
+ * @param numSignals The number of signal that are to be added
+ * @param ... The signals to be added
+ */
+void addSignal(sigset_t *set, int numSignals, ...);
+
+/**
+ * @brief Waits for signal and then processes it
+ */
+void waitForSignal();
 
 
 #endif //MINESVPN_HELPERS_H

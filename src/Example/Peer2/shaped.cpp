@@ -5,8 +5,6 @@
 // Peer 2 (server side middlebox) example for unidirectional stream
 
 #include <sstream>
-#include <csignal>
-#include <cstdarg>
 #include <algorithm>
 #include <chrono>
 #include <thread>
@@ -44,74 +42,45 @@ uint64_t dummyStreamID;
 std::atomic<size_t> sendingCredit;
 
 
-// Create numStreams number of shared memory and initialise Lamport Queues
-// for each stream
+/**
+ * @brief Create numStreams number of shared memory streams and initialise
+ * Lamport Queues for each stream
+ */
 inline void initialiseSHM() {
+  int shmId = shmget((int) std::hash<std::string>()(appName),
+                     numStreams * 2 * sizeof(class LamportQueue),
+                     IPC_CREAT | 0644);
+  if (shmId < 0) {
+    std::cerr << "Failed to create shared memory!" << std::endl;
+    exit(1);
+  }
+  auto shmAddr = static_cast<uint8_t *>(shmat(shmId, nullptr, 0));
+  if (shmAddr == (void *) -1) {
+    std::cerr << "Failed to attach shared memory!" << std::endl;
+    exit(1);
+  }
   for (int i = 0; i < numStreams * 2; i += 2) {
-    // String stream used to create keys for sharedMemory
-    std::stringstream ss1, ss2;
-    ss1 << appName << i;
-    ss2 << appName << i + 1;
-
-    // Create a shared memory
-    int shmId1 = shmget((int) std::hash<std::string>()(ss1.str()),
-                        sizeof(class LamportQueue), IPC_CREAT | 0644);
-    int shmId2 = shmget((int) std::hash<std::string>()(ss2.str()),
-                        sizeof(class LamportQueue), IPC_CREAT | 0644);
-    if (shmId1 < 0 || shmId2 < 0) {
-      std::cerr << "Failed to create shared memory!" << std::endl;
-      exit(1);
-    }
-
-    // Attach to the given shared memory
-    void *shmAddr1 = shmat(shmId1, nullptr, 0);
-    void *shmAddr2 = shmat(shmId2, nullptr, 0);
-    if (shmAddr1 == (void *) -1 || shmAddr2 == (void *) -1) {
-      std::cerr << "Failed to attach shared memory!" << std::endl;
-      exit(1);
-    }
-
     // Marks the shm for deletion
     // SHM is deleted once all attached processes exit
-    shmctl(shmId1, IPC_RMID, nullptr);
-    shmctl(shmId2, IPC_RMID, nullptr);
+    shmctl(shmId, IPC_RMID, nullptr);
 
-    // put all queues into the map
-    (*queuesToStream)[{(LamportQueue *) shmAddr1,
-                       (LamportQueue *) shmAddr2}] = nullptr;
+    auto queue1 =
+        (LamportQueue *) (shmAddr + (i * sizeof(class LamportQueue)));
+    auto queue2 =
+        (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
+
+    // Data streams
+    (*queuesToStream)[{queue1, queue2}] = nullptr;
   }
 }
 
-void addSignal(sigset_t *set, int numSignals, ...) {
-  va_list args;
-  va_start(args, numSignals);
-  for (int i = 0; i < numSignals; i++) {
-    sigaddset(set, va_arg(args, int));
-  }
-
-}
-
-void waitForSignal() {
-  sigset_t set;
-  int sig;
-  int ret_val;
-  sigemptyset(&set);
-
-  addSignal(&set, 6, SIGINT, SIGKILL, SIGTERM, SIGABRT, SIGSTOP,
-            SIGTSTP);
-  sigprocmask(SIG_BLOCK, &set, nullptr);
-
-  ret_val = sigwait(&set, &sig);
-  if (ret_val == -1)
-    perror("The signal wait failed\n");
-  else {
-    if (sigismember(&set, sig)) {
-      std::cout << "\nExiting with signal " << sig << std::endl;
-      exit(0);
-    }
-  }
-}
-
+/**
+ * @brief Send response to the other middleBox
+ * @param stream The stream to send the response on
+ * @param data The buffer which holds the data to be sent
+ * @param length The length of the data to be sent
+ * @return
+ */
 bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length) {
   auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
   if (SendBuffer == nullptr) {
@@ -128,6 +97,11 @@ bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length) {
   return true;
 }
 
+/**
+ * @brief Finds a stream by it's ID
+ * @param ID The ID of the stream to match
+ * @return The stream pointer of the stream the ID matches with, or nullptr
+ */
 MsQuicStream *findStreamByID(QUIC_UINT62 ID) {
   QUIC_UINT62 streamID;
   for (auto &iterator: *streamToQueues) {
@@ -141,6 +115,10 @@ MsQuicStream *findStreamByID(QUIC_UINT62 ID) {
 // Reads all queues and sends the data on the related stream if it exists,
 // else on any stream (For testing only)
 // TODO: Replace this with a proper loop for multiple clients and servers
+/**
+ * @brief Check for response in a separate thread
+ * @param interval The interval with which the queues are checked for responses
+ */
 [[maybe_unused]] [[noreturn]] void sendResponseLoop(__useconds_t interval) {
   while (true) {
     std::this_thread::sleep_for(std::chrono::microseconds(interval));
@@ -148,8 +126,8 @@ MsQuicStream *findStreamByID(QUIC_UINT62 ID) {
       auto size = iterator.first.toShaped->size();
       if (size > 0) {
         std::cout << "Peer2:shaped: Got data in queue: "
-                  << iterator.first.toShaped <<
-                  std::endl;
+            << iterator.first.toShaped <<
+            std::endl;
         auto buffer = (uint8_t *) malloc(size);
         iterator.first.toShaped->pop(buffer, size);
         MsQuicStream *stream = iterator.second;
@@ -167,6 +145,11 @@ MsQuicStream *findStreamByID(QUIC_UINT62 ID) {
   }
 }
 
+/**
+ * @brief assign a new queue for a new client
+ * @param stream The new stream (representing a new client)
+ * @return true if queue was assigned successfully
+ */
 inline bool assignQueues(MsQuicStream *stream) {
   // Find an unused queuePair and map it
   return std::ranges::any_of(*queuesToStream, [&](auto &iterator) {
@@ -203,6 +186,13 @@ inline bool assignQueues(MsQuicStream *stream) {
   });
 }
 
+/**
+ * @brief The function that is called when shaped data is received from the
+ * other middleBox.
+ * @param stream The stream on which the data was received
+ * @param buffer The buffer where the received data is stored
+ * @param length The length of the received data
+ */
 void receivedShapedData(MsQuicStream *stream, uint8_t *buffer, size_t
 length) {
   uint64_t streamID;
@@ -215,8 +205,8 @@ length) {
     // struct controlMessage *messages[length/sizeof(struct controlMessage)];
     for (int i = 0; i < numMessages; i++) {
       auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer +
-                                                               (sizeof(struct controlMessage) *
-                                                                i));
+          (sizeof(struct controlMessage) *
+              i));
       // auto ctrlMsg = static_cast<struct controlMessage *>(buffer + (sizeof(struct controlMessage) * i));
       if (ctrlMsg->streamType == Control) {
         controlStream = stream;
@@ -229,7 +219,7 @@ length) {
   } else if (controlStream == stream) {
     // A message from the controlStream
     std::cout << "Peer2:Shaped: Received information on dummy in control stream"
-              << std::endl;
+        << std::endl;
     auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer);
     switch (ctrlMsg->streamType) {
       case Dummy:
@@ -265,7 +255,7 @@ length) {
     // Dummy Data
     // TODO: Maybe make a queue and drop it in the unshaped side?
     std::cout << "Peer2:Shaped: Received dummy on: " << dummyStreamID
-              << std::endl;
+        << std::endl;
     if (dummyStream == nullptr) dummyStream = stream;
     return;
   }
@@ -273,17 +263,20 @@ length) {
   // This is a data stream
   uint64_t tmpStreamID;
   std::cout << "Peer2:Shaped: Received actual data on: "
-            << stream->GetID(&tmpStreamID) << std::endl;
+      << stream->GetID(&tmpStreamID) << std::endl;
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
     std::cout << "Peer2:Shaped: Assigning queues to stream: " << tmpStreamID
-              << std::endl;
+        << std::endl;
     if (!assignQueues(stream))
       std::cerr << "More streams than expected!" << std::endl;
   }
   (*streamToQueues)[stream].fromShaped->push(buffer, length);
 }
 
-// Get the total size of all queues. It is all the data we have to send in next rounds.
+/**
+ * @brief Get the total size of all queues. It is all the data we have to send in next rounds.
+ * @return The total data available to be sent out
+ */
 size_t getAggregatedQueueSize() {
   size_t aggregatedSize = 0;
   for (auto &iterator: *queuesToStream) {
@@ -292,7 +285,10 @@ size_t getAggregatedQueueSize() {
   return aggregatedSize;
 }
 
-
+/**
+ * @brief Send dummy bytes on the dummy stream
+ * @param dummySize The number of bytes to be sent out
+ */
 void sendDummy(size_t dummySize) {
   // We do not have dummy stream yet
   if (dummyStream == nullptr) return;
@@ -303,8 +299,13 @@ void sendDummy(size_t dummySize) {
   }
 }
 
-
+/**
+ * @brief Send data to the other middlebox
+ * @param dataSize The number of bytes to send to the other middlebox
+ * @return The number of bytes sent out
+ */
 size_t sendData(size_t dataSize) {
+  auto origSize = dataSize;
   uint64_t tmpStreamID;
   // check to see we have at least one stream to send data on
   for (auto &iterator: *queuesToStream) {
@@ -355,9 +356,14 @@ size_t sendData(size_t dataSize) {
     dataSize -= SizeToSendFromQueue;
   }
   // We expect the data size to be zero if we have sent all the data
-  return dataSize;
+  return origSize - dataSize;
 }
 
+/**
+ * @brief DP Decision function (runs in a separate thread at decisionInterval interval)
+ * @param noiseGenerator The instance of Gaussian Noise Generator
+ * @param decisionInterval The interval to run this thread at
+ */
 [[noreturn]] void DPCreditor(NoiseGenerator &noiseGenerator,
                              __useconds_t interval) {
   while (true) {
@@ -370,6 +376,11 @@ size_t sendData(size_t dataSize) {
   }
 }
 
+/**
+ * @brief Loop that calls sendData(...) after obtaining the token generated
+ * by the DPCreditor(...) thread.
+ * @param sendingInterval The interval at which this loop should be run
+ */
 [[noreturn]] void sendShapedData(__useconds_t interval) {
   while (true) {
     auto creditSnapshot = sendingCredit.load(std::memory_order_acquire);
@@ -383,7 +394,7 @@ size_t sendData(size_t dataSize) {
       size_t dummySize = std::max(0, (int) (creditSnapshot - aggregatedSize));
       if (dataSize > 0) {
         std::cout << "Peer2:Shaped: Sending data of size: " << dataSize
-                  << std::endl;
+            << std::endl;
         if (sendData(dataSize) != 0) {
           std::cerr << "Peer2:Shaped: Failed to send all data" << std::endl;
         }

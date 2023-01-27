@@ -3,9 +3,7 @@
 //
 
 // Peer 1 (client side middle box) example for unidirectional stream
-#include <sstream>
-#include <csignal>
-#include <cstdarg>
+
 #include <algorithm>
 #include <thread>
 #include <chrono>
@@ -51,6 +49,12 @@ int theOnlySocket = -1;
   }
 }
 
+/**
+ * @brief assign a new queue for a new client
+ * @param fromSocket The socket number of the new client
+ * @param clientAddress The address:port of the new client
+ * @return true if queue was assigned successfully
+ */
 inline bool assignQueue(int fromSocket, std::string &clientAddress) {
   // Find an unused queue and map it
   return std::ranges::any_of(*queuesToSocket, [&](auto &iterator) {
@@ -74,7 +78,15 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress) {
   });
 }
 
-// onReceive function for received Data
+/**
+ * @brief onReceive function for received Data
+ * @param fromSocket The socket on which the data was received
+ * @param clientAddress The address of the client from which the data was
+ * received
+ * @param buffer The buffer in which the received data was put
+ * @param length The length of the received data
+ * @return true if data was successfully pushed to assigned queue
+ */
 ssize_t receivedUnshapedData(int fromSocket, std::string &clientAddress,
                              uint8_t *buffer, size_t length) {
   if ((*socketToQueues)[fromSocket].toShaped == nullptr) {
@@ -88,67 +100,30 @@ ssize_t receivedUnshapedData(int fromSocket, std::string &clientAddress,
   return 0;
 }
 
-// Create numStreams number of shared memory and initialise Lamport Queues
-// for each stream
+/**
+ * @brief Create numStreams number of shared memory streams and initialise
+ * Lamport Queues for each stream
+ */
 inline void initialiseSHM() {
+  int shmId = shmget((int) std::hash<std::string>()(appName),
+                     numStreams * 2 * sizeof(class LamportQueue),
+                     IPC_CREAT | 0644);
+  if (shmId < 0) {
+    std::cerr << "Failed to create shared memory!" << std::endl;
+    exit(1);
+  }
+  auto shmAddr = static_cast<uint8_t *>(shmat(shmId, nullptr, 0));
+  if (shmAddr == (void *) -1) {
+    std::cerr << "Failed to attach shared memory!" << std::endl;
+    exit(1);
+  }
   for (int i = 0; i < numStreams * 2; i += 2) {
-    // String stream used to create keys for sharedMemory
-    std::stringstream ss1, ss2;
-    ss1 << appName << i;
-    ss2 << appName << i + 1;
-
-    // Create a shared memory
-    int shmId1 = shmget((int) std::hash<std::string>()(ss1.str()),
-                        sizeof(class LamportQueue), IPC_CREAT | 0644);
-    int shmId2 = shmget((int) std::hash<std::string>()(ss2.str()),
-                        sizeof(class LamportQueue), IPC_CREAT | 0644);
-    if (shmId1 < 0 || shmId2 < 0) {
-      std::cerr << "Failed to create shared memory!" << std::endl;
-      exit(1);
-    }
-
-    // Attach to the given shared memory
-    void *shmAddr1 = shmat(shmId1, nullptr, 0);
-    void *shmAddr2 = shmat(shmId2, nullptr, 0);
-    if (shmAddr1 == (void *) -1 || shmAddr2 == (void *) -1) {
-      std::cerr << "Failed to attach shared memory!" << std::endl;
-      exit(1);
-    }
-
     // Initialise a queue class at that shared memory and put it in the maps
-    auto queue1 = new(shmAddr1) LamportQueue();
-    auto queue2 = new(shmAddr2) LamportQueue();
+    auto queue1 =
+        new(shmAddr + (i * sizeof(class LamportQueue))) LamportQueue();
+    auto queue2 =
+        new(shmAddr + ((i + 1) * sizeof(class LamportQueue))) LamportQueue();
     (*queuesToSocket)[{queue1, queue2}] = 0;
-  }
-}
-
-void addSignal(sigset_t *set, int numSignals, ...) {
-  va_list args;
-  va_start(args, numSignals);
-  for (int i = 0; i < numSignals; i++) {
-    sigaddset(set, va_arg(args, int));
-  }
-
-}
-
-void waitForSignal() {
-  sigset_t set;
-  int sig;
-  int ret_val;
-  sigemptyset(&set);
-
-  addSignal(&set, 6, SIGINT, SIGKILL, SIGTERM, SIGABRT, SIGSTOP,
-            SIGTSTP);
-  sigprocmask(SIG_BLOCK, &set, nullptr);
-
-  ret_val = sigwait(&set, &sig);
-  if (ret_val == -1)
-    perror("The signal wait failed\n");
-  else {
-    if (sigismember(&set, sig)) {
-      std::cout << "\nExiting with signal " << sig << std::endl;
-      exit(0);
-    }
   }
 }
 
