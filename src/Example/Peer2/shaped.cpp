@@ -30,8 +30,7 @@ std::unordered_map<queuePair, MsQuicStream *, queuePairHash> *queuesToStream;
 struct queueSignal *queueSig;
 // Map that stores streamIDs for which client information is received (but
 // the stream has not yet begun). Value is address, port.
-std::unordered_map<QUIC_UINT62, std::pair<std::string, std::string>>
-    streamIDtoClient;
+std::unordered_map<QUIC_UINT62, struct controlMessage> streamIDtoCtrlMsg;
 
 MsQuicStream *controlStream;
 uint64_t controlStreamID;
@@ -122,6 +121,7 @@ bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length) {
 MsQuicStream *findStreamByID(QUIC_UINT62 ID) {
   QUIC_UINT62 streamID;
   for (auto &iterator: *streamToQueues) {
+    if (iterator.first == nullptr) continue;
     iterator.first->GetID(&streamID);
     if (streamID == ID) return iterator.first;
   }
@@ -179,6 +179,34 @@ void signalUnshapedProcess(uint64_t queueID, connectionStatus connStatus) {
 }
 
 /**
+ * @brief Copies the client and server info from the control message to the
+ * queues
+ * @param queues The queues to copy the data to
+ * @param ctrlMsg The control message to copy the data from
+ */
+void copyClientInfo(queuePair queues, struct controlMessage *ctrlMsg) {
+  // Source/Client
+  std::strcpy(queues.toShaped->clientAddress,
+              ctrlMsg->srcIP);
+  std::strcpy(queues.toShaped->clientPort,
+              ctrlMsg->srcPort);
+  std::strcpy(queues.fromShaped->clientAddress,
+              ctrlMsg->srcIP);
+  std::strcpy(queues.fromShaped->clientPort,
+              ctrlMsg->srcPort);
+
+  //Dest/Server
+  std::strcpy(queues.toShaped->serverAddress,
+              ctrlMsg->destIP);
+  std::strcpy(queues.toShaped->serverPort,
+              ctrlMsg->destPort);
+  std::strcpy(queues.fromShaped->serverAddress,
+              ctrlMsg->destIP);
+  std::strcpy(queues.fromShaped->serverPort,
+              ctrlMsg->destPort);
+}
+
+/**
  * @brief assign a new queue for a new client
  * @param stream The new stream (representing a new client)
  * @return true if queue was assigned successfully
@@ -194,20 +222,14 @@ inline bool assignQueues(MsQuicStream *stream) {
 
       QUIC_UINT62 streamID;
       stream->GetID(&streamID);
-      if (streamIDtoClient.find(streamID) != streamIDtoClient.end()) {
-        std::strcpy(iterator.first.toShaped->clientAddress,
-                    streamIDtoClient[streamID].first.c_str());
-        std::strcpy(iterator.first.toShaped->clientPort,
-                    streamIDtoClient[streamID].second.c_str());
-        std::strcpy(iterator.first.fromShaped->clientAddress,
-                    streamIDtoClient[streamID].first.c_str());
-        std::strcpy(iterator.first.fromShaped->clientPort,
-                    streamIDtoClient[streamID].second.c_str());
+      queuePair queues = iterator.first;
+      if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
+        copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
         std::thread signalOtherProcess(signalUnshapedProcess,
                                        (*streamToQueues)[stream]
                                            .fromShaped->queueID, NEW);
         signalOtherProcess.detach();
-        streamIDtoClient.erase(streamID);
+        streamIDtoCtrlMsg.erase(streamID);
 
       }
       std::cout << "Peer2:Shaped: Assigned queues to a new stream: " <<
@@ -232,26 +254,15 @@ void receivedControlMessage(struct controlMessage *ctrlMsg) {
       auto dataStream = findStreamByID(ctrlMsg->streamID);
       if (ctrlMsg->connStatus == NEW) {
         std::cout << "Data stream new ID " << ctrlMsg->streamID << std::endl;
-        if (dataStream == nullptr) {
-
-        }
+        auto queues = (*streamToQueues)[dataStream];
         if (dataStream != nullptr) {
-          std::strcpy((*streamToQueues)[dataStream].toShaped->clientAddress,
-                      ctrlMsg->srcIP);
-          std::strcpy((*streamToQueues)[dataStream].toShaped->clientPort,
-                      ctrlMsg->srcPort);
-          std::strcpy((*streamToQueues)[dataStream].fromShaped->clientAddress,
-                      ctrlMsg->srcIP);
-          std::strcpy((*streamToQueues)[dataStream].fromShaped->clientPort,
-                      ctrlMsg->srcPort);
+          copyClientInfo(queues, ctrlMsg);
           std::thread signalOtherProcess(signalUnshapedProcess,
-                                         (*streamToQueues)[dataStream]
-                                             .fromShaped->queueID, NEW);
+                                         queues.fromShaped->queueID, NEW);
           signalOtherProcess.detach();
         } else {
           // Map from stream (which has not yet started) to client
-          streamIDtoClient[ctrlMsg->streamID] = std::make_pair(ctrlMsg->srcIP,
-                                                               ctrlMsg->srcPort);
+          streamIDtoCtrlMsg[ctrlMsg->streamID] = *ctrlMsg;
         }
       } else if (ctrlMsg->connStatus == TERMINATED) {
         std::cout << "Data stream terminated ID " << ctrlMsg->streamID

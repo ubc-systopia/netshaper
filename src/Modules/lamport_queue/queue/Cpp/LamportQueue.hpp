@@ -53,6 +53,8 @@ public:
    */
   char clientAddress[16] = "";
   char clientPort[6] = "";
+  char serverAddress[16] = "";
+  char serverPort[6] = "";
   uint64_t queueID;
 
 private:

@@ -48,13 +48,15 @@ UnshapedTransciever::Receiver *unshapedReceiver;
   }
 }
 
+// TODO: Replace hard-coded value of serverAddress
 /**
  * @brief assign a new queue for a new client
  * @param fromSocket The socket number of the new client
  * @param clientAddress The address:port of the new client
  * @return true if queue was assigned successfully
  */
-inline bool assignQueue(int fromSocket, std::string &clientAddress) {
+inline bool assignQueue(int fromSocket, std::string &clientAddress,
+                        std::string serverAddress = "127.0.0.1:5555") {
   // Find an unused queue and map it
   return std::ranges::any_of(*queuesToSocket, [&](auto &iterator) {
     // iterator.first is queuePair, iterator.second is socket
@@ -65,10 +67,19 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress) {
       // Set client of queue to the new client
       auto address = clientAddress.substr(0, clientAddress.find(':'));
       auto port = clientAddress.substr(address.size() + 1);
-      std::strcpy(iterator.first.fromShaped->clientAddress, address.c_str());
-      std::strcpy(iterator.first.fromShaped->clientPort, port.c_str());
-      std::strcpy(iterator.first.toShaped->clientAddress, address.c_str());
-      std::strcpy(iterator.first.toShaped->clientPort, port.c_str());
+      queuePair queues = iterator.first;
+      std::strcpy(queues.fromShaped->clientAddress, address.c_str());
+      std::strcpy(queues.fromShaped->clientPort, port.c_str());
+      std::strcpy(queues.toShaped->clientAddress, address.c_str());
+      std::strcpy(queues.toShaped->clientPort, port.c_str());
+
+      // Set server of queue to given server
+      address = serverAddress.substr(0, serverAddress.find(':'));
+      port = serverAddress.substr((address.size() + 1));
+      std::strcpy(queues.fromShaped->serverAddress, address.c_str());
+      std::strcpy(queues.fromShaped->serverPort, port.c_str());
+      std::strcpy(queues.toShaped->serverAddress, address.c_str());
+      std::strcpy(queues.toShaped->serverPort, port.c_str());
       return true;
     }
     return false;
@@ -106,17 +117,17 @@ bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
                               connectionStatus connStatus) {
 
   switch (connStatus) {
-    case NEW:
+    case NEW: {
       if (!assignQueue(fromSocket, clientAddress)) {
         std::cerr << "More clients than expected!" << std::endl;
         return false;
       }
-      {
-        std::thread signalOtherProcess(signalShapedProcess,
-                                       (*socketToQueues)[fromSocket].toShaped->queueID,
-                                       NEW);
-        signalOtherProcess.detach();
-      }
+
+      std::thread signalOtherProcess(signalShapedProcess,
+                                     (*socketToQueues)[fromSocket].toShaped->queueID,
+                                     NEW);
+      signalOtherProcess.detach();
+    }
       return true;
     case ONGOING:
       // TODO: Check if queue has enough space before pushing to queue

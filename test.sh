@@ -1,12 +1,9 @@
 #!/bin/bash
 
 # Parameters to pass to each program
-peer_2_unshaped="127.0.0.1
-5555
-10"
-peer_2_shaped="10"
-peer_1_unshaped="1"
-peer_1_shaped="1"
+# Number of max queues to initialise
+peer_2="10"
+peer_1="1"
 client_string="Client says Hello"
 server_string="Server says Hello"
 serverPipe=ncServerPipe # Pipe to send server_string to tcp server
@@ -47,29 +44,28 @@ printf "\n\n\n\n\n\n\n" |
 echo -e "${YELLOW}Starting TCP Receiver${OFF}"
 nc -l -p 5555 <$serverPipe >serverOutput &
 exec {serverPipeFd}>$serverPipe
-#exec ${fd}>&- &
 
 # Run the unshaped sender of peer 2
 echo -e "${YELLOW}Starting Unshaped Sender (Peer 2)${OFF}"
-printf '%s\n' "$peer_2_unshaped" |
+printf '%s\n' "$peer_2" |
   ../build/src/Example/Peer2/peer_2_unshaped &>$output_redirect &
 sleep $sleep_time
 
 # Run the shaped receiver of peer 2
 echo -e "${YELLOW}Starting Shaped Receiver (Peer 2)${OFF}"
-printf '%s\n' "$peer_2_shaped" |
+printf '%s\n' "$peer_2" |
   ../build/src/Example/Peer2/peer_2_shaped &>$output_redirect &
 sleep $sleep_time
 
 # Run the unshaped receiver of peer 1
 echo -e "${YELLOW}Starting Unshaped Receiver (Peer 1)${OFF}"
-printf '%s\n' "$peer_1_unshaped" |
+printf '%s\n' "$peer_1" |
   ../build/src/Example/Peer1/peer_1_unshaped &>$output_redirect &
 sleep $sleep_time
 
 # Run the shaped sender of peer 1
 echo -e "${YELLOW}Starting Shaped Sender (Peer 1)${OFF}"
-printf '%s\n' "$peer_1_shaped" |
+printf '%s\n' "$peer_1" |
   ../build/src/Example/Peer1/peer_1_shaped &>$output_redirect &
 sleep $((sleep_time + 5))
 

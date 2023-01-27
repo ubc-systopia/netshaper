@@ -74,6 +74,8 @@ void handleQueueSignal(int signum) {
         message->connStatus = NEW;
         std::strcpy(message->srcIP, queues.toShaped->clientAddress);
         std::strcpy(message->srcPort, queues.toShaped->clientPort);
+        std::strcpy(message->destIP, queues.toShaped->serverAddress);
+        std::strcpy(message->destPort, queues.toShaped->serverPort);
         break;
       case TERMINATED:
         message->connStatus = TERMINATED;

@@ -12,9 +12,6 @@
 
 std::string appName = "minesVPNPeer2";
 
-std::string remoteHost;
-int remotePort;
-
 std::unordered_map<queuePair, UnshapedTransciever::Sender *, queuePairHash>
     *queuesToSender;
 
@@ -98,9 +95,11 @@ void handleQueueSignal(int signum) {
     auto queues = findQueuesByID(queueSig->queueID);
     if (queueSig->connStatus == NEW) {
       std::cout << "Peer2:Unshaped: New Connection" << std::endl;
-      auto unshapedSender = new UnshapedTransciever::Sender{remoteHost,
-                                                            remotePort,
-                                                            onReceive};
+      auto unshapedSender = new UnshapedTransciever::Sender{
+          queues.fromShaped->serverAddress,
+          std::stoi(queues.fromShaped->serverPort),
+          onReceive};
+
       (*queuesToSender)[queues] = unshapedSender;
       (*senderToQueues)[unshapedSender] = queues;
     } else if (queueSig->connStatus == TERMINATED) {
@@ -138,15 +137,6 @@ void handleQueueSignal(int signum) {
 
 int main() {
   int numStreams; // Max number of streams each client can initiate
-
-  // Start listening (unshaped data)
-  std::cout << "Enter the IP address of the remote Host you want to proxy " <<
-            "to:" << std::endl;
-  std::cin >> remoteHost;
-
-  std::cout << "Enter the port of the remote Host you want to proxy " <<
-            "to:" << std::endl;
-  std::cin >> remotePort;
 
   std::cout << "Enter the maximum number of streams each client can initiate "
                "(does not include dummy streams): "
