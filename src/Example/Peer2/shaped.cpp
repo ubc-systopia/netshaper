@@ -261,7 +261,7 @@ void receivedControlMessage(struct controlMessage *ctrlMsg) {
                                            .fromShaped->queueID, TERMINATED);
         signalOtherProcess.detach();
         (*queuesToStream)[(*streamToQueues)[dataStream]] = nullptr;
-        (*streamToQueues)[dataStream] = {nullptr, nullptr};
+        (*streamToQueues).erase(dataStream);
 
       }
     }

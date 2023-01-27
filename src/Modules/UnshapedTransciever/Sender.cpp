@@ -55,7 +55,6 @@ namespace UnshapedTransciever {
   Sender::~Sender() {
     close(remoteSocket);
     log(DEBUG, "Sender destructed");
-    exit(0);
   }
 
   int Sender::connectToRemote() {

@@ -123,15 +123,14 @@ bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
       // TODO: Send an ACK back only after pushing!
       (*socketToQueues)[fromSocket].toShaped->push(buffer, length);
       return true;
-    case TERMINATED:
+    case TERMINATED: {
+      std::thread signalOtherProcess(signalShapedProcess,
+                                     (*socketToQueues)[fromSocket].toShaped->queueID,
+                                     TERMINATED);
+      signalOtherProcess.detach();
+    }
       (*queuesToSocket)[(*socketToQueues)[fromSocket]] = 0;
       (*socketToQueues).erase(fromSocket);
-      {
-        std::thread signalOtherProcess(signalShapedProcess,
-                                       (*socketToQueues)[fromSocket].toShaped->queueID,
-                                       TERMINATED);
-        signalOtherProcess.detach();
-      }
       return true;
   }
   return false;

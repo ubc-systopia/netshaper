@@ -5,64 +5,80 @@
 #include "LamportQueue.hpp"
 
 LamportQueue::LamportQueue(uint64_t queueID) : queueID(queueID) {
-  front_ = 0;
-  back_ = 0;
-  cached_front_ = 0;
-  cached_back_ = 0;
+  front = 0;
+  back = 0;
+  cachedFront = 0;
+  cachedBack = 0;
 }
 
 // LamportQueue::~LamportQueue() {
-//   delete data_;
+//   delete queueStorage;
 // }
 
-int LamportQueue::push(uint8_t *elem, size_t elem_size) {
-  assert(elem_size < BUFFER_SIZE && elem_size > 0);
+int LamportQueue::push(uint8_t *buffer, size_t length) {
+  assert(length < BUFFER_SIZE && length > 0);
 
   size_t b, f;
-  b = this->back_.load(std::memory_order_relaxed);
-  f = this->cached_front_;
-  size_t free_space = this->get_free_space_local(f, b);
-  if (free_space < elem_size) {
-    this->cached_front_ = f = this->front_.load(std::memory_order_acquire);
+  b = this->back.load(std::memory_order_relaxed);
+  f = this->cachedFront;
+  size_t freeSpace = this->getFreeSpaceLocal(f, b);
+  if (freeSpace < length) {
+    this->cachedFront = f = this->front.load(std::memory_order_acquire);
   }
-  free_space = this->get_free_space_local(f, b);
-  if (free_space < elem_size) {
+  freeSpace = this->getFreeSpaceLocal(f, b);
+  if (freeSpace < length) {
     return -1;
   }
-  std::memcpy(this->data_ + b, elem, elem_size);
-  this->back_.store((b + elem_size) % BUFFER_SIZE, std::memory_order_release);
+  // TODO: Consider the case when half the data has to be wrapped around in
+  //  the array
+  if (b + length > BUFFER_SIZE) {
+    auto size1 = BUFFER_SIZE - b;
+    std::memcpy(this->queueStorage + b, buffer, size1);
+    std::memcpy(this->queueStorage, buffer + size1, length - size1);
+  } else {
+    std::memcpy(this->queueStorage + b, buffer, length);
+  }
+  this->back.store((b + length) % BUFFER_SIZE, std::memory_order_release);
   return 0;
 }
 
-int LamportQueue::pop(uint8_t *elem, size_t elem_size) {
-  assert(elem_size < BUFFER_SIZE && elem_size > 0);
+int LamportQueue::pop(uint8_t *buffer, size_t length) {
+  assert(length < BUFFER_SIZE && length > 0);
 
   size_t b, f;
-  f = this->front_.load(std::memory_order_relaxed);
-  b = this->cached_back_;
-  size_t queue_size = this->get_queue_size_local(f, b);
-  if (queue_size < elem_size) {
-    this->cached_back_ = b = this->back_.load(std::memory_order_acquire);
+  f = this->front.load(std::memory_order_relaxed);
+  b = this->cachedBack;
+  size_t queueSize = this->getQueueSizeLocal(f, b);
+  if (queueSize < length) {
+    this->cachedBack = b = this->back.load(std::memory_order_acquire);
   }
-  queue_size = this->get_queue_size_local(f, b);
-  if (queue_size < elem_size) {
+  queueSize = this->getQueueSizeLocal(f, b);
+  if (queueSize < length) {
     return -1;
   }
-  std::memcpy(elem, this->data_ + f, elem_size);
-  this->front_.store((f + elem_size) % BUFFER_SIZE, std::memory_order_release);
+  // TODO: Consider the case when half the data has to be wrapped around in
+  //  the array
+  if (f + length > BUFFER_SIZE) {
+    auto size1 = BUFFER_SIZE - f;
+    std::memcpy(buffer, this->queueStorage + f, size1);
+    std::memcpy(buffer + size1, this->queueStorage, length - size1);
+  } else {
+    std::memcpy(buffer, this->queueStorage + f, length);
+  }
+  this->front.store((f + length) % BUFFER_SIZE, std::memory_order_release);
   return 0;
 }
 
 size_t LamportQueue::size() {
-  size_t f = this->front_.load(std::memory_order_relaxed);
-  size_t b = this->back_.load(std::memory_order_acquire);
-  return this->get_queue_size_local(f, b);
+  size_t f = this->front.load(std::memory_order_relaxed);
+  size_t b = this->back.load(std::memory_order_acquire);
+  return this->getQueueSizeLocal(f, b);
 }
 
-size_t LamportQueue::free_space() {
-  size_t f = this->front_.load(std::memory_order_relaxed);
-  size_t b = this->back_.load(std::memory_order_acquire);
-  return this->get_free_space_local(f, b);
+size_t LamportQueue::freeSpace() {
+  size_t f = this->front.load(std::memory_order_relaxed);
+  size_t b = this->back.load(std::memory_order_acquire);
+  return this->getFreeSpaceLocal(f, b);
 }
 
 size_t LamportQueue::mod(ssize_t a, ssize_t b) {
@@ -70,10 +86,10 @@ size_t LamportQueue::mod(ssize_t a, ssize_t b) {
   return r < 0 ? r + b : r;
 }
 
-size_t LamportQueue::get_free_space_local(size_t f, size_t b) {
-  return BUFFER_SIZE - this->mod((b - f), BUFFER_SIZE) - 1;
+size_t LamportQueue::getFreeSpaceLocal(size_t f, size_t b) {
+  return BUFFER_SIZE - this->mod(b - f, BUFFER_SIZE) - 1;
 }
 
-size_t LamportQueue::get_queue_size_local(size_t f, size_t b) {
-  return this->mod((b - f), BUFFER_SIZE);
+size_t LamportQueue::getQueueSizeLocal(size_t f, size_t b) {
+  return this->mod(b - f, BUFFER_SIZE);
 }

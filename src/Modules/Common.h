@@ -1,5 +1,5 @@
 //
-// Created by rvora on 2023-01-27.
+// Created by Rut Vora
 //
 
 #ifndef MINESVPN_COMMON_H
