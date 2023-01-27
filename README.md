@@ -15,37 +15,24 @@ Run the following commands in the root directory of this repository
 
 ### End-to-end example
 
-_Note: It is unidirectional only_
+_Note: Currently the actual server is hard-coded to be at "127.0.0.1:5555" in_ `src/Example/Peer1/unshaped.cpp`  
+_Note 2: Currently, the minesVPN peer1 listens on port 8000, where the actual client should connect_
 
 #### Automated test script
 
-3. `./test.sh` (_Note: It is still buggy_)
+3. `./test.sh`
 
-#### Manual testing (preferred)
-
-Open 6 new terminal instances (if testing on localhost)
-
-3. Generate a self-signed certificate
-   using `openssl req -nodes -new -x509 -keyout ./build/server.key -out ./build/server.cert`
-
-4. Terminal 1: `nc -l -p 5555` (Acts as a simple tcp server)
-5. Terminal 2: `./build/example_peer_2_unshaped` (Unshaped Sender component of
-   the middlebox on the
-   server
-   side)  
-   Enter `127.0.0.1` followed by `5555` (the netcat server we initialised
-   in Terminal 1)
-6. Terminal 3: `./build/example_peer_2_shaped` (Shaped Receiver
-   component in the middlebox on client side)
-7. Terminal 4: `./build/example_peer_1_unshaped` (Unshaped Receiver in the
-   middlebox on the client side)  
-   _Enter the number of max clients you want to support_
-8. Terminal 5: `./build/example_peer_1_shaped` (Shaped Sender in the
-   middlebox on the client side)  
-   _Enter the number of max clients you want to support (same as in Terminal 5)_
-9. Terminal 6: `nc localhost 8000` (The client)
-10. Type anything in the 4th terminal and press 'Enter', it will appear in
-    the 1st terminal, alongside dummy data (currently set to multiple 'a's)
+#### Run Individual components
+3. First start the actual server (note that currently, the actual server is expected to be at 127.0.0.1:5555 on the same node as peer2)
+4. Next, start the unshaped processes on both peers
+   - For peer 2: `./build/src/Example/Peer2/peer_2_unshaped` and enter max number of queues to initialise
+   - For Peer 1: `./build/src/Example/Peer1/peer_1_unshaped` and enter max number of queues to initialise
+5. Then start shaped process on peer 2 (the one in front of the server)
+   - Generate a self-signed certificate using: `openssl req -nodes -new -x509 -keyout ./build/src/Example/Peer2/server.key -out ./build/src/Example/Peer2/server.cert`
+   - `./build/src/Example/Peer2/peer_2_shaped` and enter the max number of queues to initialise (should be same as the number of queues stated in peer_2_unshaped)
+6. Finally, start the shaped process on peer 1 (the one in front of the client)
+   - `./build/src/Example/Peer1/peer_1_shaped` and enter the max number of queues to initialise (should be same as the number of queues stated in peer_1_unshaped)
+7. Now, you can send requests from any client to peer1's port 8000
 
 ### UnshapedTransceiever Example
 
