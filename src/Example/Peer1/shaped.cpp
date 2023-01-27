@@ -163,7 +163,6 @@ size_t getAggregatedQueueSize() {
   while (true) {
     auto aggregatedSize = getAggregatedQueueSize();
     auto DPDecision = noiseGenerator.getDPDecision(aggregatedSize);
-//    std::cout << "DP Decision: " << DPDecision << std::endl;
     size_t credit = sendingCredit.load(std::memory_order_acquire);
     credit += DPDecision;
     sendingCredit.store(credit, std::memory_order_release);

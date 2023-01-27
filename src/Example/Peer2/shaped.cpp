@@ -191,6 +191,7 @@ inline bool assignQueues(MsQuicStream *stream) {
       // No sender attached to this queue pair
       (*streamToQueues)[stream] = iterator.first;
       (*queuesToStream)[iterator.first] = stream;
+
       QUIC_UINT62 streamID;
       stream->GetID(&streamID);
       if (streamIDtoClient.find(streamID) != streamIDtoClient.end()) {
@@ -207,6 +208,7 @@ inline bool assignQueues(MsQuicStream *stream) {
                                            .fromShaped->queueID, NEW);
         signalOtherProcess.detach();
         streamIDtoClient.erase(streamID);
+
       }
       std::cout << "Peer2:Shaped: Assigned queues to a new stream: " <<
                 std::endl;
@@ -365,6 +367,7 @@ void sendDummy(size_t dummySize) {
  */
 size_t sendData(size_t dataSize) {
   auto origSize = dataSize;
+
   uint64_t tmpStreamID;
   // check to see we have at least one stream to send data on
   for (auto &iterator: *queuesToStream) {
