@@ -6,8 +6,10 @@
 #define MINESVPN_HELPERS_H
 
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../Modules/Common.h"
 #include <csignal>
 #include <cstdarg>
+#include <unistd.h>
 
 struct queuePair {
   LamportQueue *fromShaped;
@@ -26,6 +28,14 @@ struct queuePairHash {
   }
 };
 
+struct queueSignal {
+  uint64_t queueID; // The ID of the queue
+  enum connectionStatus connStatus;
+  pid_t unshaped;
+  pid_t shaped;
+  bool ack;
+};
+
 
 enum StreamType {
   Control, Dummy, Data
@@ -33,6 +43,7 @@ enum StreamType {
 struct controlMessage {
   uint64_t streamID;
   enum StreamType streamType;
+  enum connectionStatus connStatus;
   char srcIP[16];
   char srcPort[6];
   char destIP[16];

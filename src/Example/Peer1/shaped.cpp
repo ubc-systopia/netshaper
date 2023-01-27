@@ -30,16 +30,63 @@ int numStreams;
 
 std::unordered_map<queuePair, MsQuicStream *, queuePairHash> *queuesToStream;
 std::unordered_map<MsQuicStream *, queuePair> *streamToQueues;
+struct queueSignal *queueSig;
+
 MsQuicStream *dummyStream;
 MsQuicStream *controlStream;
 
 // Max data that can be sent out now
 std::atomic<size_t> sendingCredit;
 
-
 // Control and Dummy stream IDs
 uint64_t controlStreamID;
 uint64_t dummyStreamID;
+
+/**
+ * @brief Find a queue pair by the ID of it's "toShaped" queue
+ * @param queueID The ID of the "toShaped" queue to find
+ * @return The queuePair this ID belongs to
+ */
+queuePair findQueuesByID(uint64_t queueID) {
+  for (auto &iterator: *queuesToStream) {
+    if (iterator.first.toShaped->queueID == queueID) {
+      return iterator.first;
+    }
+  }
+  return {nullptr, nullptr};
+}
+
+/**
+ * @brief Handle the queue status change signal sent by the unshaped process
+ * @param signal The signal that was received
+ */
+void handleQueueSignal(int signum) {
+  if (signum == SIGUSR1) {
+    auto queues = findQueuesByID(queueSig->queueID);
+    auto *message =
+        (struct controlMessage *) malloc(sizeof(struct controlMessage));
+    (*queuesToStream)[queues]->GetID(&message->streamID);
+    message->streamType = Data;
+    message->connStatus = ONGOING;  // For fallback purposes only
+
+    switch (queueSig->connStatus) {
+      case NEW:
+        message->connStatus = NEW;
+        std::strcpy(message->srcIP, queues.toShaped->clientAddress);
+        std::strcpy(message->srcPort, queues.toShaped->clientPort);
+        break;
+      case TERMINATED:
+        message->connStatus = TERMINATED;
+        break;
+      default:
+        break;
+    }
+    shapedSender->send(controlStream,
+                       reinterpret_cast<uint8_t *>(message),
+                       sizeof(*message));
+    queueSig->ack = true;
+  }
+}
 
 
 /**
@@ -47,8 +94,12 @@ uint64_t dummyStreamID;
  * Lamport Queues for each stream
  */
 inline void initialiseSHM() {
+  size_t shmSize =
+      sizeof(struct queueSignal) +
+      numStreams * 2 * sizeof(class LamportQueue);
+
   int shmId = shmget((int) std::hash<std::string>()(appName),
-                     numStreams * 2 * sizeof(class LamportQueue),
+                     shmSize,
                      IPC_CREAT | 0644);
   if (shmId < 0) {
     std::cerr << "Failed to create shared memory!" << std::endl;
@@ -59,6 +110,18 @@ inline void initialiseSHM() {
     std::cerr << "Failed to attach shared memory!" << std::endl;
     exit(1);
   }
+
+  // The beginning of the SHM contains the queueSignal struct
+  queueSig = reinterpret_cast<struct queueSignal *>(shmAddr);
+  if (queueSig->unshaped == 0) {
+    std::cerr << "Start the unshaped process first" << std::endl;
+    exit(1);
+  }
+  queueSig->shaped = getpid();
+  queueSig->ack = true;
+
+  // The rest of the SHM contains the queues
+  shmAddr += sizeof(struct queueSignal);
   for (int i = 0; i < numStreams * 2; i += 2) {
     // Marks the shm for deletion
     // SHM is deleted once all attached processes exit
@@ -119,26 +182,19 @@ void sendData(size_t dataSize) {
     auto size = iterator.first.toShaped->size();
     if (size == 0) continue; //TODO: Send at least 1 byte
 
-    // Send a control message identifying stream with the actual client
-    uint64_t tmpStreamID;
-    iterator.second->GetID(&tmpStreamID);
-    struct controlMessage ctrlMsg{tmpStreamID, Data};
-    std::strcpy(ctrlMsg.srcIP, iterator.first.toShaped->clientAddress);
-    std::strcpy(ctrlMsg.srcPort, iterator.first.toShaped->clientPort);
-
     auto sizeToSend = std::min(dataSize, size);
     auto buffer = (uint8_t *) malloc(sizeToSend);
     iterator.first.toShaped->pop(buffer, sizeToSend);
-
-    std::cout << "Sending data of " << ctrlMsg.srcIP << ":" << ctrlMsg.srcPort
-              << " on: " << tmpStreamID << std::endl;
     shapedSender->send(iterator.second, buffer, sizeToSend);
+    QUIC_UINT62 streamID;
+    iterator.second->GetID(&streamID);
+    std::cout << "Peer1:Shaped: Sending actual data on " << streamID <<
+              std::endl;
     dataSize -= sizeToSend;
   }
 }
 
-// decide on the amount of data + dummy to be sent and then call sendData.
-// Runs in a separate thread at sendingInterval interval.
+
 /**
  * @brief Loop that calls sendData(...) after obtaining the token generated
  * by the DPCreditor(...) thread.
@@ -164,8 +220,8 @@ void sendData(size_t dataSize) {
         if (dummy != nullptr) {
           memset(dummy, 0, dummySize);
           dummyStream->GetID(&dummyStreamID);
-          std::cout << "Peer1:Shaped: Sending dummy on " << dummyStreamID
-              << std::endl;
+//          std::cout << "Peer1:Shaped: Sending dummy on " << dummyStreamID
+//                    << std::endl;
           shapedSender->send(dummyStream,
                              dummy, dummySize);
         } else {
@@ -180,9 +236,7 @@ void sendData(size_t dataSize) {
   }
 }
 
-// Dummy onResponse function
-// TODO: Ensure the response is sent to the correct queuePair. This requires
-//  the response be received on the correct stream
+
 /**
  * @brief Function that is called when a response is received
  * @param stream The stream on which the response was received
@@ -191,21 +245,19 @@ void sendData(size_t dataSize) {
  */
 void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
   // (void) (stream);
-  uint64_t tmp_streamID;
-  stream->GetID(&tmp_streamID);
-  std::cout << "Peer1:Shaped: Received response on stream " << tmp_streamID
-      << std::endl;
-  if (tmp_streamID != dummyStreamID && tmp_streamID != controlStreamID) {
+  uint64_t streamId;
+  stream->GetID(&streamId);
+  if (streamId != dummyStreamID && streamId != controlStreamID) {
     for (auto &iterator: *streamToQueues) {
       if (iterator.second.fromShaped != nullptr)
         iterator.second.fromShaped->push(buffer, length);
     }
-    std::cout << "Peer1:Shaped: Received response from Server" << std::endl;
-  } else if (tmp_streamID == dummyStreamID) {
-    std::cout << "Peer1:Shaped: Received dummy from QUIC Server" << std::endl;
-  } else if (tmp_streamID == controlStreamID) {
+    std::cout << "Peer1:Shaped: Received response on " << streamId << std::endl;
+  } else if (streamId == dummyStreamID) {
+//    std::cout << "Peer1:Shaped: Received dummy from QUIC Server" << std::endl;
+  } else if (streamId == controlStreamID) {
     std::cout << "Peer1:Shaped: Received control message from QUIC Server"
-        << std::endl;
+              << std::endl;
   }
 }
 
@@ -223,7 +275,8 @@ inline void startControlStream() {
   shapedSender->send(controlStream,
                      reinterpret_cast<uint8_t *>(message),
                      sizeof(*message));
-  std::cout << "Starting control stream at " << message->streamID << std::endl;
+  std::cout << "Peer1:Shaped: Starting control stream at " << message->streamID
+            << std::endl;
 }
 
 /**
@@ -240,7 +293,8 @@ inline void startDummyStream() {
   shapedSender->send(controlStream,
                      reinterpret_cast<uint8_t *>(message),
                      sizeof(*message));
-  std::cout << "Starting dummy stream at " << message->streamID << std::endl;
+  std::cout << "Peer1:Shaped: Starting dummy stream at " << message->streamID
+            << std::endl;
 }
 
 int main() {
@@ -281,6 +335,8 @@ int main() {
   dpCreditor.detach();
   std::thread sendingThread(sendShapedData, 500000);
   sendingThread.detach();
+
+  std::signal(SIGUSR1, handleQueueSignal);
 
   //Wait for signal to exit
   waitForSignal();

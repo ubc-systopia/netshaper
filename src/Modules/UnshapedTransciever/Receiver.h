@@ -2,8 +2,8 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_RECEIVER_H
-#define MINESVPN_RECEIVER_H
+#ifndef MINESVPN_UNSHAPED_RECEIVER_H
+#define MINESVPN_UNSHAPED_RECEIVER_H
 
 #define BUF_SIZE 16384
 #define BACKLOG 20 // Number of pending connections the queue should hold
@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <functional>
+#include "../Common.h"
 
 namespace UnshapedTransciever {
   class Receiver {
@@ -29,7 +30,6 @@ namespace UnshapedTransciever {
     enum logLevels {
       ERROR, WARNING, DEBUG
     };
-
 
     /**
      * @brief Default constructor for the ProxyListener
@@ -42,9 +42,12 @@ namespace UnshapedTransciever {
      */
     explicit Receiver(std::string bindAddr = "",
                       int localPort = 8000,
-                      std::function<void(int fromSocket, std::string
-                      &clientAddress, uint8_t *buffer,
-                                         size_t length)> onReceiveFunc = [](
+                      std::function<void(int fromSocket,
+                                         std::string &clientAddress,
+                                         uint8_t *buffer,
+                                         size_t length,
+                                         enum connectionStatus connStatus)>
+                      onReceiveFunc = [](
                           auto &&...) {}, logLevels level = DEBUG);
 
     /**
@@ -121,9 +124,10 @@ namespace UnshapedTransciever {
      * @param length The length of the data in buffer
      */
     std::function<void(int fromSocket, std::string &clientAddress,
-                       uint8_t *buffer, size_t length)> onReceive;
+                       uint8_t *buffer, size_t length,
+                       enum connectionStatus connStatus)> onReceive;
 
   };
 }
 
-#endif //MINESVPN_RECEIVER_H
+#endif //MINESVPN_UNSHAPED_RECEIVER_H

@@ -13,14 +13,13 @@
 #include <cstring>
 
 #define BUFFER_SIZE 1000
-#define SHM_KEY 0x1234
 
 class LamportQueue {
 public:
   /**
    * Default constructor
    */
-  explicit LamportQueue();
+  explicit LamportQueue(uint64_t queueID);
 
   /**
    *
@@ -54,6 +53,7 @@ public:
    */
   char clientAddress[16];
   char clientPort[6];
+  uint64_t queueID;
 
 private:
   std::atomic<size_t> front_;

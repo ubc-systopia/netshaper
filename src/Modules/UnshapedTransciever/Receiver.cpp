@@ -13,9 +13,11 @@
 
 namespace UnshapedTransciever {
   Receiver::Receiver(std::string bindAddr, int localPort,
-                     std::function<void(int fromSocket, std::string
-                     &clientAddress, uint8_t *buffer,
-                                        size_t length)> onReceiveFunc,
+                     std::function<void(int fromSocket,
+                                        std::string &clientAddress,
+                                        uint8_t *buffer, size_t length,
+                                        enum connectionStatus connStatus)>
+                     onReceiveFunc,
                      logLevels level) : logLevel(level) {
     if (bindAddr.empty()) bindAddr = "0.0.0.0";
     inetFamily = checkIPVersion(bindAddr);
@@ -167,7 +169,7 @@ namespace UnshapedTransciever {
     std::stringstream ss;
     ss << "Client connected on socket " << clientSocket;
     log(DEBUG, ss.str());
-
+    onReceive(clientSocket, clientAddress, nullptr, 0, NEW);
     // Read data from the client socket
     receiveData(clientSocket, clientAddress);
   }
@@ -181,7 +183,7 @@ namespace UnshapedTransciever {
       std::stringstream ss;
       ss << "Data received on socket " << socket;
       log(DEBUG, ss.str());
-      onReceive(socket, clientAddress, buffer, bytesReceived);
+      onReceive(socket, clientAddress, buffer, bytesReceived, ONGOING);
     }
 
     if (bytesReceived < 0) {
@@ -193,6 +195,7 @@ namespace UnshapedTransciever {
     log(DEBUG, ss.str());
     shutdown(socket, SHUT_RDWR);
     close(socket);
+    onReceive(socket, clientAddress, nullptr, 0, TERMINATED);
   }
 
   ssize_t Receiver::sendData(int toSocket, uint8_t *buffer, size_t length) {

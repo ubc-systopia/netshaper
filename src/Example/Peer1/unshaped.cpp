@@ -23,27 +23,26 @@ int numStreams;
 std::unordered_map<int, queuePair> *socketToQueues;
 std::unordered_map<queuePair, int, queuePairHash> *queuesToSocket;
 
+struct queueSignal *queueSig;
+
 UnshapedTransciever::Receiver *unshapedReceiver;
 
-//Temporary single client socket
-// TODO: Replace this with proper socket management for multiple end-hosts
-int theOnlySocket = -1;
-
-// Testing loop that sends all responses to the only available socket
-// TODO: Use proper socket management to send response to correct socket.
-//  This requires that the response is received on the correct stream and
-//  then put in the correct queue
+/**
+ * @brief Read queues periodically and send the responses to the
+ * corresponding sockets
+ * @param interval The interval at which the queues will be checked
+ */
 [[noreturn]] void receivedResponse(__useconds_t interval) {
   while (true) {
     std::this_thread::sleep_for(std::chrono::microseconds(interval));
     for (auto &iterator: *queuesToSocket) {
       auto size = iterator.first.fromShaped->size();
       if (size > 0) {
-        std::cout << "Got data in queue: " << iterator.first.fromShaped <<
-                  std::endl;
+        std::cout << "Peer1:Unshaped: Got data in queue: " <<
+                  iterator.first.fromShaped << std::endl;
         auto buffer = (uint8_t *) malloc(size);
         iterator.first.fromShaped->pop(buffer, size);
-        unshapedReceiver->sendData(theOnlySocket, buffer, size);
+        unshapedReceiver->sendData(iterator.second, buffer, size);
       }
     }
   }
@@ -63,19 +62,32 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress) {
       // No socket attached to this queue pair
       (*socketToQueues)[fromSocket] = iterator.first;
       (*queuesToSocket)[iterator.first] = fromSocket;
-      // Set client of queue to current (new) client
+      // Set client of queue to the new client
       auto address = clientAddress.substr(0, clientAddress.find(':'));
       auto port = clientAddress.substr(address.size() + 1);
       std::strcpy(iterator.first.fromShaped->clientAddress, address.c_str());
       std::strcpy(iterator.first.fromShaped->clientPort, port.c_str());
       std::strcpy(iterator.first.toShaped->clientAddress, address.c_str());
       std::strcpy(iterator.first.toShaped->clientPort, port.c_str());
-
-      theOnlySocket = fromSocket; // TODO: Remove this
       return true;
     }
     return false;
   });
+}
+
+/**
+ * @brief Signal the shaped process on change of queue status
+ * @param queueID The ID of the queue whose status has changed
+ * @param connStatus The changed status of the given queue
+ */
+void signalShapedProcess(uint64_t queueID, connectionStatus connStatus) {
+  // Wait in spin lock while the other process acknowledges previous signal
+  while (!queueSig->ack)
+    continue;
+  queueSig->queueID = queueID;
+  queueSig->connStatus = connStatus;
+  // Signal the other process (does not actually kill the shaped process)
+  kill(queueSig->shaped, SIGUSR1);
 }
 
 /**
@@ -85,19 +97,44 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress) {
  * received
  * @param buffer The buffer in which the received data was put
  * @param length The length of the received data
+ * @param connStatus If it's a new or existing connection or if the
+ * connection was just terminated
  * @return true if data was successfully pushed to assigned queue
  */
-ssize_t receivedUnshapedData(int fromSocket, std::string &clientAddress,
-                             uint8_t *buffer, size_t length) {
-  if ((*socketToQueues)[fromSocket].toShaped == nullptr) {
-    if (!assignQueue(fromSocket, clientAddress))
-      std::cerr << "More clients than expected!" << std::endl;
-  }
+bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
+                          uint8_t *buffer, size_t length, enum
+                              connectionStatus connStatus) {
 
-  // TODO: Check if queue has enough space before pushing to queue
-  // TODO: Send an ACK back only after pushing!
-  (*socketToQueues)[fromSocket].toShaped->push(buffer, length);
-  return 0;
+  switch (connStatus) {
+    case NEW:
+      if (!assignQueue(fromSocket, clientAddress)) {
+        std::cerr << "More clients than expected!" << std::endl;
+        return false;
+      }
+      {
+        std::thread signalOtherProcess(signalShapedProcess,
+                                       (*socketToQueues)[fromSocket].toShaped->queueID,
+                                       NEW);
+        signalOtherProcess.detach();
+      }
+      return true;
+    case ONGOING:
+      // TODO: Check if queue has enough space before pushing to queue
+      // TODO: Send an ACK back only after pushing!
+      (*socketToQueues)[fromSocket].toShaped->push(buffer, length);
+      return true;
+    case TERMINATED:
+      (*queuesToSocket)[(*socketToQueues)[fromSocket]] = 0;
+      (*socketToQueues).erase(fromSocket);
+      {
+        std::thread signalOtherProcess(signalShapedProcess,
+                                       (*socketToQueues)[fromSocket].toShaped->queueID,
+                                       TERMINATED);
+        signalOtherProcess.detach();
+      }
+      return true;
+  }
+  return false;
 }
 
 /**
@@ -105,8 +142,12 @@ ssize_t receivedUnshapedData(int fromSocket, std::string &clientAddress,
  * Lamport Queues for each stream
  */
 inline void initialiseSHM() {
+  size_t shmSize =
+      sizeof(struct queueSignal) +
+      numStreams * 2 * sizeof(class LamportQueue);
+
   int shmId = shmget((int) std::hash<std::string>()(appName),
-                     numStreams * 2 * sizeof(class LamportQueue),
+                     shmSize,
                      IPC_CREAT | 0644);
   if (shmId < 0) {
     std::cerr << "Failed to create shared memory!" << std::endl;
@@ -117,12 +158,21 @@ inline void initialiseSHM() {
     std::cerr << "Failed to attach shared memory!" << std::endl;
     exit(1);
   }
+
+  // The beginning of the SHM contains the queueSignal struct
+  queueSig = reinterpret_cast<struct queueSignal *>(shmAddr);
+  queueSig->unshaped = getpid();
+  queueSig->ack = true;
+
+  // The rest of the SHM contains the queues
+  shmAddr += sizeof(struct queueSignal);
   for (int i = 0; i < numStreams * 2; i += 2) {
     // Initialise a queue class at that shared memory and put it in the maps
     auto queue1 =
-        new(shmAddr + (i * sizeof(class LamportQueue))) LamportQueue();
+        new(shmAddr + (i * sizeof(class LamportQueue))) LamportQueue(i);
     auto queue2 =
-        new(shmAddr + ((i + 1) * sizeof(class LamportQueue))) LamportQueue();
+        new(shmAddr + ((i + 1) * sizeof(class LamportQueue)))
+            LamportQueue(i + 1);
     (*queuesToSocket)[{queue1, queue2}] = 0;
   }
 }
