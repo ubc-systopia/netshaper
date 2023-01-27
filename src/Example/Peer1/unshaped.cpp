@@ -93,7 +93,7 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress,
  */
 void signalShapedProcess(uint64_t queueID, connectionStatus connStatus) {
   // Wait in spin lock while the other process acknowledges previous signal
-  while (!queueSig->ack)
+  while (!queueSig->ack)  //TODO: Replace spin lock with something more efficient
     continue;
   queueSig->queueID = queueID;
   queueSig->connStatus = connStatus;

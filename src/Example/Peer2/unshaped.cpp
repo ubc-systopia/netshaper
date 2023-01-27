@@ -117,7 +117,8 @@ void handleQueueSignal(int signum) {
  * @param interval The interval at which the queues are checked
  */
 [[noreturn]] void checkQueuesForData(__useconds_t interval) {
-  // TODO: Replace this with a proper per-end-host sending mechanism
+  // TODO: Replace this with signalling from shaped side (would it be more
+  //  efficient?)
   while (true) {
     std::this_thread::sleep_for(std::chrono::microseconds(interval));
 //    usleep(100000);
