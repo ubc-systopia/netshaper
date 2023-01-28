@@ -24,7 +24,8 @@ YELLOW='\033[0;33m'
 OFF='\033[0m'
 
 # Kill all background jobs on exit
-trap 'kill 0' EXIT
+PIds=""
+trap 'kill $PIds; exit 0' EXIT
 
 # Make a temp folder to store serverOutput file
 mkdir test
@@ -43,35 +44,41 @@ printf "\n\n\n\n\n\n\n" |
 # Run the tcp server
 echo -e "${YELLOW}Starting TCP Receiver${OFF}"
 nc -l -p 5555 <$serverPipe >serverOutput &
+PIds="$PIds $!"
 exec {serverPipeFd}>$serverPipe
 
 # Run the unshaped sender of peer 2
 echo -e "${YELLOW}Starting Unshaped Sender (Peer 2)${OFF}"
 printf '%s\n' "$peer_2" |
   ../build/src/Example/Peer2/peer_2_unshaped &>$output_redirect &
+PIds="$PIds $!"
 sleep $sleep_time
 
 # Run the shaped receiver of peer 2
 echo -e "${YELLOW}Starting Shaped Receiver (Peer 2)${OFF}"
 printf '%s\n' "$peer_2" |
   ../build/src/Example/Peer2/peer_2_shaped &>$output_redirect &
+PIds="$PIds $!"
 sleep $sleep_time
 
 # Run the unshaped receiver of peer 1
 echo -e "${YELLOW}Starting Unshaped Receiver (Peer 1)${OFF}"
 printf '%s\n' "$peer_1" |
   ../build/src/Example/Peer1/peer_1_unshaped &>$output_redirect &
+PIds="$PIds $!"
 sleep $sleep_time
 
 # Run the shaped sender of peer 1
 echo -e "${YELLOW}Starting Shaped Sender (Peer 1)${OFF}"
 printf '%s\n' "$peer_1" |
   ../build/src/Example/Peer1/peer_1_shaped &>$output_redirect &
+PIds="$PIds $!"
 sleep $((sleep_time + 5))
 
 # Run the tcp client
 echo -e "${YELLOW}Starting TCP Sender and sending data${OFF}"
 nc localhost 8000 <$clientPipe >clientOutput &
+PIds="$PIds $!"
 exec {clientPipeFd}>$clientPipe
 printf '%s\n' "$client_string" >&${clientPipeFd}
 echo -e "${YELLOW}Waiting for message to propagate...${OFF}"
