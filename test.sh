@@ -109,5 +109,3 @@ fi
 echo -e "${YELLOW}Cleaning up!${OFF}"
 cd ..
 rm -r test
-
-#sleep 1000
