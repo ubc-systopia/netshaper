@@ -53,3 +53,6 @@ _(Can run either as a client or a server)_
    `-s` (for server)  
    _Note: The example expects both to run on the same device (i.e. client
    connects on localhost)_
+   
+# Pushing to this repository
+  All PRs and commits on "main" branch will be automatically tested by using test.sh in this repo. Make sure the commit passes the test before hand.
