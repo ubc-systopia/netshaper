@@ -10,37 +10,48 @@
 #include <csignal>
 #include <cstdarg>
 #include <unistd.h>
+#include <mutex>
 
-struct queuePair {
+struct QueuePair {
   LamportQueue *fromShaped;
   LamportQueue *toShaped;
 
-  bool operator==(const queuePair &pair2) const {
+  bool operator==(const QueuePair &pair2) const {
     return fromShaped == pair2.fromShaped && toShaped == pair2.toShaped;
   }
 };
 
-// Simple hash function for queuePair to use it as a key in std::unordered_map
-struct queuePairHash {
-  std::size_t operator()(const queuePair &pair) const {
+// Simple hash function for QueuePair to use it as a key in std::unordered_map
+struct QueuePairHash {
+  std::size_t operator()(const QueuePair &pair) const {
     return std::hash<LamportQueue *>()(pair.fromShaped) ^
            std::hash<LamportQueue *>()(pair.toShaped);
   }
 };
 
-struct queueSignal {
-  uint64_t queueID; // The ID of the queue
-  enum connectionStatus connStatus;
+class SignalInfo {
+private:
+  LamportQueue signalQueue{UINT64_MAX};
+
+public:
   pid_t unshaped;
   pid_t shaped;
-  bool ack;
+
+  struct queueInfo {
+    uint64_t queueID; // The ID of the queue
+    enum connectionStatus connStatus;
+  };
+
+  struct queueInfo dequeue();
+
+  ssize_t enqueue(struct queueInfo &info);
 };
 
 
 enum StreamType {
   Control, Dummy, Data
 };
-struct controlMessage {
+struct ControlMessage {
   uint64_t streamID;
   enum StreamType streamType;
   enum connectionStatus connStatus;

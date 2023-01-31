@@ -25,12 +25,16 @@ const MsQuicApi *MsQuic = new MsQuicApi();
 ShapedTransciever::Receiver *shapedReceiver;
 int numStreams; // Max number of streams each client can initiate
 
-std::unordered_map<MsQuicStream *, queuePair> *streamToQueues;
-std::unordered_map<queuePair, MsQuicStream *, queuePairHash> *queuesToStream;
-struct queueSignal *queueSig;
+std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
+std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash> *queuesToStream;
+
+class SignalInfo *sigInfo;
+
+std::mutex writeLock;
+
 // Map that stores streamIDs for which client information is received (but
 // the stream has not yet begun). Value is address, port.
-std::unordered_map<QUIC_UINT62, struct controlMessage> streamIDtoCtrlMsg;
+std::unordered_map<QUIC_UINT62, struct ControlMessage> streamIDtoCtrlMsg;
 
 MsQuicStream *controlStream;
 uint64_t controlStreamID;
@@ -48,7 +52,7 @@ std::atomic<size_t> sendingCredit;
  */
 inline void initialiseSHM() {
   size_t shmSize =
-      sizeof(struct queueSignal) +
+      sizeof(class SignalInfo) +
       numStreams * 2 * sizeof(class LamportQueue);
 
   int shmId = shmget((int) std::hash<std::string>()(appName),
@@ -64,17 +68,16 @@ inline void initialiseSHM() {
     exit(1);
   }
 
-  // The beginning of the SHM contains the queueSignal struct
-  queueSig = reinterpret_cast<struct queueSignal *>(shmAddr);
-  if (queueSig->unshaped == 0) {
+  // The beginning of the SHM contains the signalStruct struct
+  sigInfo = reinterpret_cast<class SignalInfo *>(shmAddr);
+  if (sigInfo->unshaped == 0) {
     std::cerr << "Start the unshaped process first" << std::endl;
     exit(1);
   }
-  queueSig->shaped = getpid();
-  queueSig->ack = true;
+  sigInfo->shaped = getpid();
 
   // The rest of the SHM contains the queues
-  shmAddr += sizeof(struct queueSignal);
+  shmAddr += sizeof(class SignalInfo);
   for (int i = 0; i < numStreams * 2; i += 2) {
     // Marks the shm for deletion
     // SHM is deleted once all attached processes exit
@@ -169,13 +172,11 @@ MsQuicStream *findStreamByID(QUIC_UINT62 ID) {
  * @param connStatus The changed status of the given queue
  */
 void signalUnshapedProcess(uint64_t queueID, connectionStatus connStatus) {
-  // Wait in spin lock while the other process acknowledges previous signal
-  while (!queueSig->ack) //TODO: Replace spin lock with something more efficient
-    continue;
-  queueSig->queueID = queueID;
-  queueSig->connStatus = connStatus;
-  // Signal the other process (does not actually kill the shaped process)
-  kill(queueSig->unshaped, SIGUSR1);
+  std::scoped_lock lock(writeLock);
+  struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
+  sigInfo->enqueue(queueInfo);  // TODO: Handle case when queue is full
+  // Signal the other process (does not actually kill the unshaped process)
+  kill(sigInfo->unshaped, SIGUSR1);
 }
 
 /**
@@ -184,7 +185,7 @@ void signalUnshapedProcess(uint64_t queueID, connectionStatus connStatus) {
  * @param queues The queues to copy the data to
  * @param ctrlMsg The control message to copy the data from
  */
-void copyClientInfo(queuePair queues, struct controlMessage *ctrlMsg) {
+void copyClientInfo(QueuePair queues, struct ControlMessage *ctrlMsg) {
   // Source/Client
   std::strcpy(queues.toShaped->clientAddress,
               ctrlMsg->srcIP);
@@ -212,9 +213,9 @@ void copyClientInfo(queuePair queues, struct controlMessage *ctrlMsg) {
  * @return true if queue was assigned successfully
  */
 inline bool assignQueues(MsQuicStream *stream) {
-  // Find an unused queuePair and map it
+  // Find an unused QueuePair and map it
   return std::ranges::any_of(*queuesToStream, [&](auto &iterator) {
-    // iterator.first is queuePair, iterator.second is sender
+    // iterator.first is QueuePair, iterator.second is sender
     if (iterator.second == nullptr) {
       // No sender attached to this queue pair
       (*streamToQueues)[stream] = iterator.first;
@@ -222,7 +223,7 @@ inline bool assignQueues(MsQuicStream *stream) {
 
       QUIC_UINT62 streamID;
       stream->GetID(&streamID);
-      queuePair queues = iterator.first;
+      QueuePair queues = iterator.first;
       if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
         copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
         std::thread signalOtherProcess(signalUnshapedProcess,
@@ -244,7 +245,7 @@ inline bool assignQueues(MsQuicStream *stream) {
  * @brief Handle receiving control messages from the other middleBox
  * @param ctrlMsg The control message that was received
  */
-void receivedControlMessage(struct controlMessage *ctrlMsg) {
+void receivedControlMessage(struct ControlMessage *ctrlMsg) {
   switch (ctrlMsg->streamType) {
     case Dummy:
       std::cout << "Dummy stream ID " << ctrlMsg->streamID << std::endl;
@@ -297,14 +298,14 @@ length) {
   // Check if this is first byte from the other middlebox
   if (controlStream == nullptr) {
     std::cout << "Peer2:Shaped: Setting control stream" << std::endl;
-    size_t numMessages = length / sizeof(struct controlMessage);
+    size_t numMessages = length / sizeof(struct ControlMessage);
 
-    // struct controlMessage *messages[length/sizeof(struct controlMessage)];
+    // struct ControlMessage *messages[length/sizeof(struct ControlMessage)];
     for (int i = 0; i < numMessages; i++) {
-      auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer +
-                                                               (sizeof(struct controlMessage) *
+      auto ctrlMsg = reinterpret_cast<struct ControlMessage *>(buffer +
+                                                               (sizeof(struct ControlMessage) *
                                                                 i));
-      // auto ctrlMsg = static_cast<struct controlMessage *>(buffer + (sizeof(struct controlMessage) * i));
+      // auto ctrlMsg = static_cast<struct ControlMessage *>(buffer + (sizeof(struct ControlMessage) * i));
       if (ctrlMsg->streamType == Control) {
         controlStream = stream;
         controlStreamID = streamID;
@@ -315,7 +316,7 @@ length) {
     return;
   } else if (controlStream == stream) {
     // A message from the controlStream
-    auto ctrlMsg = reinterpret_cast<struct controlMessage *>(buffer);
+    auto ctrlMsg = reinterpret_cast<struct ControlMessage *>(buffer);
     std::cout << "Peer2:Shaped: Received control message for stream type " <<
               ctrlMsg->streamType << std::endl;
     receivedControlMessage(ctrlMsg);
@@ -491,11 +492,11 @@ int main() {
   std::cin >> numStreams;
 
   queuesToStream =
-      new std::unordered_map<queuePair,
-          MsQuicStream *, queuePairHash>(numStreams);
+      new std::unordered_map<QueuePair,
+          MsQuicStream *, QueuePairHash>(numStreams);
 
   streamToQueues =
-      new std::unordered_map<MsQuicStream *, queuePair>(numStreams);
+      new std::unordered_map<MsQuicStream *, QueuePair>(numStreams);
 
   initialiseSHM();
 

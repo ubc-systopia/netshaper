@@ -12,14 +12,16 @@
 
 std::string appName = "minesVPNPeer2";
 
-std::unordered_map<queuePair, UnshapedTransciever::Sender *, queuePairHash>
+std::unordered_map<QueuePair, UnshapedTransciever::Sender *, QueuePairHash>
     *queuesToSender;
 
 // Sender to queue_in and queue_out. queue_out contains response received on
 // the sending socket
-std::unordered_map<UnshapedTransciever::Sender *, queuePair> *senderToQueues;
+std::unordered_map<UnshapedTransciever::Sender *, QueuePair> *senderToQueues;
 
-struct queueSignal *queueSig;
+class SignalInfo *sigInfo;
+
+std::mutex readLock;
 
 /**
  * @brief Create numStreams number of shared memory streams and initialise
@@ -27,7 +29,7 @@ struct queueSignal *queueSig;
  */
 inline void initialiseSHM(int numStreams) {
   size_t shmSize =
-      sizeof(struct queueSignal) +
+      sizeof(class SignalInfo) +
       numStreams * 2 * sizeof(class LamportQueue);
 
   int shmId = shmget((int) std::hash<std::string>()(appName),
@@ -43,13 +45,12 @@ inline void initialiseSHM(int numStreams) {
     exit(1);
   }
 
-  // The beginning of the SHM contains the queueSignal struct
-  queueSig = reinterpret_cast<struct queueSignal *>(shmAddr);
-  queueSig->unshaped = getpid();
-  queueSig->ack = true;
+  // The beginning of the SHM contains the signalStruct struct
+  sigInfo = new(shmAddr) SignalInfo{};
+  sigInfo->unshaped = getpid();
 
   // The rest of the SHM contains the queues
-  shmAddr += sizeof(struct queueSignal);
+  shmAddr += sizeof(class SignalInfo);
   for (int i = 0; i < numStreams * 2; i += 2) {
     auto queue1 =
         new(shmAddr + (i * sizeof(class LamportQueue))) LamportQueue(i);
@@ -75,9 +76,9 @@ void onReceive(UnshapedTransciever::Sender *sender,
 /**
  * @brief Find a queue pair by the ID of it's "fromShaped" queue
  * @param queueID The ID of the "fromShaped" queue
- * @return The queuePair this ID belongs to
+ * @return The QueuePair this ID belongs to
  */
-queuePair findQueuesByID(uint64_t queueID) {
+QueuePair findQueuesByID(uint64_t queueID) {
   for (auto &iterator: *queuesToSender) {
     if (iterator.first.fromShaped->queueID == queueID) {
       return iterator.first;
@@ -92,8 +93,10 @@ queuePair findQueuesByID(uint64_t queueID) {
  */
 void handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
-    auto queues = findQueuesByID(queueSig->queueID);
-    if (queueSig->connStatus == NEW) {
+    std::scoped_lock lock(readLock);
+    auto queueInfo = sigInfo->dequeue();
+    auto queues = findQueuesByID(queueInfo.queueID);
+    if (queueInfo.connStatus == NEW) {
       std::cout << "Peer2:Unshaped: New Connection" << std::endl;
       auto unshapedSender = new UnshapedTransciever::Sender{
           queues.fromShaped->serverAddress,
@@ -102,13 +105,12 @@ void handleQueueSignal(int signum) {
 
       (*queuesToSender)[queues] = unshapedSender;
       (*senderToQueues)[unshapedSender] = queues;
-    } else if (queueSig->connStatus == TERMINATED) {
+    } else if (queueInfo.connStatus == TERMINATED) {
       std::cout << "Peer2:Unshaped: Connection Terminated" << std::endl;
       (*senderToQueues).erase((*queuesToSender)[queues]);
       delete (*queuesToSender)[queues];
       (*queuesToSender)[queues] = nullptr;
     }
-    queueSig->ack = true;
   }
 }
 
@@ -145,11 +147,11 @@ int main() {
   std::cin >> numStreams;
 
   queuesToSender =
-      new std::unordered_map<queuePair,
-          UnshapedTransciever::Sender *, queuePairHash>(numStreams);
+      new std::unordered_map<QueuePair,
+          UnshapedTransciever::Sender *, QueuePairHash>(numStreams);
 
   senderToQueues =
-      new std::unordered_map<UnshapedTransciever::Sender *, queuePair>();
+      new std::unordered_map<UnshapedTransciever::Sender *, QueuePair>();
 
   initialiseSHM(numStreams);
 

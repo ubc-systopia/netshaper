@@ -20,10 +20,12 @@ std::string appName = "minesVPNPeer1";
 // current code does not implement it either.
 int numStreams;
 
-std::unordered_map<int, queuePair> *socketToQueues;
-std::unordered_map<queuePair, int, queuePairHash> *queuesToSocket;
+std::unordered_map<int, QueuePair> *socketToQueues;
+std::unordered_map<QueuePair, int, QueuePairHash> *queuesToSocket;
 
-struct queueSignal *queueSig;
+class SignalInfo *sigInfo;
+
+std::mutex writeLock;
 
 UnshapedTransciever::Receiver *unshapedReceiver;
 
@@ -59,7 +61,7 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress,
                         std::string serverAddress = "127.0.0.1:5555") {
   // Find an unused queue and map it
   return std::ranges::any_of(*queuesToSocket, [&](auto &iterator) {
-    // iterator.first is queuePair, iterator.second is socket
+    // iterator.first is QueuePair, iterator.second is socket
     if (iterator.second == 0) {
       // No socket attached to this queue pair
       (*socketToQueues)[fromSocket] = iterator.first;
@@ -67,7 +69,7 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress,
       // Set client of queue to the new client
       auto address = clientAddress.substr(0, clientAddress.find(':'));
       auto port = clientAddress.substr(address.size() + 1);
-      queuePair queues = iterator.first;
+      QueuePair queues = iterator.first;
       std::strcpy(queues.fromShaped->clientAddress, address.c_str());
       std::strcpy(queues.fromShaped->clientPort, port.c_str());
       std::strcpy(queues.toShaped->clientAddress, address.c_str());
@@ -92,13 +94,11 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress,
  * @param connStatus The changed status of the given queue
  */
 void signalShapedProcess(uint64_t queueID, connectionStatus connStatus) {
-  // Wait in spin lock while the other process acknowledges previous signal
-  while (!queueSig->ack)  //TODO: Replace spin lock with something more efficient
-    continue;
-  queueSig->queueID = queueID;
-  queueSig->connStatus = connStatus;
+  std::scoped_lock lock(writeLock);
+  struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
+  sigInfo->enqueue(queueInfo);  //TODO: Handle case when queue is full
   // Signal the other process (does not actually kill the shaped process)
-  kill(queueSig->shaped, SIGUSR1);
+  kill(sigInfo->shaped, SIGUSR1);
 }
 
 /**
@@ -153,7 +153,7 @@ bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
  */
 inline void initialiseSHM() {
   size_t shmSize =
-      sizeof(struct queueSignal) +
+      sizeof(class SignalInfo) +
       numStreams * 2 * sizeof(class LamportQueue);
 
   int shmId = shmget((int) std::hash<std::string>()(appName),
@@ -169,13 +169,12 @@ inline void initialiseSHM() {
     exit(1);
   }
 
-  // The beginning of the SHM contains the queueSignal struct
-  queueSig = reinterpret_cast<struct queueSignal *>(shmAddr);
-  queueSig->unshaped = getpid();
-  queueSig->ack = true;
+  // The beginning of the SHM contains the signalStruct struct
+  sigInfo = new(shmAddr) SignalInfo{};
+  sigInfo->unshaped = getpid();
 
   // The rest of the SHM contains the queues
-  shmAddr += sizeof(struct queueSignal);
+  shmAddr += sizeof(class SignalInfo);
   for (int i = 0; i < numStreams * 2; i += 2) {
     // Initialise a queue class at that shared memory and put it in the maps
     auto queue1 =
@@ -191,9 +190,9 @@ int main() {
   std::cout << "Enter the maximum number of clients that should be supported:"
                " " << std::endl;
   std::cin >> numStreams;
-  socketToQueues = new std::unordered_map<int, queuePair>(numStreams);
-  queuesToSocket = new std::unordered_map<queuePair,
-      int, queuePairHash>(numStreams);
+  socketToQueues = new std::unordered_map<int, QueuePair>(numStreams);
+  queuesToSocket = new std::unordered_map<QueuePair,
+      int, QueuePairHash>(numStreams);
 
   initialiseSHM();
 

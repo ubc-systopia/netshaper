@@ -28,9 +28,12 @@ ShapedTransciever::Sender *shapedSender;
 // current code does not implement it either.
 int numStreams;
 
-std::unordered_map<queuePair, MsQuicStream *, queuePairHash> *queuesToStream;
-std::unordered_map<MsQuicStream *, queuePair> *streamToQueues;
-struct queueSignal *queueSig;
+std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash> *queuesToStream;
+std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
+
+class SignalInfo *sigInfo;
+
+std::mutex readLock;
 
 MsQuicStream *dummyStream;
 MsQuicStream *controlStream;
@@ -45,9 +48,9 @@ uint64_t dummyStreamID;
 /**
  * @brief Find a queue pair by the ID of it's "toShaped" queue
  * @param queueID The ID of the "toShaped" queue to find
- * @return The queuePair this ID belongs to
+ * @return The QueuePair this ID belongs to
  */
-queuePair findQueuesByID(uint64_t queueID) {
+QueuePair findQueuesByID(uint64_t queueID) {
   for (auto &iterator: *queuesToStream) {
     if (iterator.first.toShaped->queueID == queueID) {
       return iterator.first;
@@ -62,14 +65,16 @@ queuePair findQueuesByID(uint64_t queueID) {
  */
 void handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
-    auto queues = findQueuesByID(queueSig->queueID);
+    std::scoped_lock lock(readLock);
+    auto queueInfo = sigInfo->dequeue();
+    auto queues = findQueuesByID(queueInfo.queueID);
     auto *message =
-        (struct controlMessage *) malloc(sizeof(struct controlMessage));
+        (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
     (*queuesToStream)[queues]->GetID(&message->streamID);
     message->streamType = Data;
     message->connStatus = ONGOING;  // For fallback purposes only
 
-    switch (queueSig->connStatus) {
+    switch (queueInfo.connStatus) {
       case NEW:
         message->connStatus = NEW;
         std::strcpy(message->srcIP, queues.toShaped->clientAddress);
@@ -86,7 +91,6 @@ void handleQueueSignal(int signum) {
     shapedSender->send(controlStream,
                        reinterpret_cast<uint8_t *>(message),
                        sizeof(*message));
-    queueSig->ack = true;
   }
 }
 
@@ -97,7 +101,7 @@ void handleQueueSignal(int signum) {
  */
 inline void initialiseSHM() {
   size_t shmSize =
-      sizeof(struct queueSignal) +
+      sizeof(class SignalInfo) +
       numStreams * 2 * sizeof(class LamportQueue);
 
   int shmId = shmget((int) std::hash<std::string>()(appName),
@@ -113,17 +117,16 @@ inline void initialiseSHM() {
     exit(1);
   }
 
-  // The beginning of the SHM contains the queueSignal struct
-  queueSig = reinterpret_cast<struct queueSignal *>(shmAddr);
-  if (queueSig->unshaped == 0) {
+  // The beginning of the SHM contains the signalStruct struct
+  sigInfo = reinterpret_cast<class SignalInfo *>(shmAddr);
+  if (sigInfo->unshaped == 0) {
     std::cerr << "Start the unshaped process first" << std::endl;
     exit(1);
   }
-  queueSig->shaped = getpid();
-  queueSig->ack = true;
+  sigInfo->shaped = getpid();
 
   // The rest of the SHM contains the queues
-  shmAddr += sizeof(struct queueSignal);
+  shmAddr += sizeof(class SignalInfo);
   for (int i = 0; i < numStreams * 2; i += 2) {
     // Marks the shm for deletion
     // SHM is deleted once all attached processes exit
@@ -268,7 +271,7 @@ void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
 inline void startControlStream() {
   controlStream = shapedSender->startStream();
   auto *message =
-      (struct controlMessage *) malloc(sizeof(struct controlMessage));
+      (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
   controlStream->GetID(&message->streamID);
   // save the control stream ID for later
   controlStreamID = message->streamID;
@@ -286,7 +289,7 @@ inline void startControlStream() {
 inline void startDummyStream() {
   dummyStream = shapedSender->startStream();
   auto *message =
-      (struct controlMessage *) malloc(sizeof(struct controlMessage));
+      (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
   dummyStream->GetID(&message->streamID);
   // save the dummy stream ID for later
   dummyStreamID = message->streamID;
@@ -306,10 +309,10 @@ int main() {
   std::cin >> numStreams;
 
   queuesToStream =
-      new std::unordered_map<queuePair,
-          MsQuicStream *, queuePairHash>(numStreams);
+      new std::unordered_map<QueuePair,
+          MsQuicStream *, QueuePairHash>(numStreams);
   streamToQueues =
-      new std::unordered_map<MsQuicStream *, queuePair>(numStreams);
+      new std::unordered_map<MsQuicStream *, QueuePair>(numStreams);
 
   NoiseGenerator noiseGenerator{0.01, 100};
   // Connect to the other middlebox

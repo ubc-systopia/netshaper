@@ -4,6 +4,16 @@
 
 #include "helpers.h"
 
+struct SignalInfo::queueInfo SignalInfo::dequeue() {
+  struct SignalInfo::queueInfo info{};
+  signalQueue.pop(reinterpret_cast<uint8_t *>(&info), sizeof(info));
+  return info;
+}
+
+ssize_t SignalInfo::enqueue(struct SignalInfo::queueInfo &info) {
+  return signalQueue.push(reinterpret_cast<uint8_t *>(&info), sizeof(info));
+}
+
 void addSignal(sigset_t *set, int numSignals, ...) {
   va_list args;
   va_start(args, numSignals);
