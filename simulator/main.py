@@ -1,44 +1,38 @@
 import numpy as np
 import pandas as pd
-
-from modules import  Application
-from DP_transport_dynamic import DP_transport_dynamic
-from DP_transport_static import DP_transport_static
-from DP_transport_wPrivacy import DP_transport_wPrivacy
-
-from utils.overhead_utils import *
+import configlib
 
 
+from src.transport import DP_transport, NonDP_transport
+from src.data_utils.data_loader import data_loader, data_saver
 
-def DP_transport(app_window_size_, DP_setup_,DP_mechanism_,  epsilon_per_sample_, DP_step_, verbose=True):
-  ## Create the application with a predefined application window size (the timing resolution at the application level)
+def main():
+  # load the config file
+  config = configlib.parse(save_fname="tmp.txt")
+  
+  # if(config.middlebox_period_us % config.app_time_resolution_us != 0):
+  #   print("The middlebox period must be a multiple of the application time resolution.")
+  #   return -1
+  # else:
+  #   DP_step = int(config.middlebox_period_us / config.app_time_resolution_us)
 
-  app_window_size = app_window_size_
-  DP_setup = DP_setup_
-  DP_mechanism = DP_mechanism_
-  DP_step = DP_step_
-  epsilon_per_sample = epsilon_per_sample_
 
-  app = Application(app_window_size)
-  if(DP_setup == "wPrivacy"):
-    return DP_transport_wPrivacy(app, DP_step, DP_mechanism, epsilon_per_sample)
-  elif(DP_setup == "dynamic"):
-    return DP_transport_dynamic(app, DP_step, DP_mechanism, epsilon_per_sample, verbose)
-  elif(DP_setup == "static"):
-    return DP_transport_static(app, DP_step, DP_mechanism, epsilon_per_sample)
-  else:
-    return -1, -1
+
+  
+  # original_data, DP_data, dummy_data = DP_transport(data, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.epsilon_per_query, DP_step, config.data_time_resolution_us)
+
+  data_time_resolution_us_list = [2e6, 1e6, 5e5, 1e5, 5e4]
+  
+  for data_time_resolution_us in data_time_resolution_us_list:
+    data = data_loader(data_time_resolution_us, config.load_data_dir, config.data_source, config.num_of_unique_streams)
+    
+    data_saver(data, config.save_data_dir, data_time_resolution_us, config.num_of_unique_streams)   
+    print("Data saved for data_time_resolution_us = ", data_time_resolution_us)
   
 
-def NonDP_transport(app_window_size_):
-  app_window_size = app_window_size_
-  app = Application(app_window_size)
-
-  app_df = app.data_loader()
-  app_labels = app.get_all_labels()
-  app_data = app.get_all_data()
-  max_value = (app_data.max()).max()
-  reshaped_data = [[max_value] * len(app_data.columns)] * len(app_data)
-  reshaped_data = pd.DataFrame(reshaped_data) 
-  reshaped_df = pd.concat([reshaped_data, app_labels], axis=1)
-  return app_df, reshaped_df
+   
+   
+   
+        
+if __name__ == '__main__':
+  main()
