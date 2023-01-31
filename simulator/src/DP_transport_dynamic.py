@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from utils.queue_utils import *
-from utils.DP_utils import *
-from modules.Queue import Queue
+from src.utils.queue_utils import *
+from src.utils.DP_utils import *
+from src.modules.Queue import Queue
 
 
 def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, verbose=True):

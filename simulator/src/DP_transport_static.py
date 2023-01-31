@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 
-from modules.fpa import * 
-from utils.queue_utils import *
-from utils.DP_utils import *
+from src.modules.fpa import * 
+from src.utils.queue_utils import *
+from src.utils.DP_utils import *
 
 
-def DPstream_static(app, DP_step_, DP_mechanism_, global_epsilon_):
+def DP_transport_static(app, DP_step_, DP_mechanism_, global_epsilon_):
 
   DP_step = DP_step_
   DP_mechanism = DP_mechanism_

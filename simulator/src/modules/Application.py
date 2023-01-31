@@ -4,13 +4,17 @@ class Application():
   def __init__(self, application_window_size, data, data_window_size):
     if not isinstance(data, pd.DataFrame):
       raise TypeError("The data should be a pandas dataframe.")
-    if not (application_window_size % data_window_size != 0):
-      raise ValueError("The application window size should be a multiple of the data window size.")
+    if not (application_window_size % data_window_size == 0):
+      raise ValueError(f'The application window size should be a multiple of the data window size.')
+    self.app_df = data
     self.app_T = application_window_size
     self.app_data = data.loc[:, data.columns != 'label']
     self.app_labels = data['label']
     self.data_pointer = 0
     self.app_status = "ongoing" # two status: 1-ongoing, 2-terminated
+  
+  def data_loader(self):
+    return self.app_df
   
   def generate_data(self, step):
     if (self.get_status == "terminated"):

@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-from queue_utils import *
-
+from src.utils.queue_utils import *
 
 
 def calculate_sensitivity_using_dataset(app_data):

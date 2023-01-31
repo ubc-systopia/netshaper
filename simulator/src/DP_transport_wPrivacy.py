@@ -2,13 +2,13 @@ import numpy as np
 import pandas as pd
 
 
-from modules.Queue import Queue
-from modules.BudgetAbsorption import BudgetAbsorption
-from utils.queue_utils import *
-from utils.DP_utils import *
+from src.modules.Queue import Queue
+from src.modules.BudgetAbsorption import BudgetAbsorption
+from src.utils.queue_utils import *
+from src.utils.DP_utils import *
 
 
-def DPstream_wPrivacy(app, DP_step_, DP_mechanism_, epsilon_per_sample_):
+def DP_transport_wPrivacy(app, DP_step_, DP_mechanism_, epsilon_per_sample_):
 
   sensitivity = 1e5 #Bytes
   # print(sensitivity)
