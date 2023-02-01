@@ -129,11 +129,21 @@ bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
       signalOtherProcess.detach();
     }
       return true;
-    case ONGOING:
+    case ONGOING: {
       // TODO: Check if queue has enough space before pushing to queue
       // TODO: Send an ACK back only after pushing!
-      (*socketToQueues)[fromSocket].toShaped->push(buffer, length);
+      auto toShaped = (*socketToQueues)[fromSocket].toShaped;
+      while (toShaped->push(buffer, length) == -1) {
+        std::cerr << "Queue for client " << toShaped->clientAddress
+                  << ":" << toShaped->clientPort
+                  << " is full. Waiting for it to be empty"
+                  << std::endl;
+        // Sleep for some time. For performance reasons, this is the same as
+        // the interval with which DP Logic thread runs in Shaped component.
+        std::this_thread::sleep_for(std::chrono::microseconds(500000));
+      }
       return true;
+    }
     case TERMINATED: {
       std::thread signalOtherProcess(signalShapedProcess,
                                      (*socketToQueues)[fromSocket].toShaped->queueID,

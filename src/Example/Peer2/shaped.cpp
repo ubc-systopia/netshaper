@@ -343,7 +343,17 @@ length) {
     if (!assignQueues(stream))
       std::cerr << "More streams than expected!" << std::endl;
   }
-  (*streamToQueues)[stream].fromShaped->push(buffer, length);
+
+  auto fromShaped = (*streamToQueues)[stream].fromShaped;
+  while (fromShaped->push(buffer, length) == -1) {
+    std::cerr << "Queue for client " << fromShaped->clientAddress
+              << ":" << fromShaped->clientPort
+              << " is full. Waiting for it to be empty"
+              << std::endl;
+    // Sleep for some time. For performance reasons, this is the same as
+    // the interval with the unshaped components checks queues for data.
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+  }
 }
 
 /**
