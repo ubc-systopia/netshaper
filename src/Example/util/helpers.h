@@ -42,7 +42,7 @@ public:
     enum connectionStatus connStatus;
   };
 
-  struct queueInfo dequeue();
+  bool dequeue(struct SignalInfo::queueInfo &info);
 
   ssize_t enqueue(struct queueInfo &info);
 };

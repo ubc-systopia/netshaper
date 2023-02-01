@@ -4,10 +4,8 @@
 
 #include "helpers.h"
 
-struct SignalInfo::queueInfo SignalInfo::dequeue() {
-  struct SignalInfo::queueInfo info{};
-  signalQueue.pop(reinterpret_cast<uint8_t *>(&info), sizeof(info));
-  return info;
+bool SignalInfo::dequeue(struct SignalInfo::queueInfo &info) {
+  return signalQueue.pop(reinterpret_cast<uint8_t *>(&info), sizeof(info)) >= 0;
 }
 
 ssize_t SignalInfo::enqueue(struct SignalInfo::queueInfo &info) {

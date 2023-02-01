@@ -66,31 +66,33 @@ QueuePair findQueuesByID(uint64_t queueID) {
 void handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
-    auto queueInfo = sigInfo->dequeue();
-    auto queues = findQueuesByID(queueInfo.queueID);
-    auto *message =
-        (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
-    (*queuesToStream)[queues]->GetID(&message->streamID);
-    message->streamType = Data;
-    message->connStatus = ONGOING;  // For fallback purposes only
+    struct SignalInfo::queueInfo queueInfo{};
+    while (sigInfo->dequeue(queueInfo)) {
+      auto queues = findQueuesByID(queueInfo.queueID);
+      auto *message =
+          (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
+      (*queuesToStream)[queues]->GetID(&message->streamID);
+      message->streamType = Data;
+      message->connStatus = ONGOING;  // For fallback purposes only
 
-    switch (queueInfo.connStatus) {
-      case NEW:
-        message->connStatus = NEW;
-        std::strcpy(message->srcIP, queues.toShaped->clientAddress);
-        std::strcpy(message->srcPort, queues.toShaped->clientPort);
-        std::strcpy(message->destIP, queues.toShaped->serverAddress);
-        std::strcpy(message->destPort, queues.toShaped->serverPort);
-        break;
-      case TERMINATED:
-        message->connStatus = TERMINATED;
-        break;
-      default:
-        break;
+      switch (queueInfo.connStatus) {
+        case NEW:
+          message->connStatus = NEW;
+          std::strcpy(message->srcIP, queues.toShaped->clientAddress);
+          std::strcpy(message->srcPort, queues.toShaped->clientPort);
+          std::strcpy(message->destIP, queues.toShaped->serverAddress);
+          std::strcpy(message->destPort, queues.toShaped->serverPort);
+          break;
+        case TERMINATED:
+          message->connStatus = TERMINATED;
+          break;
+        default:
+          break;
+      }
+      shapedSender->send(controlStream,
+                         reinterpret_cast<uint8_t *>(message),
+                         sizeof(*message));
     }
-    shapedSender->send(controlStream,
-                       reinterpret_cast<uint8_t *>(message),
-                       sizeof(*message));
   }
 }
 

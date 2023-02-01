@@ -94,22 +94,24 @@ QueuePair findQueuesByID(uint64_t queueID) {
 void handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
-    auto queueInfo = sigInfo->dequeue();
-    auto queues = findQueuesByID(queueInfo.queueID);
-    if (queueInfo.connStatus == NEW) {
-      std::cout << "Peer2:Unshaped: New Connection" << std::endl;
-      auto unshapedSender = new UnshapedTransciever::Sender{
-          queues.fromShaped->serverAddress,
-          std::stoi(queues.fromShaped->serverPort),
-          onReceive};
+    struct SignalInfo::queueInfo queueInfo{};
+    while (sigInfo->dequeue(queueInfo)) {
+      auto queues = findQueuesByID(queueInfo.queueID);
+      if (queueInfo.connStatus == NEW) {
+        std::cout << "Peer2:Unshaped: New Connection" << std::endl;
+        auto unshapedSender = new UnshapedTransciever::Sender{
+            queues.fromShaped->serverAddress,
+            std::stoi(queues.fromShaped->serverPort),
+            onReceive};
 
-      (*queuesToSender)[queues] = unshapedSender;
-      (*senderToQueues)[unshapedSender] = queues;
-    } else if (queueInfo.connStatus == TERMINATED) {
-      std::cout << "Peer2:Unshaped: Connection Terminated" << std::endl;
-      (*senderToQueues).erase((*queuesToSender)[queues]);
-      delete (*queuesToSender)[queues];
-      (*queuesToSender)[queues] = nullptr;
+        (*queuesToSender)[queues] = unshapedSender;
+        (*senderToQueues)[unshapedSender] = queues;
+      } else if (queueInfo.connStatus == TERMINATED) {
+        std::cout << "Peer2:Unshaped: Connection Terminated" << std::endl;
+        (*senderToQueues).erase((*queuesToSender)[queues]);
+        delete (*queuesToSender)[queues];
+        (*queuesToSender)[queues] = nullptr;
+      }
     }
   }
 }
