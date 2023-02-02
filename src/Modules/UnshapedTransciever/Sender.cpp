@@ -118,7 +118,8 @@ namespace UnshapedTransciever {
     }
 
     if (bytesReceived < 0) {
-      throw std::runtime_error("Broken pipe");
+      log(ERROR, "Sender at " + remoteHost + std::to_string(remotePort) +
+                 " disconnected abruptly!");
     }
     // Stop other processes from using these sockets
     shutdown(remoteSocket, SHUT_RDWR);

@@ -34,6 +34,7 @@ std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
 class SignalInfo *sigInfo;
 
 std::mutex readLock;
+std::mutex writeLock;
 
 MsQuicStream *dummyStream;
 MsQuicStream *controlStream;
@@ -67,7 +68,7 @@ void handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
     struct SignalInfo::queueInfo queueInfo{};
-    while (sigInfo->dequeue(queueInfo)) {
+    while (sigInfo->dequeue(SignalInfo::toShaped, queueInfo)) {
       auto queues = findQueuesByID(queueInfo.queueID);
       auto *message =
           (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
@@ -85,6 +86,8 @@ void handleQueueSignal(int signum) {
           break;
         case TERMINATED:
           message->connStatus = TERMINATED;
+          // Client terminated, no point in sending data to it
+//          queues.fromShaped->clear();
           break;
         default:
           break;
@@ -178,15 +181,37 @@ size_t getAggregatedQueueSize() {
 }
 
 /**
+ * @brief Signal the shaped process on change of queue status
+ * @param queueID The ID of the queue whose status has changed
+ * @param connStatus The changed status of the given queue
+ */
+void signalUnshapedProcess(uint64_t queueID, connectionStatus connStatus) {
+  std::scoped_lock lock(writeLock);
+  struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
+  sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
+  //TODO: Handle case when queue is full
+
+  // Signal the other process (does not actually kill the shaped process)
+  kill(sigInfo->unshaped, SIGUSR1);
+}
+
+/**
  * @brief Send data to the receiving middleBox
  * @param dataSize The number of bytes to send out
  */
 void sendData(size_t dataSize) {
   // TODO: Add prioritisation
   for (auto &iterator: *queuesToStream) {
-    if (dataSize == 0) break;
-    auto size = iterator.first.toShaped->size();
-    if (size == 0) continue; //TODO: Send at least 1 byte
+    auto toShaped = iterator.first.toShaped;
+    auto size = toShaped->size();
+    if (size == 0 || dataSize == 0) {
+      if (toShaped->markedForDeletion) {
+        std::cout << "Peer1:Shaped: Queue is marked for deletion" << std::endl;
+        signalUnshapedProcess(toShaped->queueID, TERMINATED);
+        toShaped->markedForDeletion = false;
+      }
+      continue; //TODO: Send at least 1 byte
+    }
 
     auto sizeToSend = std::min(dataSize, size);
     auto buffer = (uint8_t *) malloc(sizeToSend);

@@ -46,6 +46,11 @@ public:
    */
   size_t size();
 
+  /**
+   * @brief Clear the queue
+   */
+  void clear();
+
   size_t freeSpace();
 
   /**
@@ -56,6 +61,7 @@ public:
   char serverAddress[16] = "";
   char serverPort[6] = "";
   uint64_t queueID;
+  bool markedForDeletion = false;
 
 private:
   std::atomic<size_t> front;

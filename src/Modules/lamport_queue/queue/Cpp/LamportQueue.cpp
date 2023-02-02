@@ -75,6 +75,10 @@ size_t LamportQueue::size() {
   return this->getQueueSizeLocal(f, b);
 }
 
+void LamportQueue::clear() {
+  front = back = cachedFront = cachedBack = 0;
+}
+
 size_t LamportQueue::freeSpace() {
   size_t f = this->front.load(std::memory_order_relaxed);
   size_t b = this->back.load(std::memory_order_acquire);

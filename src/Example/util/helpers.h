@@ -31,20 +31,24 @@ struct QueuePairHash {
 
 class SignalInfo {
 private:
-  LamportQueue signalQueue{UINT64_MAX};
+  LamportQueue signalQueueToShaped{UINT64_MAX};
+  LamportQueue signalQueueFromShaped{UINT64_MAX};
 
 public:
   pid_t unshaped;
   pid_t shaped;
+  enum Direction {
+    toShaped, fromShaped
+  };
 
   struct queueInfo {
     uint64_t queueID; // The ID of the queue
     enum connectionStatus connStatus;
   };
 
-  bool dequeue(struct SignalInfo::queueInfo &info);
+  bool dequeue(Direction direction, SignalInfo::queueInfo &info);
 
-  ssize_t enqueue(struct queueInfo &info);
+  ssize_t enqueue(Direction direction, queueInfo &info);
 };
 
 

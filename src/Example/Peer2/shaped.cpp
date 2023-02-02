@@ -174,7 +174,9 @@ MsQuicStream *findStreamByID(QUIC_UINT62 ID) {
 void signalUnshapedProcess(uint64_t queueID, connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
-  sigInfo->enqueue(queueInfo);  // TODO: Handle case when queue is full
+  sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
+  // TODO: Handle case when queue is full
+
   // Signal the other process (does not actually kill the unshaped process)
   kill(sigInfo->unshaped, SIGUSR1);
 }
@@ -226,10 +228,9 @@ inline bool assignQueues(MsQuicStream *stream) {
       QueuePair queues = iterator.first;
       if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
         copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
-        std::thread signalOtherProcess(signalUnshapedProcess,
-                                       (*streamToQueues)[stream]
-                                           .fromShaped->queueID, NEW);
-        signalOtherProcess.detach();
+        signalUnshapedProcess((*streamToQueues)[stream].fromShaped->queueID,
+                              NEW);
+
         streamIDtoCtrlMsg.erase(streamID);
 
       }
@@ -253,25 +254,27 @@ void receivedControlMessage(struct ControlMessage *ctrlMsg) {
       break;
     case Data: {
       auto dataStream = findStreamByID(ctrlMsg->streamID);
+      auto queues = (*streamToQueues)[dataStream];
       if (ctrlMsg->connStatus == NEW) {
-        std::cout << "Data stream new ID " << ctrlMsg->streamID << std::endl;
-        auto queues = (*streamToQueues)[dataStream];
+        std::cout << "Peer2:Shaped: Data stream new ID " << ctrlMsg->streamID
+                  << std::endl;
         if (dataStream != nullptr) {
           copyClientInfo(queues, ctrlMsg);
-          std::thread signalOtherProcess(signalUnshapedProcess,
-                                         queues.fromShaped->queueID, NEW);
-          signalOtherProcess.detach();
+          signalUnshapedProcess(queues.fromShaped->queueID, NEW);
+
         } else {
           // Map from stream (which has not yet started) to client
           streamIDtoCtrlMsg[ctrlMsg->streamID] = *ctrlMsg;
         }
       } else if (ctrlMsg->connStatus == TERMINATED) {
-        std::cout << "Data stream terminated ID " << ctrlMsg->streamID
+        std::cout << "Peer2:Shaped: Data stream terminated ID " <<
+                  ctrlMsg->streamID
                   << std::endl;
-        std::thread signalOtherProcess(signalUnshapedProcess,
-                                       (*streamToQueues)[dataStream]
-                                           .fromShaped->queueID, TERMINATED);
-        signalOtherProcess.detach();
+        signalUnshapedProcess(queues.fromShaped->queueID, TERMINATED);
+
+        // Client has terminated. No need to send any more data to it
+//        queues.toShaped->clear(); // TODO: This defies SCSP
+
         (*queuesToStream)[(*streamToQueues)[dataStream]] = nullptr;
         (*streamToQueues).erase(dataStream);
 

@@ -25,6 +25,7 @@ std::unordered_map<QueuePair, int, QueuePairHash> *queuesToSocket;
 
 class SignalInfo *sigInfo;
 
+std::mutex readLock;
 std::mutex writeLock;
 
 UnshapedTransciever::Receiver *unshapedReceiver;
@@ -89,6 +90,20 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress,
 }
 
 /**
+ * @brief Find a queue pair by the ID of it's "toShaped" queue
+ * @param queueID The ID of the "toShaped" queue to find
+ * @return The QueuePair this ID belongs to
+ */
+QueuePair findQueuesByID(uint64_t queueID) {
+  for (auto &iterator: *queuesToSocket) {
+    if (iterator.first.toShaped->queueID == queueID) {
+      return iterator.first;
+    }
+  }
+  return {nullptr, nullptr};
+}
+
+/**
  * @brief Signal the shaped process on change of queue status
  * @param queueID The ID of the queue whose status has changed
  * @param connStatus The changed status of the given queue
@@ -96,9 +111,28 @@ inline bool assignQueue(int fromSocket, std::string &clientAddress,
 void signalShapedProcess(uint64_t queueID, connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
-  sigInfo->enqueue(queueInfo);  //TODO: Handle case when queue is full
+  sigInfo->enqueue(SignalInfo::toShaped, queueInfo);
+  //TODO: Handle case when queue is full
+
   // Signal the other process (does not actually kill the shaped process)
   kill(sigInfo->shaped, SIGUSR1);
+}
+
+void handleQueueSignal(int signum) {
+  if (signum == SIGUSR1) {
+    std::scoped_lock lock(readLock);
+    struct SignalInfo::queueInfo queueInfo{};
+    while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
+      if (queueInfo.connStatus != TERMINATED)
+        std::cerr << "Peer1:Unshaped: Wrong signal from Shaped process" <<
+                  std::endl;
+      auto queues = findQueuesByID(queueInfo.queueID);
+      (*socketToQueues).erase((*queuesToSocket)[queues]);
+      (*queuesToSocket)[queues] = 0;
+      std::cout << "Peer1:Unshaped: Mapping removed on termination" <<
+                std::endl;
+    }
+  }
 }
 
 /**
@@ -122,13 +156,9 @@ bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
         std::cerr << "More clients than expected!" << std::endl;
         return false;
       }
-
-      std::thread signalOtherProcess(signalShapedProcess,
-                                     (*socketToQueues)[fromSocket].toShaped->queueID,
-                                     NEW);
-      signalOtherProcess.detach();
-    }
+      signalShapedProcess((*socketToQueues)[fromSocket].toShaped->queueID, NEW);
       return true;
+    }
     case ONGOING: {
       // TODO: Check if queue has enough space before pushing to queue
       // TODO: Send an ACK back only after pushing!
@@ -145,16 +175,15 @@ bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
       return true;
     }
     case TERMINATED: {
-      std::thread signalOtherProcess(signalShapedProcess,
-                                     (*socketToQueues)[fromSocket].toShaped->queueID,
-                                     TERMINATED);
-      signalOtherProcess.detach();
-    }
-      (*queuesToSocket)[(*socketToQueues)[fromSocket]] = 0;
-      (*socketToQueues).erase(fromSocket);
+      auto toShaped = (*socketToQueues)[fromSocket].toShaped;
+      toShaped->markedForDeletion = true;
+      signalShapedProcess(toShaped->queueID, TERMINATED);
       return true;
+    }
+
+    default:
+      return false; // Just to satisfy the compiler
   }
-  return false;
 }
 
 /**
@@ -213,6 +242,8 @@ int main() {
 
   std::thread responseLoop(receivedResponse, 100000);
   responseLoop.detach();
+
+  std::signal(SIGUSR1, handleQueueSignal);
 
   // Wait for signal to exit
   waitForSignal();

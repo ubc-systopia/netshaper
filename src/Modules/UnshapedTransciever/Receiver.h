@@ -42,13 +42,13 @@ namespace UnshapedTransciever {
      */
     explicit Receiver(std::string bindAddr = "",
                       int localPort = 8000,
-                      std::function<void(int fromSocket,
+                      std::function<bool(int fromSocket,
                                          std::string &clientAddress,
                                          uint8_t *buffer,
                                          size_t length,
                                          enum connectionStatus connStatus)>
-                      onReceiveFunc = [](
-                          auto &&...) {}, logLevels level = DEBUG);
+                      onReceiveFunc = [](auto &&...) { return true; },
+                      logLevels level = DEBUG);
 
     /**
      * @brief Start listening on given bind Address and port
@@ -123,7 +123,7 @@ namespace UnshapedTransciever {
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
-    std::function<void(int fromSocket, std::string &clientAddress,
+    std::function<bool(int fromSocket, std::string &clientAddress,
                        uint8_t *buffer, size_t length,
                        enum connectionStatus connStatus)> onReceive;
 

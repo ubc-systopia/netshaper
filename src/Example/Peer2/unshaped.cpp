@@ -95,7 +95,7 @@ void handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
     struct SignalInfo::queueInfo queueInfo{};
-    while (sigInfo->dequeue(queueInfo)) {
+    while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
       auto queues = findQueuesByID(queueInfo.queueID);
       if (queueInfo.connStatus == NEW) {
         std::cout << "Peer2:Unshaped: New Connection" << std::endl;
@@ -108,6 +108,14 @@ void handleQueueSignal(int signum) {
         (*senderToQueues)[unshapedSender] = queues;
       } else if (queueInfo.connStatus == TERMINATED) {
         std::cout << "Peer2:Unshaped: Connection Terminated" << std::endl;
+        // Push all available data from queue to Sender
+        auto size = queues.fromShaped->size();
+        if (size > 0) {
+          auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
+          queues.fromShaped->pop(buffer, size);
+          (*queuesToSender)[queues]->sendData(buffer, size);
+        }
+        // Clear the mapping
         (*senderToQueues).erase((*queuesToSender)[queues]);
         delete (*queuesToSender)[queues];
         (*queuesToSender)[queues] = nullptr;

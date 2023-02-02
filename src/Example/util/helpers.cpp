@@ -4,12 +4,30 @@
 
 #include "helpers.h"
 
-bool SignalInfo::dequeue(struct SignalInfo::queueInfo &info) {
-  return signalQueue.pop(reinterpret_cast<uint8_t *>(&info), sizeof(info)) >= 0;
+bool SignalInfo::dequeue(Direction direction, SignalInfo::queueInfo &info) {
+  switch (direction) {
+    case toShaped:
+      return signalQueueToShaped.pop(reinterpret_cast<uint8_t *>(&info),
+                                     sizeof(info)) >= 0;
+    case fromShaped:
+      return signalQueueFromShaped.pop(reinterpret_cast<uint8_t *>(&info),
+                                       sizeof(info)) >= 0;
+    default:
+      return false;
+  }
 }
 
-ssize_t SignalInfo::enqueue(struct SignalInfo::queueInfo &info) {
-  return signalQueue.push(reinterpret_cast<uint8_t *>(&info), sizeof(info));
+ssize_t SignalInfo::enqueue(Direction direction, SignalInfo::queueInfo &info) {
+  switch (direction) {
+    case toShaped:
+      return signalQueueToShaped.push(reinterpret_cast<uint8_t *>(&info),
+                                      sizeof(info));
+    case fromShaped:
+      return signalQueueFromShaped.push(reinterpret_cast<uint8_t *>(&info),
+                                        sizeof(info));
+    default:
+      return false;
+  }
 }
 
 void addSignal(sigset_t *set, int numSignals, ...) {

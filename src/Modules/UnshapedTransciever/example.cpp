@@ -10,13 +10,13 @@ UnshapedTransciever::Sender *sender;
 
 int clientSocket;
 
-ssize_t receivedData(int fromSocket, std::string &clientAddress,
-                     uint8_t *buffer, size_t length, enum
-                         connectionStatus connStatus) {
+bool receivedData(int fromSocket, std::string &clientAddress,
+                  uint8_t *buffer, size_t length, enum
+                      connectionStatus connStatus) {
   (void) (connStatus);
   (void) (clientAddress);
   clientSocket = fromSocket;
-  return sender->sendData(buffer, length);
+  return sender->sendData(buffer, length) > 0;
 }
 
 ssize_t sendData(UnshapedTransciever::Sender *receivedResponseFrom,

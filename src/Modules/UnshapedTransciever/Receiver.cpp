@@ -13,7 +13,7 @@
 
 namespace UnshapedTransciever {
   Receiver::Receiver(std::string bindAddr, int localPort,
-                     std::function<void(int fromSocket,
+                     std::function<bool(int fromSocket,
                                         std::string &clientAddress,
                                         uint8_t *buffer, size_t length,
                                         enum connectionStatus connStatus)>
@@ -155,8 +155,13 @@ namespace UnshapedTransciever {
           accept(localSocket, (struct sockaddr *) &clientAddress,
                  &addrLen);
 
-      std::string address =
-          getAddress(*(struct sockaddr *) (&clientAddress));
+      std::string address;
+      try {
+        address = getAddress(*(struct sockaddr *) (&clientAddress));
+      } catch (...) {
+        log(ERROR, "Could not parse client address");
+      }
+
       std::thread clientHandler(&Receiver::handleClient, this, clientSocket,
                                 std::ref(address));
       clientHandler.detach();
@@ -169,7 +174,11 @@ namespace UnshapedTransciever {
     std::stringstream ss;
     ss << "Client connected on socket " << clientSocket;
     log(DEBUG, ss.str());
-    onReceive(clientSocket, clientAddress, nullptr, 0, NEW);
+    if (!onReceive(clientSocket, clientAddress, nullptr, 0, NEW)) {
+      // No queues for this client. Don't receive data from it
+      close(clientSocket);
+      return;
+    }
     // Read data from the client socket
     receiveData(clientSocket, clientAddress);
   }
@@ -187,7 +196,7 @@ namespace UnshapedTransciever {
     }
 
     if (bytesReceived < 0) {
-      throw std::runtime_error("Broken pipe");
+      log(ERROR, "Broken pipe from client: " + clientAddress);
     }
     // Stop other processes from using these sockets
     std::stringstream ss;
