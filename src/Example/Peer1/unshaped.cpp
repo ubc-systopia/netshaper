@@ -18,17 +18,17 @@ std::string appName = "minesVPNPeer1";
 // Note: For completely correct information, each QUIC Frame should contain a
 // fixed number of streams. MsQuic does NOT do this out of the box, and the
 // current code does not implement it either.
-int numStreams;
+static int numStreams;
 
 std::unordered_map<int, QueuePair> *socketToQueues;
 std::unordered_map<QueuePair, int, QueuePairHash> *queuesToSocket;
 
 class SignalInfo *sigInfo;
 
-std::mutex readLock;
-std::mutex writeLock;
+static std::mutex readLock;
+static std::mutex writeLock;
 
-UnshapedTransciever::Receiver *unshapedReceiver;
+static UnshapedTransciever::Receiver *unshapedReceiver;
 
 /**
  * @brief Read queues periodically and send the responses to the

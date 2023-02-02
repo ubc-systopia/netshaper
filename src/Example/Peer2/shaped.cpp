@@ -22,24 +22,26 @@ std::string appName = "minesVPNPeer2";
 const MsQuicApi *MsQuic = new MsQuicApi();
 
 
-ShapedTransciever::Receiver *shapedReceiver;
-int numStreams; // Max number of streams each client can initiate
+static ShapedTransciever::Receiver *shapedReceiver;
+static int numStreams; // Max number of streams each client can initiate
 
-std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
-std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash> *queuesToStream;
+static std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
+static std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash>
+    *queuesToStream;
 
-class SignalInfo *sigInfo;
+static class SignalInfo *sigInfo;
 
-std::mutex writeLock;
+static std::mutex writeLock;
 
 // Map that stores streamIDs for which client information is received (but
 // the stream has not yet begun). Value is address, port.
-std::unordered_map<QUIC_UINT62, struct ControlMessage> streamIDtoCtrlMsg;
+static std::unordered_map<QUIC_UINT62, struct ControlMessage>
+    streamIDtoCtrlMsg;
 
-MsQuicStream *controlStream;
-uint64_t controlStreamID;
-MsQuicStream *dummyStream;
-uint64_t dummyStreamID;
+static MsQuicStream *controlStream;
+static QUIC_UINT62 controlStreamID;
+static MsQuicStream *dummyStream;
+static QUIC_UINT62 dummyStreamID;
 
 
 // The credit for sender such that it is the credit is maximum data it can send at any given time.

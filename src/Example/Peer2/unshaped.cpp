@@ -12,16 +12,17 @@
 
 std::string appName = "minesVPNPeer2";
 
-std::unordered_map<QueuePair, UnshapedTransciever::Sender *, QueuePairHash>
-    *queuesToSender;
+static std::unordered_map<QueuePair, UnshapedTransciever::Sender *,
+    QueuePairHash> *queuesToSender;
 
 // Sender to queue_in and queue_out. queue_out contains response received on
 // the sending socket
-std::unordered_map<UnshapedTransciever::Sender *, QueuePair> *senderToQueues;
+static std::unordered_map<UnshapedTransciever::Sender *, QueuePair>
+    *senderToQueues;
 
-class SignalInfo *sigInfo;
+static class SignalInfo *sigInfo;
 
-std::mutex readLock;
+static std::mutex readLock;
 
 /**
  * @brief Create numStreams number of shared memory streams and initialise

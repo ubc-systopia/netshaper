@@ -26,25 +26,25 @@ ShapedTransciever::Sender *shapedSender;
 // Note: For completely correct information, each QUIC Frame should contain a
 // fixed number of streams. MsQuic does NOT do this out of the box, and the
 // current code does not implement it either.
-int numStreams;
+static int numStreams;
 
-std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash> *queuesToStream;
-std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
+static std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash>
+    *queuesToStream;
+static std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
 
-class SignalInfo *sigInfo;
+static class SignalInfo *sigInfo;
 
-std::mutex readLock;
-std::mutex writeLock;
+static std::mutex readLock;
+static std::mutex writeLock;
 
-MsQuicStream *dummyStream;
-MsQuicStream *controlStream;
+static MsQuicStream *dummyStream;
+static MsQuicStream *controlStream;
+// Control and Dummy stream IDs
+static QUIC_UINT62 controlStreamID;
+static QUIC_UINT62 dummyStreamID;
 
 // Max data that can be sent out now
-std::atomic<size_t> sendingCredit;
-
-// Control and Dummy stream IDs
-uint64_t controlStreamID;
-uint64_t dummyStreamID;
+static std::atomic<size_t> sendingCredit;
 
 /**
  * @brief Find a queue pair by the ID of it's "toShaped" queue
