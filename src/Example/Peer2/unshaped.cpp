@@ -116,10 +116,14 @@ void handleQueueSignal(int signum) {
           queues.fromShaped->pop(buffer, size);
           (*queuesToSender)[queues]->sendData(buffer, size);
         }
-        // Clear the mapping
+        // Clear the queues and mapping
+        queues.toShaped->clear();
+        queues.fromShaped->clear();
         (*senderToQueues).erase((*queuesToSender)[queues]);
         delete (*queuesToSender)[queues];
         (*queuesToSender)[queues] = nullptr;
+        queues.toShaped->markedForDeletion = false;
+        queues.fromShaped->markedForDeletion = false;
       }
     }
   }
@@ -137,10 +141,12 @@ void handleQueueSignal(int signum) {
 //    usleep(100000);
     for (auto &iterator: *queuesToSender) {
       auto size = iterator.first.fromShaped->size();
-      if (size > 0) {
+      // If queue is marked for deletion, it will be flushed by the signal
+      // handler
+      if (size > 0 && !iterator.first.fromShaped->markedForDeletion) {
         std::cout << "Got data in queue: " << iterator.first.fromShaped <<
                   std::endl;
-        auto buffer = (uint8_t *) malloc(size);
+        auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.fromShaped->pop(buffer, size);
         while (iterator.second == nullptr);
         iterator.second->sendData(buffer, size);

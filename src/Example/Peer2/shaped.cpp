@@ -147,7 +147,7 @@ MsQuicStream *findStreamByID(QUIC_UINT62 ID) {
         std::cout << "Peer2:shaped: Got data in queue: "
                   << iterator.first.toShaped <<
                   std::endl;
-        auto buffer = (uint8_t *) malloc(size);
+        auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.toShaped->pop(buffer, size);
         MsQuicStream *stream = iterator.second;
         if (stream == nullptr) {
@@ -272,12 +272,11 @@ void receivedControlMessage(struct ControlMessage *ctrlMsg) {
         std::cout << "Peer2:Shaped: Data stream terminated ID " <<
                   ctrlMsg->streamID
                   << std::endl;
+        queues.fromShaped->markedForDeletion = true;
+        queues.toShaped->markedForDeletion = true;
         signalUnshapedProcess(queues.fromShaped->queueID, TERMINATED);
 
-        // Client has terminated. No need to send any more data to it
-//        queues.toShaped->clear(); // TODO: This defies SCSP
-
-        (*queuesToStream)[(*streamToQueues)[dataStream]] = nullptr;
+        (*queuesToStream)[queues] = nullptr;
         (*streamToQueues).erase(dataStream);
 
       }
@@ -380,7 +379,7 @@ size_t getAggregatedQueueSize() {
 void sendDummy(size_t dummySize) {
   // We do not have dummy stream yet
   if (dummyStream == nullptr) return;
-  auto buffer = (uint8_t *) malloc(dummySize);
+  auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
   memset(buffer, 0, dummySize);
   if (!sendResponse(dummyStream, buffer, dummySize)) {
     std::cerr << "Failed to send dummy data" << std::endl;
@@ -396,30 +395,13 @@ size_t sendData(size_t dataSize) {
   auto origSize = dataSize;
 
   uint64_t tmpStreamID;
-  // check to see we have at least one stream to send data on
   for (auto &iterator: *queuesToStream) {
-    if (iterator.second != nullptr) {
-      std::cout
-          << "Peer2:Shaped: Found a stream to send data on in sendData function"
-          << std::endl;
-      std::cout << "Peer2:Shaped: The size of queue mapped to this steam is: "
-                << iterator.first.toShaped->size() << std::endl;
-      std::cout << "Peer2:Shaped: the aggregated queue size is: "
-                << getAggregatedQueueSize() << std::endl;
-      iterator.second->GetID(&tmpStreamID);
-      std::cout << "Peer2:Shaped: The stream ID is: " << tmpStreamID
-                << std::endl;
-      break;
-    }
-  }
-  for (auto &iterator: *queuesToStream) {
-    // if(iterator.second == nullptr) {
-    //   // No stream attached to this queue pair
-    //   continue;
-    // }
     auto queueSize = iterator.first.toShaped->size();
     // No data in this queue, check others
     if (queueSize == 0) continue;
+    // Client has already disconnected. No need to send this stream. Unshaped
+    // component will clear this queue soon.
+    if (iterator.first.toShaped->markedForDeletion) continue;
 
     std::cout << "Peer2:Shaped: not-null Queue size is: " << queueSize
               << std::endl;
@@ -427,14 +409,10 @@ size_t sendData(size_t dataSize) {
     if (dataSize == 0) break;
 
     auto SizeToSendFromQueue = std::min(queueSize, dataSize);
-    auto buffer = (uint8_t *) malloc(SizeToSendFromQueue);
+    auto buffer = reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue));
     iterator.first.toShaped->pop(buffer, SizeToSendFromQueue);
     // We find the queue that has data, lets find the stream which is not null to send data on it.
-    MsQuicStream *stream = nullptr;
-    for (auto &streamIterator: *queuesToStream) {
-      if (streamIterator.second == nullptr) continue;
-      stream = streamIterator.second;
-    }
+    auto stream = iterator.second;
     stream->GetID(&tmpStreamID);
     std::cout << "Peer2:Shaped: Sending data to the stream: " << tmpStreamID
               << std::endl;

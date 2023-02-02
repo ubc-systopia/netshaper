@@ -43,7 +43,7 @@ static UnshapedTransciever::Receiver *unshapedReceiver;
       if (size > 0) {
         std::cout << "Peer1:Unshaped: Got data in queue: " <<
                   iterator.first.fromShaped << std::endl;
-        auto buffer = (uint8_t *) malloc(size);
+        auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.fromShaped->pop(buffer, size);
         unshapedReceiver->sendData(iterator.second, buffer, size);
       }
@@ -118,6 +118,10 @@ void signalShapedProcess(uint64_t queueID, connectionStatus connStatus) {
   kill(sigInfo->shaped, SIGUSR1);
 }
 
+/**
+ * @brief Handle the queue status change signal sent by the shaped process
+ * @param signal The signal that was received
+ */
 void handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
@@ -127,10 +131,15 @@ void handleQueueSignal(int signum) {
         std::cerr << "Peer1:Unshaped: Wrong signal from Shaped process" <<
                   std::endl;
       auto queues = findQueuesByID(queueInfo.queueID);
+      queues.toShaped->clear();
+      queues.fromShaped->clear();
       (*socketToQueues).erase((*queuesToSocket)[queues]);
       (*queuesToSocket)[queues] = 0;
       std::cout << "Peer1:Unshaped: Mapping removed on termination" <<
                 std::endl;
+      queues.toShaped->markedForDeletion = false;
+      queues.fromShaped->markedForDeletion = false;
+
     }
   }
 }
@@ -176,7 +185,9 @@ bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
     }
     case TERMINATED: {
       auto toShaped = (*socketToQueues)[fromSocket].toShaped;
+      auto fromShaped = (*socketToQueues)[fromSocket].fromShaped;
       toShaped->markedForDeletion = true;
+      fromShaped->markedForDeletion = true;
       signalShapedProcess(toShaped->queueID, TERMINATED);
       return true;
     }

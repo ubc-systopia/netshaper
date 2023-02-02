@@ -85,11 +85,11 @@ void handleQueueSignal(int signum) {
           std::strcpy(message->destPort, queues.toShaped->serverPort);
           break;
         case TERMINATED:
-          message->connStatus = TERMINATED;
-          // Client terminated, no point in sending data to it
-//          queues.fromShaped->clear();
-          break;
-        default:
+          // Do Nothing as the queue is marked for deletion already.
+          // We will send a control stream message in the "sendData" function
+          // when the queue is emptied out
+        case ONGOING:
+          // This should never happen (unshaped process never sends this)
           break;
       }
       shapedSender->send(controlStream,
@@ -207,14 +207,24 @@ void sendData(size_t dataSize) {
     if (size == 0 || dataSize == 0) {
       if (toShaped->markedForDeletion) {
         std::cout << "Peer1:Shaped: Queue is marked for deletion" << std::endl;
+        // Send a termination control message
+        auto *message =
+            (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
+        iterator.second->GetID(&message->streamID);
+        message->streamType = Data;
+        message->connStatus = TERMINATED;
+        shapedSender->send(controlStream,
+                           reinterpret_cast<uint8_t *>(message),
+                           sizeof(*message));
+
+        // Signal the unshaped process to clear the queue and related mappings
         signalUnshapedProcess(toShaped->queueID, TERMINATED);
-        toShaped->markedForDeletion = false;
       }
       continue; //TODO: Send at least 1 byte
     }
 
     auto sizeToSend = std::min(dataSize, size);
-    auto buffer = (uint8_t *) malloc(sizeToSend);
+    auto buffer = reinterpret_cast<uint8_t *>(malloc(sizeToSend));
     iterator.first.toShaped->pop(buffer, sizeToSend);
     shapedSender->send(iterator.second, buffer, sizeToSend);
     QUIC_UINT62 streamID;
@@ -247,7 +257,7 @@ void sendData(size_t dataSize) {
         // Send dummy
 
         auto dummy =
-            (uint8_t *) malloc(dummySize);
+            reinterpret_cast<uint8_t *>(malloc(dummySize));
         if (dummy != nullptr) {
           memset(dummy, 0, dummySize);
           dummyStream->GetID(&dummyStreamID);
@@ -280,8 +290,12 @@ void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
   stream->GetID(&streamId);
   if (streamId != dummyStreamID && streamId != controlStreamID) {
     for (auto &iterator: *streamToQueues) {
-      if (iterator.second.fromShaped != nullptr)
+      // If queue marked for deletion, no point in sending more data to
+      // client (client already terminated). Unshaped side will clear it
+      if (iterator.second.fromShaped != nullptr && !iterator.second
+          .fromShaped->markedForDeletion) {
         iterator.second.fromShaped->push(buffer, length);
+      }
     }
     std::cout << "Peer1:Shaped: Received response on " << streamId << std::endl;
   } else if (streamId == dummyStreamID) {
