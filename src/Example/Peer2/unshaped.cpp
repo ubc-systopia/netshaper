@@ -69,8 +69,8 @@ inline void initialiseSHM(int numStreams) {
  * @param buffer The buffer where the response is stored
  * @param length The length of the response
  */
-void onReceive(UnshapedTransciever::Sender *sender,
-               uint8_t *buffer, size_t length) {
+void onResponse(UnshapedTransciever::Sender *sender,
+                uint8_t *buffer, size_t length) {
   (*senderToQueues)[sender].toShaped->push(buffer, length);
 }
 
@@ -103,7 +103,7 @@ void handleQueueSignal(int signum) {
         auto unshapedSender = new UnshapedTransciever::Sender{
             queues.fromShaped->serverAddress,
             std::stoi(queues.fromShaped->serverPort),
-            onReceive};
+            onResponse};
 
         (*queuesToSender)[queues] = unshapedSender;
         (*senderToQueues)[unshapedSender] = queues;
@@ -112,7 +112,7 @@ void handleQueueSignal(int signum) {
         // Push all available data from queue to Sender
         auto size = queues.fromShaped->size();
         if (size > 0) {
-          auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
+          auto buffer = reinterpret_cast<uint8_t *>(alloca(size));
           queues.fromShaped->pop(buffer, size);
           (*queuesToSender)[queues]->sendData(buffer, size);
         }
@@ -150,6 +150,7 @@ void handleQueueSignal(int signum) {
         iterator.first.fromShaped->pop(buffer, size);
         while (iterator.second == nullptr);
         iterator.second->sendData(buffer, size);
+        free(buffer);
       }
     }
   }

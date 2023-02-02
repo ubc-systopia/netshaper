@@ -71,7 +71,8 @@ void handleQueueSignal(int signum) {
     while (sigInfo->dequeue(SignalInfo::toShaped, queueInfo)) {
       auto queues = findQueuesByID(queueInfo.queueID);
       auto *message =
-          (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
+          reinterpret_cast<struct ControlMessage *>(malloc(
+              sizeof(struct ControlMessage)));
       (*queuesToStream)[queues]->GetID(&message->streamID);
       message->streamType = Data;
       message->connStatus = ONGOING;  // For fallback purposes only
@@ -209,7 +210,8 @@ void sendData(size_t dataSize) {
         std::cout << "Peer1:Shaped: Queue is marked for deletion" << std::endl;
         // Send a termination control message
         auto *message =
-            (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
+            reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
+                ControlMessage)));
         iterator.second->GetID(&message->streamID);
         message->streamType = Data;
         message->connStatus = TERMINATED;
@@ -265,6 +267,7 @@ void sendData(size_t dataSize) {
 //                    << std::endl;
           shapedSender->send(dummyStream,
                              dummy, dummySize);
+          free(dummy);
         } else {
           std::cerr << "Could not allocate memory for dummy data!" << std::endl;
         }
@@ -294,6 +297,7 @@ void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
       // client (client already terminated). Unshaped side will clear it
       if (iterator.second.fromShaped != nullptr && !iterator.second
           .fromShaped->markedForDeletion) {
+        // TODO: Check if this buffer needs to be freed
         iterator.second.fromShaped->push(buffer, length);
       }
     }
@@ -312,7 +316,8 @@ void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
 inline void startControlStream() {
   controlStream = shapedSender->startStream();
   auto *message =
-      (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
+      reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
+          ControlMessage)));
   controlStream->GetID(&message->streamID);
   // save the control stream ID for later
   controlStreamID = message->streamID;
@@ -330,7 +335,8 @@ inline void startControlStream() {
 inline void startDummyStream() {
   dummyStream = shapedSender->startStream();
   auto *message =
-      (struct ControlMessage *) malloc(sizeof(struct ControlMessage));
+      reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
+          ControlMessage)));
   dummyStream->GetID(&message->streamID);
   // save the dummy stream ID for later
   dummyStreamID = message->streamID;

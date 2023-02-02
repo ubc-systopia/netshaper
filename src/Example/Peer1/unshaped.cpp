@@ -45,7 +45,9 @@ static UnshapedTransciever::Receiver *unshapedReceiver;
                   iterator.first.fromShaped << std::endl;
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.fromShaped->pop(buffer, size);
-        unshapedReceiver->sendData(iterator.second, buffer, size);
+        auto sentBytes =
+            unshapedReceiver->sendData(iterator.second, buffer, size);
+        if (sentBytes == size) free(buffer);
       }
     }
   }
@@ -169,7 +171,6 @@ bool receivedUnshapedData(int fromSocket, std::string &clientAddress,
       return true;
     }
     case ONGOING: {
-      // TODO: Check if queue has enough space before pushing to queue
       // TODO: Send an ACK back only after pushing!
       auto toShaped = (*socketToQueues)[fromSocket].toShaped;
       while (toShaped->push(buffer, length) == -1) {

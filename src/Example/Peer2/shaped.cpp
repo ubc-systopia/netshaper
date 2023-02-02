@@ -39,7 +39,7 @@ static std::unordered_map<QUIC_UINT62, struct ControlMessage>
     streamIDtoCtrlMsg;
 
 static MsQuicStream *controlStream;
-static QUIC_UINT62 controlStreamID;
+//static QUIC_UINT62 controlStreamID;
 static MsQuicStream *dummyStream;
 static QUIC_UINT62 dummyStreamID;
 
@@ -103,7 +103,8 @@ inline void initialiseSHM() {
  * @return
  */
 bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length) {
-  auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
+  auto SendBuffer =
+      reinterpret_cast<QUIC_BUFFER *>(malloc(sizeof(QUIC_BUFFER)));
   if (SendBuffer == nullptr) {
     return false;
   }
@@ -312,7 +313,7 @@ length) {
       // auto ctrlMsg = static_cast<struct ControlMessage *>(buffer + (sizeof(struct ControlMessage) * i));
       if (ctrlMsg->streamType == Control) {
         controlStream = stream;
-        controlStreamID = streamID;
+//        controlStreamID = streamID;
       } else if (ctrlMsg->streamType == Dummy) {
         dummyStreamID = ctrlMsg->streamID;
       }
@@ -349,6 +350,7 @@ length) {
   }
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
+  // TODO: Check if the buffer needs to be freed after pushing to queue
   while (fromShaped->push(buffer, length) == -1) {
     std::cerr << "Queue for client " << fromShaped->clientAddress
               << ":" << fromShaped->clientPort
