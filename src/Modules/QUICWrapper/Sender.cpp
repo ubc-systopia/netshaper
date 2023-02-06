@@ -7,7 +7,7 @@
 #include <iostream>
 #include <utility>
 
-namespace ShapedTransciever {
+namespace QUIC {
   void Sender::log(logLevels level, const std::string &log) {
     std::string levelStr;
     switch (level) {

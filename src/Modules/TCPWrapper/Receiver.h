@@ -2,8 +2,8 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_UNSHAPED_RECEIVER_H
-#define MINESVPN_UNSHAPED_RECEIVER_H
+#ifndef MINESVPN_TCP_RECEIVER_H
+#define MINESVPN_TCP_RECEIVER_H
 
 #define BUF_SIZE 16384
 #define BACKLOG 20 // Number of pending connections the queue should hold
@@ -24,7 +24,7 @@
 #include <functional>
 #include "../Common.h"
 
-namespace UnshapedTransciever {
+namespace TCP {
   class Receiver {
   public:
     enum logLevels {
@@ -130,4 +130,4 @@ namespace UnshapedTransciever {
   };
 }
 
-#endif //MINESVPN_UNSHAPED_RECEIVER_H
+#endif //MINESVPN_TCP_RECEIVER_H

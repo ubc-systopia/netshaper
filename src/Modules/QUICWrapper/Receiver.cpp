@@ -8,7 +8,7 @@
 #include <utility>
 #include "Receiver.h"
 
-namespace ShapedTransciever {
+namespace QUIC {
   void Receiver::log(logLevels level, const std::string
   &log) {
     std::string levelStr;

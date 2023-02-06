@@ -7,7 +7,7 @@
 #include <thread>
 #include <unordered_map>
 #include <csignal>
-#include "../../Modules/ShapedTransciever/Sender.h"
+#include "../../Modules/QUICWrapper/Sender.h"
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../../Modules/shaper/NoiseGenerator.h"
 #include "../util/helpers.h"
@@ -19,7 +19,7 @@ std::string appName = "minesVPNPeer1";
 // This needs to be here (on the heap)
 const MsQuicApi *MsQuic = new MsQuicApi();
 
-ShapedTransciever::Sender *shapedSender;
+QUIC::Sender *shapedSender;
 
 // We fix the number of streams beforehand to avoid side-channels caused by
 // the additional size of the stream header.
@@ -367,10 +367,10 @@ int main() {
   // Two middle-boxes are connected in a client-server setup, where peer1 middlebox is
   // the client and peer2 middlebox is the server. In middlebox 1 we have
   // shapedSender and in middlebox 2 we have shapedReceiver
-  shapedSender = new ShapedTransciever::Sender{"localhost", 4567, onResponse,
-                                               true,
-                                               ShapedTransciever::Sender::WARNING,
-                                               100000};
+  shapedSender = new QUIC::Sender{"localhost", 4567, onResponse,
+                                  true,
+                                  QUIC::Sender::WARNING,
+                                  100000};
 
   // We map a pair of queues over the shared memory region to every stream
   // CAUTION: we assume the shared queues are already initialized in unshaped process

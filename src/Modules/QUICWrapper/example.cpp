@@ -34,8 +34,8 @@ void onReceive(MsQuicStream *stream, uint8_t *buffer, size_t length) {
 }
 
 void RunReceiver() {
-  ShapedTransciever::Receiver receiver("server.cert", "server.key", 4567,
-                                       onReceive);
+  QUIC::Receiver receiver("server.cert", "server.key", 4567,
+                          onReceive);
   receiver.startListening();
   std::cout << "Use ^C (Ctrl+C) to exit" << std::endl;
 
@@ -64,7 +64,7 @@ void RunReceiver() {
 // Sender
 
 void RunSender() {
-  ShapedTransciever::Sender sender{"localhost", 4567, [](auto &&...) {}, true};
+  QUIC::Sender sender{"localhost", 4567, [](auto &&...) {}, true};
   auto stream = sender.startStream();
   std::string str = "Data...";
   auto *data = reinterpret_cast<uint8_t *>(str.data());

@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
-#include "../../Modules/ShapedTransciever/Receiver.h"
+#include "../../Modules/QUICWrapper/Receiver.h"
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../../Modules/shaper/NoiseGenerator.h"
@@ -22,7 +22,7 @@ std::string appName = "minesVPNPeer2";
 const MsQuicApi *MsQuic = new MsQuicApi();
 
 
-static ShapedTransciever::Receiver *shapedReceiver;
+static QUIC::Receiver *shapedReceiver;
 static int numStreams; // Max number of streams each client can initiate
 
 static std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
@@ -498,12 +498,12 @@ int main() {
   // Start listening for connections from the other middlebox
   // Add additional stream for dummy data
   shapedReceiver =
-      new ShapedTransciever::Receiver{"server.cert", "server.key",
-                                      4567,
-                                      receivedShapedData,
-                                      ShapedTransciever::Receiver::WARNING,
-                                      numStreams + 1,
-                                      100000};
+      new QUIC::Receiver{"server.cert", "server.key",
+                         4567,
+                         receivedShapedData,
+                         QUIC::Receiver::WARNING,
+                         numStreams + 1,
+                         100000};
   shapedReceiver->startListening();
 
   NoiseGenerator noiseGenerator{0.01, 100};

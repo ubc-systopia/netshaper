@@ -5,8 +5,8 @@
 #include "Sender.h"
 #include "Receiver.h"
 
-UnshapedTransciever::Receiver *receiver;
-UnshapedTransciever::Sender *sender;
+TCP::Receiver *receiver;
+TCP::Sender *sender;
 
 int clientSocket;
 
@@ -19,7 +19,7 @@ bool receivedData(int fromSocket, std::string &clientAddress,
   return sender->sendData(buffer, length) > 0;
 }
 
-ssize_t sendData(UnshapedTransciever::Sender *receivedResponseFrom,
+ssize_t sendData(TCP::Sender *receivedResponseFrom,
                  uint8_t *buffer, size_t length) {
   (void) (receivedResponseFrom);
   return receiver->sendData(clientSocket, buffer, length);
@@ -38,8 +38,8 @@ int main() {
   std::cin >> remotePort;
 
 
-  receiver = new UnshapedTransciever::Receiver{"", 8000, receivedData};
-  sender = new UnshapedTransciever::Sender{remoteHost, remotePort, sendData};
+  receiver = new TCP::Receiver{"", 8000, receivedData};
+  sender = new TCP::Sender{remoteHost, remotePort, sendData};
 
   receiver->startListening();
 

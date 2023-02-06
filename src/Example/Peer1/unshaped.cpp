@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
-#include "../../Modules/UnshapedTransciever/Receiver.h"
+#include "../../Modules/TCPWrapper/Receiver.h"
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 
@@ -28,7 +28,7 @@ class SignalInfo *sigInfo;
 static std::mutex readLock;
 static std::mutex writeLock;
 
-static UnshapedTransciever::Receiver *unshapedReceiver;
+static TCP::Receiver *unshapedReceiver;
 
 /**
  * @brief Read queues periodically and send the responses to the
@@ -248,8 +248,8 @@ int main() {
   initialiseSHM();
 
   // Start listening for unshaped traffic
-  unshapedReceiver = new UnshapedTransciever::Receiver{"", 8000,
-                                                       receivedUnshapedData};
+  unshapedReceiver = new TCP::Receiver{"", 8000,
+                                       receivedUnshapedData};
   unshapedReceiver->startListening();
 
   std::thread responseLoop(receivedResponse, 100000);

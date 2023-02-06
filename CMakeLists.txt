@@ -25,8 +25,8 @@ message(STATUS "QUIC Platform: ${CX_PLATFORM}")
 
 include_directories(msquic/src/inc)
 
-add_subdirectory(src/Modules/ShapedTransciever)
-add_subdirectory(src/Modules/UnshapedTransciever)
+add_subdirectory(src/Modules/QUICWrapper)
+add_subdirectory(src/Modules/TCPWrapper)
 add_subdirectory(src/Modules/lamport_queue/queue)
 add_subdirectory(src/Modules/shaper)
 add_subdirectory(src/Example/util)

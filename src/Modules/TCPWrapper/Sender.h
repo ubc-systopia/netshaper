@@ -1,9 +1,9 @@
 //
-// Created by ubuntu on 12/29/22.
+// Created by Rut Vora
 //
 
-#ifndef MINESVPN_UNSHAPED_SENDER_H
-#define MINESVPN_UNSHAPED_SENDER_H
+#ifndef MINESVPN_TCP_SENDER_H
+#define MINESVPN_TCP_SENDER_H
 
 #define BUF_SIZE 16384
 #define BACKLOG 20 // Number of pending connections the queue should hold
@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <functional>
 
-namespace UnshapedTransciever {
+namespace TCP {
   class Sender {
   public:
     enum logLevels {
@@ -32,7 +32,7 @@ namespace UnshapedTransciever {
      * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
      */
     Sender(std::string remoteHost, int remotePort,
-           std::function<void(UnshapedTransciever::Sender *, uint8_t *buffer,
+           std::function<void(TCP::Sender *, uint8_t *buffer,
                               size_t length)> onReceiveFunc = [](
                auto &&...) {}, logLevels level = DEBUG);
 
@@ -83,9 +83,9 @@ namespace UnshapedTransciever {
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
-    std::function<void(UnshapedTransciever::Sender *, uint8_t *buffer, size_t
+    std::function<void(TCP::Sender *, uint8_t *buffer, size_t
     length)> onReceive;
   };
 }
 
-#endif //MINESVPN_UNSHAPED_SENDER_H
+#endif //MINESVPN_TCP_SENDER_H

@@ -2,8 +2,8 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_SHAPED_RECEIVER_H
-#define MINESVPN_SHAPED_RECEIVER_H
+#ifndef MINESVPN_QUIC_RECEIVER_H
+#define MINESVPN_QUIC_RECEIVER_H
 
 #ifndef UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(X) (void)(X)
@@ -13,7 +13,7 @@
 #include <functional>
 #include "msquic.hpp"
 
-namespace ShapedTransciever {
+namespace QUIC {
   class Receiver {
   public:
     enum logLevels {
@@ -138,4 +138,4 @@ namespace ShapedTransciever {
   };
 }
 
-#endif //MINESVPN_SHAPED_RECEIVER_H
+#endif //MINESVPN_QUIC_RECEIVER_H

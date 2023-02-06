@@ -11,7 +11,7 @@
 #include <sstream>
 #include <thread>
 
-namespace UnshapedTransciever {
+namespace TCP {
   Receiver::Receiver(std::string bindAddr, int localPort,
                      std::function<bool(int fromSocket,
                                         std::string &clientAddress,

@@ -6,18 +6,18 @@
 
 #include <thread>
 #include <algorithm>
-#include "../../Modules/UnshapedTransciever/Sender.h"
+#include "../../Modules/TCPWrapper/Sender.h"
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 
 std::string appName = "minesVPNPeer2";
 
-static std::unordered_map<QueuePair, UnshapedTransciever::Sender *,
+static std::unordered_map<QueuePair, TCP::Sender *,
     QueuePairHash> *queuesToSender;
 
 // Sender to queue_in and queue_out. queue_out contains response received on
 // the sending socket
-static std::unordered_map<UnshapedTransciever::Sender *, QueuePair>
+static std::unordered_map<TCP::Sender *, QueuePair>
     *senderToQueues;
 
 static class SignalInfo *sigInfo;
@@ -69,7 +69,7 @@ inline void initialiseSHM(int numStreams) {
  * @param buffer The buffer where the response is stored
  * @param length The length of the response
  */
-void onResponse(UnshapedTransciever::Sender *sender,
+void onResponse(TCP::Sender *sender,
                 uint8_t *buffer, size_t length) {
   (*senderToQueues)[sender].toShaped->push(buffer, length);
 }
@@ -100,7 +100,7 @@ void handleQueueSignal(int signum) {
       auto queues = findQueuesByID(queueInfo.queueID);
       if (queueInfo.connStatus == NEW) {
         std::cout << "Peer2:Unshaped: New Connection" << std::endl;
-        auto unshapedSender = new UnshapedTransciever::Sender{
+        auto unshapedSender = new TCP::Sender{
             queues.fromShaped->serverAddress,
             std::stoi(queues.fromShaped->serverPort),
             onResponse};
@@ -166,10 +166,10 @@ int main() {
 
   queuesToSender =
       new std::unordered_map<QueuePair,
-          UnshapedTransciever::Sender *, QueuePairHash>(numStreams);
+          TCP::Sender *, QueuePairHash>(numStreams);
 
   senderToQueues =
-      new std::unordered_map<UnshapedTransciever::Sender *, QueuePair>();
+      new std::unordered_map<TCP::Sender *, QueuePair>();
 
   initialiseSHM(numStreams);
 

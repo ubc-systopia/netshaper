@@ -11,9 +11,9 @@
 #include <sstream>
 #include <thread>
 
-namespace UnshapedTransciever {
+namespace TCP {
   Sender::Sender(std::string remoteHost, int remotePort,
-                 std::function<void(UnshapedTransciever::Sender *,
+                 std::function<void(TCP::Sender *,
                                     uint8_t *buffer, size_t length)>
                  onReceiveFunc, logLevels level)
       : logLevel(level), remoteSocket(-1) {
