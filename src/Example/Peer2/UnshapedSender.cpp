@@ -2,49 +2,32 @@
 // Created by Rut Vora
 //
 
-// Peer 2 (server side middlebox) example for unidirectional stream
+#include "UnshapedSender.h"
 
-#include <thread>
-#include <algorithm>
-#include "../../Modules/TCPWrapper/Sender.h"
-#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
-#include "../util/helpers.h"
+#include <utility>
 
-std::string appName = "minesVPNPeer2";
+UnshapedSender::UnshapedSender(std::string appName, int maxPeers,
+                               int maxStreamsPerPeer,
+                               __useconds_t checkQueuesInterval) :
+    appName(std::move(appName)), sigInfo(nullptr) {
+  queuesToSender =
+      new std::unordered_map<QueuePair, TCP::Sender *,
+          QueuePairHash>(maxStreamsPerPeer);
 
-static std::unordered_map<QueuePair, TCP::Sender *,
-    QueuePairHash> *queuesToSender;
+  senderToQueues =
+      new std::unordered_map<TCP::Sender *, QueuePair>();
 
-// Sender to queue_in and queue_out. queue_out contains response received on
-// the sending socket
-static std::unordered_map<TCP::Sender *, QueuePair>
-    *senderToQueues;
+  initialiseSHM(maxPeers * maxStreamsPerPeer);
 
-static class SignalInfo *sigInfo;
+  auto checkQueuesFunc = [this](auto &&PH1) {
+    checkQueuesForData(std::forward<decltype(PH1)>(PH1));
+  };
+  std::thread checkQueuesLoop(checkQueuesFunc, checkQueuesInterval);
+  checkQueuesLoop.detach();
+}
 
-static std::mutex readLock;
-
-/**
- * @brief Create numStreams number of shared memory streams and initialise
- * Lamport Queues for each stream
- */
-inline void initialiseSHM(int numStreams) {
-  size_t shmSize =
-      sizeof(class SignalInfo) +
-      numStreams * 2 * sizeof(class LamportQueue);
-
-  int shmId = shmget((int) std::hash<std::string>()(appName),
-                     shmSize,
-                     IPC_CREAT | 0644);
-  if (shmId < 0) {
-    std::cerr << "Failed to create shared memory!" << std::endl;
-    exit(1);
-  }
-  auto shmAddr = static_cast<uint8_t *>(shmat(shmId, nullptr, 0));
-  if (shmAddr == (void *) -1) {
-    std::cerr << "Failed to attach shared memory!" << std::endl;
-    exit(1);
-  }
+inline void UnshapedSender::initialiseSHM(int numStreams) {
+  auto shmAddr = helpers::initialiseSHM(numStreams, appName);
 
   // The beginning of the SHM contains the signalStruct struct
   sigInfo = new(shmAddr) SignalInfo{};
@@ -62,24 +45,12 @@ inline void initialiseSHM(int numStreams) {
   }
 }
 
-// Push received response to queue dedicated to this sender
-/**
- * @brief Handle responses received on the sockets
- * @param sender The UnshapedSender (socket) on which the response was received
- * @param buffer The buffer where the response is stored
- * @param length The length of the response
- */
-void onResponse(TCP::Sender *sender,
-                uint8_t *buffer, size_t length) {
+void UnshapedSender::onResponse(TCP::Sender *sender,
+                                uint8_t *buffer, size_t length) {
   (*senderToQueues)[sender].toShaped->push(buffer, length);
 }
 
-/**
- * @brief Find a queue pair by the ID of it's "fromShaped" queue
- * @param queueID The ID of the "fromShaped" queue
- * @return The QueuePair this ID belongs to
- */
-QueuePair findQueuesByID(uint64_t queueID) {
+QueuePair UnshapedSender::findQueuesByID(uint64_t queueID) {
   for (auto &iterator: *queuesToSender) {
     if (iterator.first.fromShaped->queueID == queueID) {
       return iterator.first;
@@ -88,11 +59,7 @@ QueuePair findQueuesByID(uint64_t queueID) {
   return {nullptr, nullptr};
 }
 
-/**
- * @brief Handle signal from the shaped process regarding a new client
- * @param signum The signal number of the signal (== SIGUSR1)
- */
-void handleQueueSignal(int signum) {
+void UnshapedSender::handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
     struct SignalInfo::queueInfo queueInfo{};
@@ -100,10 +67,15 @@ void handleQueueSignal(int signum) {
       auto queues = findQueuesByID(queueInfo.queueID);
       if (queueInfo.connStatus == NEW) {
         std::cout << "Peer2:Unshaped: New Connection" << std::endl;
+        auto onResponseFunc = [this](auto &&PH1, auto &&PH2, auto &&PH3) {
+          onResponse(std::forward<decltype(PH1)>(PH1),
+                     std::forward<decltype(PH2)>(PH2),
+                     std::forward<decltype(PH3)>(PH3));
+        };
         auto unshapedSender = new TCP::Sender{
             queues.fromShaped->serverAddress,
             std::stoi(queues.fromShaped->serverPort),
-            onResponse};
+            onResponseFunc};
 
         (*queuesToSender)[queues] = unshapedSender;
         (*senderToQueues)[unshapedSender] = queues;
@@ -129,11 +101,7 @@ void handleQueueSignal(int signum) {
   }
 }
 
-/**
- * @brief Check queues for data periodically and send it to corresponding socket
- * @param interval The interval at which the queues are checked
- */
-[[noreturn]] void checkQueuesForData(__useconds_t interval) {
+[[noreturn]] void UnshapedSender::checkQueuesForData(__useconds_t interval) {
   // TODO: Replace this with signalling from shaped side (would it be more
   //  efficient?)
   while (true) {
@@ -154,30 +122,4 @@ void handleQueueSignal(int signum) {
       }
     }
   }
-}
-
-int main() {
-  int numStreams; // Max number of streams each client can initiate
-
-  std::cout << "Enter the maximum number of streams each client can initiate "
-               "(does not include dummy streams): "
-            << std::endl;
-  std::cin >> numStreams;
-
-  queuesToSender =
-      new std::unordered_map<QueuePair,
-          TCP::Sender *, QueuePairHash>(numStreams);
-
-  senderToQueues =
-      new std::unordered_map<TCP::Sender *, QueuePair>();
-
-  initialiseSHM(numStreams);
-
-  std::signal(SIGUSR1, handleQueueSignal);
-
-  std::thread checkQueuesLoop(checkQueuesForData, 50000);
-  checkQueuesLoop.detach();
-
-  // Wait for signal to exit
-  waitForSignal();
 }

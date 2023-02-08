@@ -1,5 +1,3 @@
-add_executable(peer_1_shaped shaped.cpp)
-target_link_libraries(peer_1_shaped QUICWrapper lamportQueue DPShaper helpers)
-
-add_executable(peer_1_unshaped unshaped.cpp)
-target_link_libraries(peer_1_unshaped TCPWrapper lamportQueue helpers)
+add_executable(peer_1 main.cpp UnshapedReceiver.cpp ShapedSender.cpp)
+target_link_libraries(peer_1 TCPWrapper QUICWrapper DPShaper lamportQueue
+    helpers)

@@ -1,3 +1,6 @@
+#ifndef MINESVPN_NOISE_GENERATOR_H
+#define MINESVPN_NOISE_GENERATOR_H
+
 #include <cmath>
 #include <cstdlib>
 
@@ -18,3 +21,5 @@ public:
                           delta = 0.00001, int maxDecisionSize = 10000,
                           int minDecisionSize = 0);
 };
+
+#endif //MINESVPN_NOISE_GENERATOR_H

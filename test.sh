@@ -11,11 +11,11 @@ clientPipe=ncClientPipe # Pipe to send client_string to tcp client
 
 # Time the script will wait for network connections to establish at each point)
 # sleep_time is the time in seconds for which it will wait
-sleep_time=2
+sleep_time=5
 
 # /dev/null to ignore all serverOutput
 # /dev/stdout to show all serverOutput
-output_redirect="/dev/null"
+output_redirect="/dev/stdout"
 
 # Colour codes
 RED='\033[0;31m'
@@ -47,33 +47,21 @@ nc -l -p 5555 <$serverPipe >serverOutput &
 PIds="$PIds $!"
 exec {serverPipeFd}>$serverPipe
 
-# Run the unshaped sender of peer 2
-echo -e "${YELLOW}Starting Unshaped Sender (Peer 2)${OFF}"
+# Run Peer 2
+echo -e "${YELLOW}Starting Peer 2${OFF}"
 printf '%s\n' "$peer_2" |
-  ../build/src/Example/Peer2/peer_2_unshaped &>$output_redirect &
+  ../build/src/Example/Peer2/peer_2 &>$output_redirect &
 PIds="$PIds $!"
 sleep $sleep_time
 
-# Run the shaped receiver of peer 2
-echo -e "${YELLOW}Starting Shaped Receiver (Peer 2)${OFF}"
-printf '%s\n' "$peer_2" |
-  ../build/src/Example/Peer2/peer_2_shaped &>$output_redirect &
-PIds="$PIds $!"
-sleep $sleep_time
-
-# Run the unshaped receiver of peer 1
-echo -e "${YELLOW}Starting Unshaped Receiver (Peer 1)${OFF}"
+# Run Peer 1
+echo -e "${YELLOW}Starting Peer 1${OFF}"
 printf '%s\n' "$peer_1" |
-  ../build/src/Example/Peer1/peer_1_unshaped &>$output_redirect &
+  ../build/src/Example/Peer1/peer_1 &>$output_redirect &
 PIds="$PIds $!"
-sleep $sleep_time
+sleep $((sleep_time + 10))
 
-# Run the shaped sender of peer 1
-echo -e "${YELLOW}Starting Shaped Sender (Peer 1)${OFF}"
-printf '%s\n' "$peer_1" |
-  ../build/src/Example/Peer1/peer_1_shaped &>$output_redirect &
-PIds="$PIds $!"
-sleep $((sleep_time + 5))
+#sleep $((sleep_time + 5))
 
 # Run the tcp client
 echo -e "${YELLOW}Starting TCP Sender and sending data${OFF}"
