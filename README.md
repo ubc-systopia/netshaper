@@ -24,14 +24,9 @@ _Note 2: Currently, the minesVPN peer1 listens on port 8000, where the actual cl
 
 #### Run Individual components
 3. First start the actual server (note that currently, the actual server is expected to be at 127.0.0.1:5555 on the same node as peer2)
-4. Next, start the unshaped processes on both peers
-   - For peer 2: `./build/src/Example/Peer2/peer_2_unshaped` and enter max number of queues to initialise
-   - For Peer 1: `./build/src/Example/Peer1/peer_1_unshaped` and enter max number of queues to initialise
-5. Then start shaped process on peer 2 (the one in front of the server)
-   - Generate a self-signed certificate using: `openssl req -nodes -new -x509 -keyout ./build/src/Example/Peer2/server.key -out ./build/src/Example/Peer2/server.cert`
-   - `./build/src/Example/Peer2/peer_2_shaped` and enter the max number of queues to initialise (should be same as the number of queues stated in peer_2_unshaped)
-6. Finally, start the shaped process on peer 1 (the one in front of the client)
-   - `./build/src/Example/Peer1/peer_1_shaped` and enter the max number of queues to initialise (should be same as the number of queues stated in peer_1_unshaped)
+4. Start Peer 2 using `./build/src/Example/Peer2/peer_2` and enter the maximum number of queues to initialise. Wait for the "Peer is ready" message to appear
+5. Start Peer 1 using `./build/src/Example/Peer1/peer_1` and enter the maximum number of queues to initialise. Wait for the "Peer is ready" message to appear
+   _Note: Peer 1, by default, expects Peer 2 to also be on localhost_  
 7. Now, you can send requests from any client to peer1's port 8000
 
 ### UnshapedTransceiever Example
