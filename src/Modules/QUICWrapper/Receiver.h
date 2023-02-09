@@ -20,13 +20,6 @@ namespace QUIC {
       ERROR, WARNING, DEBUG
     };
 
-    // Configures the server's settings to allow for the peer to open a single
-    // bidirectional stream. By default, connections are not configured to allow
-    // any streams from the peer.
-    //
-    const int maxPeerStreams;
-    const uint64_t idleTimeoutMs;
-
     /**
      * @brief Default constructor
      * @param [req] certFile Path to X.509 certificate
@@ -35,9 +28,9 @@ namespace QUIC {
      * @param [opt] onReceiveFunc The function to call for each received buffer.
      * Defaults to a noOp function
      * @param [opt] _logLevel The log level (DEBUG, WARNING, ERROR)
-     * @param [opt] _maxPeerStreams The maximum number of streams the peer is
+     * @param [opt] maxPeerStreams The maximum number of streams the peer is
      * allowed to start
-     * @param [opt] _idleTimeoutMs The time after which the connection will be
+     * @param [opt] idleTimeoutMs The time after which the connection will be
      * closed
      */
     Receiver(const std::string &certFile, const std::string &keyFile,
@@ -45,8 +38,8 @@ namespace QUIC {
                                                  uint8_t *buffer,
                                                  size_t length)> onReceiveFunc
     = [](auto &&...) {},
-             logLevels _logLevel = DEBUG, int _maxPeerStreams = 1,
-             uint64_t _idleTimeoutMs = 1000);
+             logLevels _logLevel = DEBUG, int maxPeerStreams = 1,
+             uint64_t idleTimeoutMs = 1000);
 
     /**
      * @brief Start Listening on this receiver
@@ -62,6 +55,19 @@ namespace QUIC {
 
 
   private:
+    MsQuicConfiguration *configuration;
+    MsQuicAutoAcceptListener *listener;
+
+    // Address to listen at
+    QuicAddr *addr;
+
+    // Configures the server's settings to allow for the peer to open a single
+    // bidirectional stream. By default, connections are not configured to allow
+    // any streams from the peer.
+    //
+    const int maxPeerStreams;
+    const uint64_t idleTimeoutMs;
+
     // Configuration parameters
     inline static const QUIC_EXECUTION_PROFILE profile =
         QUIC_EXECUTION_PROFILE_LOW_LATENCY;
@@ -81,11 +87,6 @@ namespace QUIC {
     // msquic/src/tools/sample. But it could be any string.
     // For IANA validated strings: https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#alpn-protocol-ids
     const MsQuicAlpn alpn{"sample"};
-    MsQuicConfiguration *configuration;
-    MsQuicAutoAcceptListener *listener;
-
-    // Address to listen at
-    QuicAddr *addr;
 
     /**
      * @brief load the X.509 certificate and private file

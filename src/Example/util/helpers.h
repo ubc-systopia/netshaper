@@ -100,8 +100,15 @@ namespace helpers {
    * @param queuesToStream The unordered map to iterate over
    * @return The aggregated size of all queues
    */
-  size_t getAggregatedQueueSize(std::unordered_map<QueuePair, MsQuicStream *,
-      QueuePairHash> *queuesToStream);
+  inline size_t getAggregatedQueueSize(std::unordered_map<QueuePair,
+      MsQuicStream *,
+      QueuePairHash> *queuesToStream) {
+    size_t aggregatedSize = 0;
+    for (auto &iterator: *queuesToStream) {
+      aggregatedSize += iterator.first.toShaped->size();
+    }
+    return aggregatedSize;
+  }
 
   /**
    * @brief DP Decision function (runs in a separate thread at decisionInterval interval)
@@ -117,6 +124,17 @@ namespace helpers {
                                NoiseGenerator *noiseGenerator,
                                __useconds_t decisionInterval);
 
+  /**
+   * @brief Loop which sends Shaped Data at sendingInterval
+   * @param sendingCredit The atomic variable that contains the available
+   * sending credit
+   * @param queuesToStream The map containing all queues
+   * @param sendDummy The function to call when the decision is made to send
+   * dummy bytes
+   * @param sendData The function to call when the decision is made to send
+   * actual data
+   * @param sendingInterval The interval with which this loop should iterate
+   */
   [[noreturn]]
   void sendShapedData(std::atomic<size_t> *sendingCredit,
                       std::unordered_map<QueuePair, MsQuicStream *,

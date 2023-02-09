@@ -38,8 +38,8 @@ private:
   MsQuicStream *dummyStream;
   MsQuicStream *controlStream;
   // Control and Dummy stream IDs
-  QUIC_UINT62 controlStreamID;
   QUIC_UINT62 dummyStreamID;
+  QUIC_UINT62 controlStreamID;
 
   NoiseGenerator *noiseGenerator;
   // Max data that can be sent out now

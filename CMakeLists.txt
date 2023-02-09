@@ -4,7 +4,13 @@ project(minesVPN C CXX)
 set(CMAKE_CXX_STANDARD 23)  #TODO: Add stacktrace after gcc starts supporting it
 set(CMAKE_C_STANDARD 23)
 
-set(CMAKE_BUILD_TYPE Debug)
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug)
+endif ()
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unknown-pragmas")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 link_directories(/snap/cmake/current/usr/lib/x86_64-linux-gnu)
 
@@ -22,6 +28,7 @@ else ()
   message(FATAL_ERROR "FATAL: Only Linux is supported at this time")
 endif ()
 message(STATUS "QUIC Platform: ${CX_PLATFORM}")
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 
 include_directories(msquic/src/inc)
 

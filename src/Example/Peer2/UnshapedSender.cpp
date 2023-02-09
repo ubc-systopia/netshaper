@@ -19,10 +19,10 @@ UnshapedSender::UnshapedSender(std::string appName, int maxPeers,
 
   initialiseSHM(maxPeers * maxStreamsPerPeer);
 
-  auto checkQueuesFunc = [this](auto &&PH1) {
-    checkQueuesForData(std::forward<decltype(PH1)>(PH1));
+  auto checkQueuesFunc = [=, this]() {
+    checkQueuesForData(checkQueuesInterval);
   };
-  std::thread checkQueuesLoop(checkQueuesFunc, checkQueuesInterval);
+  std::thread checkQueuesLoop(checkQueuesFunc);
   checkQueuesLoop.detach();
 }
 
@@ -112,8 +112,8 @@ void UnshapedSender::handleQueueSignal(int signum) {
       // If queue is marked for deletion, it will be flushed by the signal
       // handler
       if (size > 0 && !iterator.first.fromShaped->markedForDeletion) {
-        std::cout << "Got data in queue: " << iterator.first.fromShaped <<
-                  std::endl;
+        std::cout << "Peer2: Unshaped: Got data in queue: " <<
+                  iterator.first.fromShaped->queueID << std::endl;
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.fromShaped->pop(buffer, size);
         while (iterator.second == nullptr);

@@ -89,15 +89,6 @@ namespace helpers {
     return shmAddr;
   }
 
-  size_t getAggregatedQueueSize(std::unordered_map<QueuePair, MsQuicStream *,
-      QueuePairHash> *queuesToStream) {
-    size_t aggregatedSize = 0;
-    for (auto &iterator: *queuesToStream) {
-      aggregatedSize += iterator.first.toShaped->size();
-    }
-    return aggregatedSize;
-  }
-
   [[noreturn]] void DPCreditor(std::atomic<size_t> *sendingCredit,
                                std::unordered_map<QueuePair, MsQuicStream *,
                                    QueuePairHash> *queuesToStream,

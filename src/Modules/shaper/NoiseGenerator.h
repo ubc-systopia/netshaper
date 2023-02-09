@@ -6,8 +6,8 @@
 
 class NoiseGenerator {
 private:
-  double epsilon, delta, sensitivity;
-  int minDecisionSize, maxDecisionSize;
+  double epsilon, sensitivity, delta;
+  int maxDecisionSize, minDecisionSize;
 
   static double gaussian(double mu, double sigma);
 
@@ -17,8 +17,7 @@ public:
   size_t getDPDecision(size_t aggregatedQueueSize);
 
   explicit NoiseGenerator(double epsilon = 0.01, double sensitivity = 10000,
-                          double
-                          delta = 0.00001, int maxDecisionSize = 10000,
+                          double delta = 0.00001, int maxDecisionSize = 10000,
                           int minDecisionSize = 0);
 };
 

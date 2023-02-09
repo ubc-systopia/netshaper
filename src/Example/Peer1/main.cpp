@@ -51,6 +51,8 @@ int main() {
     sleep(2); // Wait for unshapedReceiver to initialise
     MsQuic = new MsQuicApi{};
     shapedSender = new ShapedSender{appName, maxClients};
+    sleep(2);
+    std::cout << "Peer is ready!" << std::endl;
   }
 
   // Wait for signal to exit

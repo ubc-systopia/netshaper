@@ -209,7 +209,6 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
       // client (client already terminated). Unshaped side will clear it
       if (iterator.second.fromShaped != nullptr && !iterator.second
           .fromShaped->markedForDeletion) {
-        // TODO: Check if this buffer needs to be freed
         iterator.second.fromShaped->push(buffer, length);
       }
     }
@@ -225,7 +224,7 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
 inline void ShapedSender::startControlStream() {
   controlStream = shapedSender->startStream();
   auto *message =
-      reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
+      reinterpret_cast<struct ControlMessage *>(calloc(1, sizeof(struct
           ControlMessage)));
   controlStream->GetID(&message->streamID);
   // save the control stream ID for later
@@ -241,7 +240,7 @@ inline void ShapedSender::startControlStream() {
 inline void ShapedSender::startDummyStream() {
   dummyStream = shapedSender->startStream();
   auto *message =
-      reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
+      reinterpret_cast<struct ControlMessage *>(calloc(1, sizeof(struct
           ControlMessage)));
   dummyStream->GetID(&message->streamID);
   // save the dummy stream ID for later

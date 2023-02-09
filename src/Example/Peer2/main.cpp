@@ -47,6 +47,8 @@ int main() {
     MsQuic = new MsQuicApi{};
     shapedReceiver = new ShapedReceiver{appName, "server.cert", "server.key",
                                         1, maxStreamsPerPeer};
+    sleep(1);
+    std::cout << "Peer is ready!" << std::endl;
   }
 
   // Wait for signal to exit

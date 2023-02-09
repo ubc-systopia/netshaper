@@ -28,11 +28,9 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
                                        tcpReceiveFunc};
   unshapedReceiver->startListening();
 
-  std::thread responseLoop([this](auto &&PH1) {
-                             receivedResponse(std::forward<decltype(PH1)>
-                                                  (PH1));
-                           },
-                           checkResponseInterval);
+  std::thread responseLoop([=, this]() {
+    receivedResponse(checkResponseInterval);
+  });
   responseLoop.detach();
 
 //  std::signal(SIGUSR1, handleQueueSignal);
@@ -45,12 +43,12 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
       auto size = iterator.first.fromShaped->size();
       if (size > 0) {
         std::cout << "Peer1:Unshaped: Got data in queue: " <<
-                  iterator.first.fromShaped << std::endl;
+                  iterator.first.fromShaped->queueID << std::endl;
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.fromShaped->pop(buffer, size);
         auto sentBytes =
             unshapedReceiver->sendData(iterator.second, buffer, size);
-        if (sentBytes == size) free(buffer);
+        if (sentBytes > 0 && (size_t) sentBytes == size) free(buffer);
       }
     }
   }

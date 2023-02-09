@@ -92,6 +92,8 @@ inline void ShapedReceiver::initialiseSHM(int numStreams) {
 
 bool ShapedReceiver::sendResponse(MsQuicStream *stream, uint8_t *data,
                                   size_t length) {
+  // Note: Valgrind reports this as a "definitely lost" block. But QUIC
+  //  frees it from another thread after sending is complete
   auto SendBuffer =
       reinterpret_cast<QUIC_BUFFER *>(malloc(sizeof(QUIC_BUFFER)));
   if (SendBuffer == nullptr) {
@@ -126,7 +128,7 @@ ShapedReceiver::sendResponseLoop(__useconds_t interval) {
       auto size = iterator.first.toShaped->size();
       if (size > 0) {
         std::cout << "Peer2:shaped: Got data in queue: "
-                  << iterator.first.toShaped <<
+                  << iterator.first.toShaped->queueID <<
                   std::endl;
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.toShaped->pop(buffer, size);
@@ -262,7 +264,7 @@ length) {
     size_t numMessages = length / sizeof(struct ControlMessage);
 
     // struct ControlMessage *messages[length/sizeof(struct ControlMessage)];
-    for (int i = 0; i < numMessages; i++) {
+    for (size_t i = 0; i < numMessages; i++) {
       auto ctrlMsg = reinterpret_cast<struct ControlMessage *>(buffer +
                                                                (sizeof(struct ControlMessage) *
                                                                 i));
@@ -306,7 +308,6 @@ length) {
   }
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
-  // TODO: Check if the buffer needs to be freed after pushing to queue
   while (fromShaped->push(buffer, length) == -1) {
     std::cerr << "Queue for client " << fromShaped->clientAddress
               << ":" << fromShaped->clientPort
@@ -346,14 +347,15 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
     if (dataSize == 0) break;
 
     auto SizeToSendFromQueue = std::min(queueSize, dataSize);
-    auto buffer = reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue));
+    auto buffer = reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue + 1)
+    );
     iterator.first.toShaped->pop(buffer, SizeToSendFromQueue);
     // We find the queue that has data, lets find the stream which is not null to send data on it.
     auto stream = iterator.second;
     stream->GetID(&tmpStreamID);
     std::cout << "Peer2:Shaped: Sending data to the stream: " << tmpStreamID
               << std::endl;
-    std::cout << "Peer2:Shaped: data is: " << buffer << std::endl;
+//    std::cout << "Peer2:Shaped: data is: " << buffer << std::endl;
     if (!sendResponse(stream, buffer, SizeToSendFromQueue)) {
       std::cerr << "Failed to send data" << std::endl;
     }

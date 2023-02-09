@@ -50,9 +50,8 @@ namespace TCP {
   private:
     std::string remoteHost;
     int remotePort;
-    int remoteSocket;
     const enum logLevels logLevel;
-
+    int remoteSocket;
 
     /**
      * @brief If log level set by user is equal or more verbose than the log

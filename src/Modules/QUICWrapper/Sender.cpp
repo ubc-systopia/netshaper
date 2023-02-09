@@ -59,14 +59,14 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_RECEIVE: {
         auto bufferCount = event->RECEIVE.BufferCount;
         ss << "Received data from peer: ";
-        for (int i = 0; i < bufferCount; i++) {
+        for (uint32_t i = 0; i < bufferCount; i++) {
           sender->onResponse(stream, event->RECEIVE.Buffers[i].Buffer,
                              event->RECEIVE.Buffers[i].Length);
 
           auto length = event->RECEIVE.Buffers[i].Length;
           ss << " \n\t Length: " << length;
           ss << "\n\t Data: ";
-          for (int j = 0; j < length; j++) {
+          for (uint32_t j = 0; j < length; j++) {
             ss << event->RECEIVE.Buffers[i].Buffer[j];
           }
         }
@@ -139,7 +139,7 @@ namespace QUIC {
 
       case QUIC_CONNECTION_EVENT_RESUMPTION_TICKET_RECEIVED:
         ss << "Received the following resumption ticket: ";
-        for (int i = 0; i < event->RESUMPTION_TICKET_RECEIVED
+        for (uint32_t i = 0; i < event->RESUMPTION_TICKET_RECEIVED
             .ResumptionTicketLength; i++) {
           ss << event->RESUMPTION_TICKET_RECEIVED.ResumptionTicket[i];
         }
@@ -199,6 +199,7 @@ namespace QUIC {
 
     configuration = new MsQuicConfiguration(reg, alpn, *settings,
                                             credConfig);
+    delete settings;
     if (configuration->IsValid()) {
       log(DEBUG, "Configuration loaded successfully!");
       return true;
@@ -249,7 +250,10 @@ namespace QUIC {
   }
 
   bool Sender::send(MsQuicStream *stream, uint8_t *data, size_t length) {
-    auto SendBuffer = (QUIC_BUFFER *) malloc(sizeof(QUIC_BUFFER));
+    // Note: Valgrind reports this as a "definitely lost" block. But QUIC
+    //  frees it from another thread after sending is complete
+    auto SendBuffer =
+        reinterpret_cast<QUIC_BUFFER *>(malloc(sizeof(QUIC_BUFFER)));
     if (SendBuffer == nullptr) {
       log(ERROR, "Memory allocation for the send buffer failed");
       return false;

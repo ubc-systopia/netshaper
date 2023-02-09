@@ -57,14 +57,14 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_RECEIVE: {
         auto bufferCount = event->RECEIVE.BufferCount;
         ss << "Received data from peer: ";
-        for (int i = 0; i < bufferCount; i++) {
+        for (uint32_t i = 0; i < bufferCount; i++) {
           receiver->onReceive(stream, event->RECEIVE.Buffers[i].Buffer,
                               event->RECEIVE.Buffers[i].Length);
 
           auto length = event->RECEIVE.Buffers[i].Length;
           ss << " \n\t Length: " << length;
           ss << "\n\t Data: ";
-          for (int j = 0; j < length; j++) {
+          for (uint32_t j = 0; j < length; j++) {
             ss << event->RECEIVE.Buffers[i].Buffer[j];
           }
         }
@@ -191,6 +191,7 @@ namespace QUIC {
 
     configuration = new MsQuicConfiguration(reg, alpn, *settings,
                                             credConfig);
+    delete settings;
     if (configuration->IsValid()) {
       log(DEBUG, "Configuration loaded successfully!");
       return true;
@@ -204,14 +205,14 @@ namespace QUIC {
                      int port, std::function<void(MsQuicStream *stream,
                                                   uint8_t *buffer,
                                                   size_t length)> onReceiveFunc,
-                     logLevels level, int _maxPeerStreams, uint64_t
-                     _idleTimeoutMs) : configuration(nullptr),
-                                       listener(nullptr),
-                                       addr(new QuicAddr(
-                                           QUIC_ADDRESS_FAMILY_UNSPEC)),
-                                       maxPeerStreams(_maxPeerStreams),
-                                       idleTimeoutMs(_idleTimeoutMs),
-                                       logLevel(level) {
+                     logLevels level, int maxPeerStreams, uint64_t
+                     idleTimeoutMs) : configuration(nullptr),
+                                      listener(nullptr),
+                                      addr(new QuicAddr(
+                                          QUIC_ADDRESS_FAMILY_UNSPEC)),
+                                      maxPeerStreams(maxPeerStreams),
+                                      idleTimeoutMs(idleTimeoutMs),
+                                      logLevel(level) {
     onReceive = std::move(onReceiveFunc);
     log(DEBUG, "Loading Configuration...");
     bool success = loadConfiguration(certFile, keyFile);
