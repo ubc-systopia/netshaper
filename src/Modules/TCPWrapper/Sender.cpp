@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <sstream>
 #include <thread>
+#include <cstring>
 
 namespace TCP {
   Sender::Sender(std::string remoteHost, int remotePort,
@@ -118,8 +119,8 @@ namespace TCP {
     }
 
     if (bytesReceived < 0) {
-      log(ERROR, "Sender at " + remoteHost + std::to_string(remotePort) +
-                 " disconnected abruptly!");
+      log(ERROR, "Sender at " + remoteHost + ":" + std::to_string(remotePort) +
+                 " disconnected abruptly with error " + strerror(errno));
     }
     // Stop other processes from using these sockets
     shutdown(remoteSocket, SHUT_RDWR);

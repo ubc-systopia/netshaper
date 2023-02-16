@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <sstream>
 #include <thread>
+#include <cstring>
 
 namespace TCP {
   Receiver::Receiver(std::string bindAddr, int localPort,
@@ -196,7 +197,8 @@ namespace TCP {
     }
 
     if (bytesReceived < 0) {
-      log(ERROR, "Broken pipe from client: " + clientAddress);
+      log(ERROR, "Client at " + clientAddress + "disconnected abruptly with "
+                                                "error " + strerror(errno));
     }
     // Stop other processes from using these sockets
     std::stringstream ss;
