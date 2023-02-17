@@ -9,7 +9,7 @@ The code is structured as follows:
 ``` C
 class LamportQueue{
   public:
-    explicit LamportQueue(uint64_t queueID);
+    explicit LamportQueue(uint64_t ID);
     int push(uint8_t* elem, size_t elem_size);
     int pop(uint8_t* elem, size_t elem_size);
     int size();
@@ -17,7 +17,7 @@ class LamportQueue{
     
     char clientAddress[16] = "";
     char clientPort[6] = "";
-    uint64_t queueID;
+    uint64_t ID;
 
   private:
     std::atomic<size_t> front;
@@ -78,5 +78,5 @@ The queue stores the following other information:
    them
 2. `clientPort`: The port of the client currently corresponding to this
    queue. This is null for queues that do not have a client attached to them
-3. `queueID`: The unique ID of this queue. This is used for inter-process
+3. `ID`: The unique ID of this queue. This is used for inter-process
    signalling, when a new client connects or a client terminates the connection

@@ -20,7 +20,8 @@ bool receivedData(int fromSocket, std::string &clientAddress,
 }
 
 ssize_t sendData(TCP::Sender *receivedResponseFrom,
-                 uint8_t *buffer, size_t length) {
+                 uint8_t *buffer, size_t length, connectionStatus connStatus) {
+  (void) (connStatus);
   (void) (receivedResponseFrom);
   return receiver->sendData(clientSocket, buffer, length);
 }

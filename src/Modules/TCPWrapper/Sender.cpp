@@ -15,7 +15,8 @@
 namespace TCP {
   Sender::Sender(std::string remoteHost, int remotePort,
                  std::function<void(TCP::Sender *,
-                                    uint8_t *buffer, size_t length)>
+                                    uint8_t *buffer, size_t length,
+                                    connectionStatus connStatus)>
                  onReceiveFunc, logLevels level)
       : logLevel(level), remoteSocket(-1) {
     onReceive = std::move(onReceiveFunc);
@@ -55,7 +56,8 @@ namespace TCP {
 
   Sender::~Sender() {
     close(remoteSocket);
-    log(DEBUG, "Sender destructed");
+    log(DEBUG, "Sender at socket: " + std::to_string(remoteSocket)
+               + " destructed");
   }
 
   int Sender::connectToRemote() {
@@ -115,16 +117,15 @@ namespace TCP {
       std::stringstream ss;
       ss << "Received data on socket: " << remoteSocket;
       log(DEBUG, ss.str());
-      onReceive(this, buffer, bytesReceived);
+      onReceive(this, buffer, bytesReceived, ONGOING);
     }
 
     if (bytesReceived < 0) {
       log(ERROR, "Sender at " + remoteHost + ":" + std::to_string(remotePort) +
                  " disconnected abruptly with error " + strerror(errno));
     }
-    // Stop other processes from using these sockets
-    shutdown(remoteSocket, SHUT_RDWR);
-    close(remoteSocket);
+    onReceive(this, nullptr, 0, FIN);
+    shutdown(remoteSocket, SHUT_RD);
   }
 
   int Sender::checkIPVersion(const std::string &address) {

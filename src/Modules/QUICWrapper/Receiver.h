@@ -12,14 +12,11 @@
 #include <string>
 #include <functional>
 #include "msquic.hpp"
+#include "../Common.h"
 
 namespace QUIC {
   class Receiver {
   public:
-    enum logLevels {
-      ERROR, WARNING, DEBUG
-    };
-
     /**
      * @brief Default constructor
      * @param [req] certFile Path to X.509 certificate

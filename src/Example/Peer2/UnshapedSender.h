@@ -16,6 +16,7 @@ using namespace helpers;
 class UnshapedSender {
 private:
   std::string appName;
+  const logLevels logLevel;
   std::unordered_map<QueuePair, TCP::Sender *,
       QueuePairHash> *queuesToSender;
 
@@ -41,7 +42,7 @@ private:
  * @param length The length of the response
  */
   void onResponse(TCP::Sender *sender,
-                  uint8_t *buffer, size_t length);
+                  uint8_t *buffer, size_t length, connectionStatus connStatus);
 
   /**
  * @brief Find a queue pair by the ID of it's "fromShaped" queue
@@ -55,6 +56,8 @@ private:
  * @param interval The interval at which the queues are checked
  */
   [[noreturn]] void checkQueuesForData(__useconds_t interval);
+
+  void log(logLevels level, const std::string &log);
 
 public:
 

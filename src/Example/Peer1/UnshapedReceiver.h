@@ -10,6 +10,7 @@
 #include <chrono>
 #include "../../Modules/TCPWrapper/Receiver.h"
 #include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../Modules/Common.h"
 #include "../util/helpers.h"
 
 using namespace helpers;
@@ -17,6 +18,7 @@ using namespace helpers;
 class UnshapedReceiver {
 private:
   std::string appName;
+  const logLevels logLevel;
 
 // We fix the number of streams beforehand to avoid side-channels caused by
 // the additional size of the stream header.
@@ -30,7 +32,7 @@ private:
 
   class SignalInfo *sigInfo;
 
-  std::mutex readLock;
+//  std::mutex readLock;
   std::mutex writeLock;
 
   TCP::Receiver *unshapedReceiver;
@@ -46,11 +48,11 @@ private:
 // TODO: Replace hard-coded value of serverAddress
   /**
  * @brief assign a new queue for a new client
- * @param fromSocket The socket number of the new client
+ * @param clientSocket The socket number of the new client
  * @param clientAddress The address:port of the new client
  * @return true if queue was assigned successfully
  */
-  inline bool assignQueue(int fromSocket, std::string &clientAddress,
+  inline bool assignQueue(int clientSocket, std::string &clientAddress,
                           std::string serverAddress = "127.0.0.1:5555");
 
   /**
@@ -88,6 +90,8 @@ private:
  */
   inline void initialiseSHM();
 
+  void log(logLevels level, const std::string &log);
+
 public:
   /**
    * @brief Constructor for the Unshaped Sender
@@ -107,7 +111,7 @@ public:
  * @brief Handle the queue status change signal sent by the shaped process
  * @param signal The signal that was received
  */
-  void handleQueueSignal(int signum);
+//  void handleQueueSignal(int signum);
 
 };
 

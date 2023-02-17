@@ -14,9 +14,10 @@ ShapedSender *shapedSender = nullptr;
 const MsQuicApi *MsQuic;
 
 void handleQueueSignal(int signum) {
-  if (unshapedReceiver != nullptr && shapedSender == nullptr) {
-    unshapedReceiver->handleQueueSignal(signum);
-  } else if (shapedSender != nullptr && unshapedReceiver == nullptr) {
+//  if (unshapedReceiver != nullptr && shapedSender == nullptr) {
+//    unshapedReceiver->handleQueueSignal(signum);
+//  } else
+  if (shapedSender != nullptr && unshapedReceiver == nullptr) {
     shapedSender->handleQueueSignal(signum);
   } else {
     if (unshapedReceiver != nullptr && shapedSender != nullptr)

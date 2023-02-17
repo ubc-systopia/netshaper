@@ -14,14 +14,12 @@
 #include <iostream>
 #include <unistd.h>
 #include <functional>
+#include <sys/socket.h>
+#include "../Common.h"
 
 namespace TCP {
   class Sender {
   public:
-    enum logLevels {
-      ERROR, WARNING, DEBUG
-    };
-
     /**
      * @brief Default constructor for the ProxyListener
      * @param remoteHost The remote host to proxy to
@@ -33,7 +31,8 @@ namespace TCP {
      */
     Sender(std::string remoteHost, int remotePort,
            std::function<void(TCP::Sender *, uint8_t *buffer,
-                              size_t length)> onReceiveFunc = [](
+                              size_t length, connectionStatus connStatus)>
+           onReceiveFunc = [](
                auto &&...) {}, logLevels level = DEBUG);
 
     /**
@@ -45,6 +44,10 @@ namespace TCP {
     ssize_t sendData(uint8_t *buffer, size_t length);
 
     ~Sender();
+
+    inline void sendFIN() const {
+      shutdown(remoteSocket, SHUT_WR);
+    }
 
 
   private:
@@ -82,8 +85,8 @@ namespace TCP {
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
-    std::function<void(TCP::Sender *, uint8_t *buffer, size_t
-    length)> onReceive;
+    std::function<void(TCP::Sender *, uint8_t *buffer,
+                       size_t length, connectionStatus connStatus)> onReceive;
   };
 }
 

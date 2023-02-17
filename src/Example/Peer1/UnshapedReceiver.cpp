@@ -7,7 +7,8 @@
 UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
                                    std::string bindAddr, uint16_t bindPort,
                                    __useconds_t checkResponseInterval) :
-    appName(appName), maxClients(maxClients), sigInfo(nullptr) {
+    appName(appName), logLevel(DEBUG), maxClients(maxClients), sigInfo
+    (nullptr) {
   socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
   queuesToSocket = new std::unordered_map<QueuePair,
       int, QueuePairHash>(maxClients);
@@ -25,7 +26,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
   };
 
   unshapedReceiver = new TCP::Receiver{std::move(bindAddr), bindPort,
-                                       tcpReceiveFunc};
+                                       tcpReceiveFunc, WARNING};
   unshapedReceiver->startListening();
 
   std::thread responseLoop([=, this]() {
@@ -40,10 +41,23 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
   while (true) {
     std::this_thread::sleep_for(std::chrono::microseconds(interval));
     for (auto &iterator: *queuesToSocket) {
+      if (iterator.second == 0) continue;
       auto size = iterator.first.fromShaped->size();
+      if (size == 0 && iterator.first.fromShaped->markedForDeletion) {
+        unshapedReceiver->sendFIN(iterator.second);
+        // TODO: This definitely causes an issue. Find a better time to close
+        //  socket
+        if (iterator.first.toShaped->markedForDeletion) {
+          log(DEBUG, "Erase Mapping of (toShaped) " +
+                     std::to_string(iterator.first.toShaped->ID));
+//          (*socketToQueues).erase(iterator.second);
+//          iterator.second = 0;
+        }
+      }
       if (size > 0) {
-        std::cout << "Peer1:Unshaped: Got data in queue: " <<
-                  iterator.first.fromShaped->queueID << std::endl;
+        log(DEBUG, "Received data in (fromShaped) " +
+                   std::to_string(iterator.first.fromShaped->ID));
+
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.fromShaped->pop(buffer, size);
         auto sentBytes =
@@ -55,19 +69,28 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 }
 
 inline bool
-UnshapedReceiver::assignQueue(int fromSocket, std::string &clientAddress,
+UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
                               std::string serverAddress) {
   // Find an unused queue and map it
   return std::ranges::any_of(*queuesToSocket, [&](auto &iterator) {
     // iterator.first is QueuePair, iterator.second is socket
     if (iterator.second == 0) {
+      QueuePair queues = iterator.first;
+      log(DEBUG, "Assigning socket " +
+                 std::to_string(clientSocket) +
+                 " to queues {" + std::to_string(queues.fromShaped->ID) + "," +
+                 std::to_string(queues.toShaped->ID) + "}");
       // No socket attached to this queue pair
-      (*socketToQueues)[fromSocket] = iterator.first;
-      (*queuesToSocket)[iterator.first] = fromSocket;
+      (*socketToQueues)[clientSocket] = iterator.first;
+      (*queuesToSocket)[iterator.first] = clientSocket;
       // Set client of queue to the new client
       auto address = clientAddress.substr(0, clientAddress.find(':'));
       auto port = clientAddress.substr(address.size() + 1);
-      QueuePair queues = iterator.first;
+      queues.toShaped->markedForDeletion = false;
+      queues.fromShaped->markedForDeletion = false;
+      queues.toShaped->clear();
+      queues.fromShaped->clear();
+
       std::strcpy(queues.fromShaped->clientAddress, address.c_str());
       std::strcpy(queues.fromShaped->clientPort, port.c_str());
       std::strcpy(queues.toShaped->clientAddress, address.c_str());
@@ -88,7 +111,7 @@ UnshapedReceiver::assignQueue(int fromSocket, std::string &clientAddress,
 
 QueuePair UnshapedReceiver::findQueuesByID(uint64_t queueID) {
   for (auto &iterator: *queuesToSocket) {
-    if (iterator.first.toShaped->queueID == queueID) {
+    if (iterator.first.toShaped->ID == queueID) {
       return iterator.first;
     }
   }
@@ -100,33 +123,25 @@ void UnshapedReceiver::signalShapedProcess(uint64_t queueID,
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::toShaped, queueInfo);
-  //TODO: Handle case when queue is full
 
   // Signal the other process (does not actually kill the shaped process)
   kill(sigInfo->shaped, SIGUSR1);
 }
 
-void UnshapedReceiver::handleQueueSignal(int signum) {
-  if (signum == SIGUSR1) {
-    std::scoped_lock lock(readLock);
-    struct SignalInfo::queueInfo queueInfo{};
-    while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
-      if (queueInfo.connStatus != TERMINATED)
-        std::cerr << "Peer1:Unshaped: Wrong signal from Shaped process" <<
-                  std::endl;
-      auto queues = findQueuesByID(queueInfo.queueID);
-      queues.toShaped->clear();
-      queues.fromShaped->clear();
-      (*socketToQueues).erase((*queuesToSocket)[queues]);
-      (*queuesToSocket)[queues] = 0;
-      std::cout << "Peer1:Unshaped: Mapping removed on termination" <<
-                std::endl;
-      queues.toShaped->markedForDeletion = false;
-      queues.fromShaped->markedForDeletion = false;
-
-    }
-  }
-}
+//void UnshapedReceiver::handleQueueSignal(int signum) {
+//  if (signum == SIGUSR1) {
+//    std::scoped_lock lock(readLock);
+//    struct SignalInfo::queueInfo queueInfo{};
+//    while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
+//      if (queueInfo.connStatus != FIN)
+//        std::cerr << "Peer1:Unshaped: Wrong signal from Shaped process" <<
+//                  std::endl;
+//      std::cout << "Peer1:Unshaped: Mapping removed on termination" <<
+//                std::endl;
+//
+//    }
+//  }
+//}
 
 bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
                                             std::string &clientAddress,
@@ -134,34 +149,33 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
                                                 connectionStatus connStatus) {
 
   switch (connStatus) {
-    case NEW: {
+    case SYN: {
       if (!assignQueue(fromSocket, clientAddress)) {
-        std::cerr << "More clients than expected!" << std::endl;
+        log(ERROR, "More clients than configured for!");
         return false;
       }
-      signalShapedProcess((*socketToQueues)[fromSocket].toShaped->queueID, NEW);
+      signalShapedProcess((*socketToQueues)[fromSocket].toShaped->ID, SYN);
       return true;
     }
     case ONGOING: {
-      // TODO: Send an ACK back only after pushing!
       auto toShaped = (*socketToQueues)[fromSocket].toShaped;
       while (toShaped->push(buffer, length) == -1) {
-        std::cerr << "Queue for client " << toShaped->clientAddress
-                  << ":" << toShaped->clientPort
-                  << " is full. Waiting for it to be empty"
-                  << std::endl;
+        log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
+                     " is full, waiting for it to be empty!");
+
         // Sleep for some time. For performance reasons, this is the same as
         // the interval with which DP Logic thread runs in Shaped component.
         std::this_thread::sleep_for(std::chrono::microseconds(500000));
       }
       return true;
     }
-    case TERMINATED: {
-      auto toShaped = (*socketToQueues)[fromSocket].toShaped;
-      auto fromShaped = (*socketToQueues)[fromSocket].fromShaped;
-      toShaped->markedForDeletion = true;
-      fromShaped->markedForDeletion = true;
-      signalShapedProcess(toShaped->queueID, TERMINATED);
+    case FIN: {
+      auto &queues = (*socketToQueues)[fromSocket];
+      log(DEBUG, "Received FIN on socket " + std::to_string(fromSocket)
+                 + " mapped to {" + std::to_string(queues.toShaped->ID) +
+                 "," +
+                 std::to_string(queues.fromShaped->ID) + "}");
+      queues.toShaped->markedForDeletion = true;
       return true;
     }
 
@@ -187,5 +201,25 @@ inline void UnshapedReceiver::initialiseSHM() {
         new(shmAddr + ((i + 1) * sizeof(class LamportQueue)))
             LamportQueue(i + 1);
     (*queuesToSocket)[{queue1, queue2}] = 0;
+  }
+}
+
+void UnshapedReceiver::log(logLevels level, const std::string &log) {
+  std::string levelStr;
+  switch (level) {
+    case DEBUG:
+      levelStr = "UR:DEBUG: ";
+      break;
+    case ERROR:
+      levelStr = "UR:ERROR: ";
+      break;
+    case WARNING:
+      levelStr = "UR:WARNING: ";
+      break;
+
+  }
+  if (logLevel >= level) {
+
+    std::cerr << levelStr << log << std::endl;
   }
 }

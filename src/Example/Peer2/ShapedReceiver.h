@@ -19,6 +19,7 @@ using namespace helpers;
 class ShapedReceiver {
 private:
   std::string appName;
+  const logLevels logLevel;
   QUIC::Receiver *shapedReceiver;
 
   std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
@@ -124,6 +125,8 @@ private:
  */
   size_t sendData(size_t dataSize);
 
+  void log(logLevels level, const std::string &log);
+
 public:
   /**
    * @brief Constructor for ShapedReceiver
@@ -150,8 +153,8 @@ public:
                  uint16_t bindPort = 4567,
                  uint64_t idleTimeout = 100000,
                  double epsilon = 0.01, double sensitivity = 100,
-                 __useconds_t DPCreditorLoopInterval = 1000000,
-                 __useconds_t senderLoopInterval = 500000
+                 __useconds_t DPCreditorLoopInterval = 50000,
+                 __useconds_t senderLoopInterval = 50000
   );
 
 

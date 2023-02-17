@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/proxy_cpp.iml" filepath="$PROJECT_DIR$/.idea/proxy_cpp.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/minesVPN.iml" filepath="$PROJECT_DIR$/.idea/minesVPN.iml" />
     </modules>
   </component>
 </project>

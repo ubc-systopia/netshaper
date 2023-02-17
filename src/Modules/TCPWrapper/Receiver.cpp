@@ -175,7 +175,7 @@ namespace TCP {
     std::stringstream ss;
     ss << "Client connected on socket " << clientSocket;
     log(DEBUG, ss.str());
-    if (!onReceive(clientSocket, clientAddress, nullptr, 0, NEW)) {
+    if (!onReceive(clientSocket, clientAddress, nullptr, 0, SYN)) {
       // No queues for this client. Don't receive data from it
       close(clientSocket);
       return;
@@ -202,11 +202,10 @@ namespace TCP {
     }
     // Stop other processes from using these sockets
     std::stringstream ss;
-    ss << "Shutting down socket " << socket;
+    ss << "Shutting down socket read " << socket;
     log(DEBUG, ss.str());
-    shutdown(socket, SHUT_RDWR);
-    close(socket);
-    onReceive(socket, clientAddress, nullptr, 0, TERMINATED);
+    shutdown(socket, SHUT_RD);
+    onReceive(socket, clientAddress, nullptr, 0, FIN);
   }
 
   ssize_t Receiver::sendData(int toSocket, uint8_t *buffer, size_t length) {
@@ -237,13 +236,13 @@ namespace TCP {
     std::string levelStr;
     switch (level) {
       case DEBUG:
-        levelStr = "DEBUG: ";
+        levelStr = "TCPReceiver:DEBUG: ";
         break;
       case ERROR:
-        levelStr = "ERROR: ";
+        levelStr = "TCPReceiver:ERROR: ";
         break;
       case WARNING:
-        levelStr = "WARNING: ";
+        levelStr = "TCPReceiver:WARNING: ";
         break;
 
     }

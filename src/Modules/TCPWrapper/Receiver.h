@@ -27,19 +27,15 @@
 namespace TCP {
   class Receiver {
   public:
-    enum logLevels {
-      ERROR, WARNING, DEBUG
-    };
-
     /**
-     * @brief Default constructor for the ProxyListener
-     * @param bindAddr [opt] The address to listen to for proxying (defaults to "0.0.0.0")
-     * @param localPort [opt] The port to listen to for proxying (defaults to 8000)
-     * @param [opt] onReceiveFunc The function to be called when a buffer is
-     * received. Pass a free function as a function pointer, a class member
-     * function by using std::bind or lambda functions
-     * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
-     */
+ * @brief Default constructor for the ProxyListener
+ * @param bindAddr [opt] The address to listen to for proxying (defaults to "0.0.0.0")
+ * @param localPort [opt] The port to listen to for proxying (defaults to 8000)
+ * @param [opt] onReceiveFunc The function to be called when a buffer is
+ * received. Pass a free function as a function pointer, a class member
+ * function by using std::bind or lambda functions
+ * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
+ */
     explicit Receiver(std::string bindAddr = "",
                       int localPort = 8000,
                       std::function<bool(int fromSocket,
@@ -66,6 +62,10 @@ namespace TCP {
     ssize_t sendData(int toSocket, uint8_t *buffer, size_t length);
 
     ~Receiver();
+
+    inline void sendFIN(int socket) const {
+      shutdown(socket, SHUT_WR);
+    };
 
 
   private:

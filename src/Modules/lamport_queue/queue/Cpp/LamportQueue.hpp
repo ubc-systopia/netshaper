@@ -12,7 +12,7 @@
 #include <atomic>
 #include <cstring>
 
-#define BUFFER_SIZE 1000
+#define BUFFER_SIZE 2500000
 
 class LamportQueue {
 public:
@@ -60,7 +60,7 @@ public:
   char clientPort[6] = "";
   char serverAddress[16] = "";
   char serverPort[6] = "";
-  uint64_t queueID;
+  uint64_t ID;
   bool markedForDeletion = false;
 
 private:

@@ -4,7 +4,7 @@
 
 #include "LamportQueue.hpp"
 
-LamportQueue::LamportQueue(uint64_t queueID) : queueID(queueID) {
+LamportQueue::LamportQueue(uint64_t queueID) : ID(queueID) {
   front = 0;
   back = 0;
   cachedFront = 0;
@@ -29,8 +29,6 @@ int LamportQueue::push(uint8_t *buffer, size_t length) {
   if (freeSpace < length) {
     return -1;
   }
-  // TODO: Consider the case when half the data has to be wrapped around in
-  //  the array
   if (b + length > BUFFER_SIZE) {
     auto size1 = BUFFER_SIZE - b;
     std::memcpy(this->queueStorage + b, buffer, size1);
@@ -56,8 +54,6 @@ int LamportQueue::pop(uint8_t *buffer, size_t length) {
   if (queueSize < length) {
     return -1;
   }
-  // TODO: Consider the case when half the data has to be wrapped around in
-  //  the array
   if (f + length > BUFFER_SIZE) {
     auto size1 = BUFFER_SIZE - f;
     std::memcpy(buffer, this->queueStorage + f, size1);

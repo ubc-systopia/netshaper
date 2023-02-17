@@ -17,6 +17,7 @@ using namespace helpers;
 class ShapedSender {
 private:
   std::string appName;
+  const logLevels logLevel;
 
   QUIC::Sender *shapedSender;
 
@@ -53,6 +54,8 @@ private:
  */
   QueuePair findQueuesByID(uint64_t queueID);
 
+  MsQuicStream *findStreamByID(QUIC_UINT62 ID);
+
 
 /**
  * @brief Create numStreams number of shared memory streams and initialise
@@ -65,7 +68,7 @@ private:
  * @param queueID The ID of the queue whose status has changed
  * @param connStatus The changed status of the given queue
  */
-  void signalUnshapedProcess(uint64_t queueID, connectionStatus connStatus);
+//  void signalUnshapedProcess(uint64_t ID, connectionStatus connStatus);
 
 /**
  * @brief Function that is called when a response is received
@@ -84,6 +87,8 @@ private:
  * @brief Starts the dummy stream
  */
   inline void startDummyStream();
+
+  void log(logLevels level, const std::string &log);
 
 public:
   /**
@@ -109,8 +114,8 @@ public:
                const std::string &peer2IP = "localhost",
                uint16_t peer2Port = 4567,
                uint64_t idleTimeout = 100000,
-               __useconds_t DPCreditorLoopInterval = 1000000,
-               __useconds_t senderLoopInterval = 500000);
+               __useconds_t DPCreditorLoopInterval = 50000,
+               __useconds_t senderLoopInterval = 50000);
 
   void sendDummy(size_t dummySize);
 

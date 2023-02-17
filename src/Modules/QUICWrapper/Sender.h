@@ -12,14 +12,11 @@
 #include "msquic.hpp"
 #include <string>
 #include <functional>
+#include "../Common.h"
 
 namespace QUIC {
   class Sender {
   public:
-    enum logLevels {
-      ERROR, WARNING, DEBUG
-    };
-
     /**
      * @brief Start a new stream on this sender/connection
      * @return The stream pointer

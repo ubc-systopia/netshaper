@@ -13,7 +13,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                                double sensitivity,
                                __useconds_t DPCreditorLoopInterval,
                                __useconds_t senderLoopInterval) :
-    appName(std::move(appName)), sigInfo(nullptr),
+    appName(std::move(appName)), logLevel(DEBUG), sigInfo(nullptr),
     controlStream(nullptr), dummyStream(nullptr),
     dummyStreamID(QUIC_UINT62_MAX) {
   queuesToStream =
@@ -37,7 +37,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
       new QUIC::Receiver{serverCert, serverKey,
                          bindPort,
                          receivedShapedDataFunc,
-                         QUIC::Receiver::WARNING,
+                         WARNING,
                          maxStreamsPerPeer + 1,
                          idleTimeout};
   shapedReceiver->startListening();
@@ -72,7 +72,7 @@ inline void ShapedReceiver::initialiseSHM(int numStreams) {
   // The beginning of the SHM contains the signalStruct struct
   sigInfo = reinterpret_cast<class SignalInfo *>(shmAddr);
   if (sigInfo->unshaped == 0) {
-    std::cerr << "Start the unshaped process first" << std::endl;
+    log(ERROR, "Unshaped process has not started yet!");
     exit(1);
   }
   sigInfo->shaped = getpid();
@@ -127,9 +127,9 @@ ShapedReceiver::sendResponseLoop(__useconds_t interval) {
     for (auto &iterator: *queuesToStream) {
       auto size = iterator.first.toShaped->size();
       if (size > 0) {
-        std::cout << "Peer2:shaped: Got data in queue: "
-                  << iterator.first.toShaped->queueID <<
-                  std::endl;
+        log(DEBUG, "Received response in queue (toShaped) " +
+                   std::to_string(iterator.first.toShaped->ID));
+
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.toShaped->pop(buffer, size);
         MsQuicStream *stream = iterator.second;
@@ -143,8 +143,7 @@ ShapedReceiver::sendResponseLoop(__useconds_t interval) {
         }
         QUIC_UINT62 streamId;
         stream->GetID(&streamId);
-        std::cout << "Peer2:Shaped: Sending response on " << streamId <<
-                  std::endl;
+        log(DEBUG, "Sending response on stream " + std::to_string(streamId));
         sendResponse(stream, buffer, size);
       }
     }
@@ -156,7 +155,6 @@ void ShapedReceiver::signalUnshapedProcess(uint64_t queueID,
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
-  // TODO: Handle case when queue is full
 
   // Signal the other process (does not actually kill the unshaped process)
   kill(sigInfo->unshaped, SIGUSR1);
@@ -190,23 +188,32 @@ inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
   return std::ranges::any_of(*queuesToStream, [&](auto &iterator) {
     // iterator.first is QueuePair, iterator.second is sender
     if (iterator.second == nullptr) {
+      QueuePair queues = iterator.first;
       // No sender attached to this queue pair
       (*streamToQueues)[stream] = iterator.first;
       (*queuesToStream)[iterator.first] = stream;
 
       QUIC_UINT62 streamID;
       stream->GetID(&streamID);
-      QueuePair queues = iterator.first;
+      log(DEBUG, "Assigning stream " +
+                 std::to_string(streamID) +
+                 " to queues {" + std::to_string(queues.fromShaped->ID) + "," +
+                 std::to_string(queues.toShaped->ID) + "}");
+      //TODO: Check assumption that unshaped sender closed the connection
+      // before this queue was re-assigned
+      queues.fromShaped->markedForDeletion = false;
+      queues.toShaped->markedForDeletion = false;
+      queues.toShaped->clear();
+      queues.fromShaped->clear();
+
       if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
         copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
-        signalUnshapedProcess((*streamToQueues)[stream].fromShaped->queueID,
-                              NEW);
+        signalUnshapedProcess((*streamToQueues)[stream].fromShaped->ID,
+                              SYN);
 
         streamIDtoCtrlMsg.erase(streamID);
 
       }
-      std::cout << "Peer2:Shaped: Assigned queues to a new stream: " <<
-                std::endl;
       return true;
     }
     return false;
@@ -216,34 +223,29 @@ inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
 void ShapedReceiver::receivedControlMessage(struct ControlMessage *ctrlMsg) {
   switch (ctrlMsg->streamType) {
     case Dummy:
-      std::cout << "Dummy stream ID " << ctrlMsg->streamID << std::endl;
+      log(DEBUG, "Dummy stream is at " + std::to_string(ctrlMsg->streamID));
+
       dummyStreamID = ctrlMsg->streamID;
       break;
     case Data: {
       auto dataStream = findStreamByID(ctrlMsg->streamID);
-      auto queues = (*streamToQueues)[dataStream];
-      if (ctrlMsg->connStatus == NEW) {
-        std::cout << "Peer2:Shaped: Data stream new ID " << ctrlMsg->streamID
-                  << std::endl;
+      auto &queues = (*streamToQueues)[dataStream];
+      if (ctrlMsg->connStatus == SYN) {
+        log(DEBUG, "Received SYN on stream " +
+                   std::to_string(ctrlMsg->streamID));
+
         if (dataStream != nullptr) {
           copyClientInfo(queues, ctrlMsg);
-          signalUnshapedProcess(queues.fromShaped->queueID, NEW);
+          signalUnshapedProcess(queues.fromShaped->ID, SYN);
 
         } else {
           // Map from stream (which has not yet started) to client
           streamIDtoCtrlMsg[ctrlMsg->streamID] = *ctrlMsg;
         }
-      } else if (ctrlMsg->connStatus == TERMINATED) {
-        std::cout << "Peer2:Shaped: Data stream terminated ID " <<
-                  ctrlMsg->streamID
-                  << std::endl;
+      } else if (ctrlMsg->connStatus == FIN) {
+        log(DEBUG, "Received FIN on stream " +
+                   std::to_string(ctrlMsg->streamID));
         queues.fromShaped->markedForDeletion = true;
-        queues.toShaped->markedForDeletion = true;
-        signalUnshapedProcess(queues.fromShaped->queueID, TERMINATED);
-
-        (*queuesToStream)[queues] = nullptr;
-        (*streamToQueues).erase(dataStream);
-
       }
     }
       break;
@@ -260,7 +262,7 @@ length) {
   stream->GetID(&streamID);
   // Check if this is first byte from the other middlebox
   if (controlStream == nullptr) {
-    std::cout << "Peer2:Shaped: Setting control stream" << std::endl;
+    log(DEBUG, "Control Stream is at " + std::to_string(streamID));
     size_t numMessages = length / sizeof(struct ControlMessage);
 
     // struct ControlMessage *messages[length/sizeof(struct ControlMessage)];
@@ -280,8 +282,6 @@ length) {
   } else if (controlStream == stream) {
     // A message from the controlStream
     auto ctrlMsg = reinterpret_cast<struct ControlMessage *>(buffer);
-    std::cout << "Peer2:Shaped: Received control message for stream type " <<
-              ctrlMsg->streamType << std::endl;
     receivedControlMessage(ctrlMsg);
     return;
   }
@@ -289,30 +289,23 @@ length) {
   // Not a control stream... Check for other types
   if (streamID == dummyStreamID) {
     // Dummy Data
-    // TODO: Maybe make a queue and drop it in the unshaped side?
-//    std::cout << "Peer2:Shaped: Received dummy on: " << dummyStreamID
-//              << std::endl;
     if (dummyStream == nullptr) dummyStream = stream;
     return;
   }
 
   // This is a data stream
-  uint64_t tmpStreamID;
-  std::cout << "Peer2:Shaped: Received actual data on: "
-            << stream->GetID(&tmpStreamID) << std::endl;
+  log(DEBUG, "Received data from client on stream " +
+             std::to_string(streamID));
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
-    std::cout << "Peer2:Shaped: Assigning queues to stream: " << tmpStreamID
-              << std::endl;
     if (!assignQueues(stream))
-      std::cerr << "More streams than expected!" << std::endl;
+      log(ERROR, "More streams from peer than allowed!");
   }
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
   while (fromShaped->push(buffer, length) == -1) {
-    std::cerr << "Queue for client " << fromShaped->clientAddress
-              << ":" << fromShaped->clientPort
-              << " is full. Waiting for it to be empty"
-              << std::endl;
+    log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
+                 " is full, waiting for it to be empty");
+
     // Sleep for some time. For performance reasons, this is the same as
     // the interval with the unshaped components checks queues for data.
     std::this_thread::sleep_for(std::chrono::microseconds(50000));
@@ -325,7 +318,6 @@ void ShapedReceiver::sendDummy(size_t dummySize) {
   auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
   memset(buffer, 0, dummySize);
   if (!sendResponse(dummyStream, buffer, dummySize)) {
-    std::cerr << "Failed to send dummy data" << std::endl;
   }
 }
 
@@ -334,17 +326,34 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
 
   uint64_t tmpStreamID;
   for (auto &iterator: *queuesToStream) {
-    auto queueSize = iterator.first.toShaped->size();
-    // No data in this queue, check others
-    if (queueSize == 0) continue;
-    // Client has already disconnected. No need to send this stream. Unshaped
-    // component will clear this queue soon.
-    if (iterator.first.toShaped->markedForDeletion) continue;
-
-    std::cout << "Peer2:Shaped: not-null Queue size is: " << queueSize
-              << std::endl;
     // We have sent enough
     if (dataSize == 0) break;
+
+    auto &queues = iterator.first;
+    auto queueSize = queues.toShaped->size();
+    // No data in this queue, check others
+    if (queueSize == 0) {
+      if (iterator.second != nullptr && queues.toShaped->markedForDeletion) {
+        log(DEBUG, "(toShaped) " +
+                   std::to_string(queues.toShaped->ID) +
+                   " is marked for deletion");
+        // Send a termination control message
+        auto *message =
+            reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
+                ControlMessage)));
+        iterator.second->GetID(&message->streamID);
+        message->streamType = Data;
+        message->connStatus = FIN;
+        sendResponse(controlStream,
+                     reinterpret_cast<uint8_t *>(message),
+                     sizeof(*message));
+        // TODO: Check if this causes an issue
+        if (queues.fromShaped->markedForDeletion) {
+//          (*queuesToStream)[queues] = nullptr;
+        }
+      }
+      continue;
+    }
 
     auto SizeToSendFromQueue = std::min(queueSize, dataSize);
     auto buffer = reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue + 1)
@@ -353,14 +362,31 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
     // We find the queue that has data, lets find the stream which is not null to send data on it.
     auto stream = iterator.second;
     stream->GetID(&tmpStreamID);
-    std::cout << "Peer2:Shaped: Sending data to the stream: " << tmpStreamID
-              << std::endl;
-//    std::cout << "Peer2:Shaped: data is: " << buffer << std::endl;
+    log(DEBUG, "Sending data on stream " + std::to_string(tmpStreamID));
     if (!sendResponse(stream, buffer, SizeToSendFromQueue)) {
-      std::cerr << "Failed to send data" << std::endl;
     }
     dataSize -= SizeToSendFromQueue;
   }
   // We expect the data size to be zero if we have sent all the data
   return origSize - dataSize;
+}
+
+void ShapedReceiver::log(logLevels level, const std::string &log) {
+  std::string levelStr;
+  switch (level) {
+    case DEBUG:
+      levelStr = "SR:DEBUG: ";
+      break;
+    case ERROR:
+      levelStr = "SR:ERROR: ";
+      break;
+    case WARNING:
+      levelStr = "SR:WARNING: ";
+      break;
+
+  }
+  if (logLevel >= level) {
+
+    std::cerr << levelStr << log << std::endl;
+  }
 }
