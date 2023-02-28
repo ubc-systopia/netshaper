@@ -37,12 +37,11 @@ def DP_transport_wPrivacy(app, DP_step_, DP_mechanism_, epsilon_per_sample_):
   i = 0 
 
   while(not ((app.get_status() == "terminated") and (check_all_queues_empty(DP_queues)) )):
-    app_step = 1
     # Push 
     if (app.get_status() == "terminated"):
       app_realtime_data = np.zeros((app.get_num_of_streams(),)) 
     else:
-      app_realtime_data = app.generate_data(app_step)
+      app_realtime_data = app.generate_data()
     queues_push(app_realtime_data, DP_queues)
 
     # DP Pull

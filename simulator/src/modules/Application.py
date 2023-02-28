@@ -8,6 +8,7 @@ class Application():
       raise ValueError(f'The application window size should be a multiple of the data window size.')
     self.app_df = data
     self.app_T = application_window_size
+    self.app_step = int(application_window_size / data_window_size)
     self.app_data = data.loc[:, data.columns != 'label']
     self.app_labels = data['label']
     self.data_pointer = 0
@@ -16,15 +17,15 @@ class Application():
   def data_loader(self):
     return self.app_df
   
-  def generate_data(self, step):
+  def generate_data(self):
     if (self.get_status == "terminated"):
       return -1
     start_ind = self.data_pointer
-    if(self.data_pointer + step > len(self.app_data.columns) - 1):
+    if(self.data_pointer + self.app_step > len(self.app_data.columns) - 1):
       end_ind = len(self.app_data.columns) - 1
       self.set_status("terminated")
     else:
-      end_ind = self.data_pointer + step
+      end_ind = self.data_pointer + self.app_step
       self.set_status("ongoing")
     data_slot = self.app_data.iloc[:, start_ind: end_ind].sum(axis=1)
     self.data_pointer = end_ind
