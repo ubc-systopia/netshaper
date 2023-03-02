@@ -6,7 +6,7 @@ from src.utils.DP_utils import *
 from src.modules.Queue import Queue
 
 
-def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, sensitivity, noise_multiplier = 1, verbose=True):
+def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, sensitivity, noise_multiplier = 1, verbose=False):
   DP_max_queue_size = 1e8
   DP_min_queue_size = 0
   DP_queues = []

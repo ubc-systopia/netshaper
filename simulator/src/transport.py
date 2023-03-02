@@ -10,7 +10,7 @@ from src.utils.overhead_utils import *
 
 
 
-def DP_transport(data, app_time_resolution_us, transport_type, DP_mechanism, sensitivity, DP_step_, data_time_resolution_us, epsilon_per_query = 1, noise_multiplier = 1, verbose=True):
+def DP_transport(data, app_time_resolution_us, transport_type, DP_mechanism, sensitivity, DP_step_, data_time_resolution_us, epsilon_per_query = 1, noise_multiplier = 1, verbose=False):
   ## Create the application with a predefined application window size (the timing resolution at the application level)
 
   DP_step = DP_step_

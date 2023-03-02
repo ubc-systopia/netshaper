@@ -25,6 +25,8 @@ def privacy_loss_vs_overhead(config: configlib.Config, filtered_data):
     privacy_losses = np.linspace(config.privacy_loss_min, config.privacy_loss_max, config.privacy_loss_num)
     
     # Baseline overheads 
+    original_data, shaped_data = NonDP_transport(filtered_data, config.app_time_resolution_us, config.data_time_resolution_us) 
+
     baseline_results = {'average_aggregated_overhead': [], 'average_norm_distance': [], 'average_wasserstein_distance': []} 
  
     _, average_aggregated_overhead, _, _, average_norm_distance, _ = norm_overhead(original_data, shaped_data)
@@ -33,6 +35,7 @@ def privacy_loss_vs_overhead(config: configlib.Config, filtered_data):
     baseline_results['average_norm_distance'].append(average_norm_distance)
     baseline_results['average_wasserstein_distance'].append(wasserstein_overhead(original_data, shaped_data))
     
+    # Shaping Overheads  
     results = {'privacy_loss': [], 'noise_multiplier': [],  'average_aggregated_overhead': [], 'average_norm_distance': [], 'average_wasserstein_distance': [], 'alpha': []} 
               
     with tqdm(total=config.privacy_loss_num ) as pbar:
