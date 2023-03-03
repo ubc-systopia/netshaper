@@ -5,8 +5,15 @@ import configlib
 from src.transport import DP_transport 
 from src.utils.DL_utils import train_test_and_report_acc as BandB_attack
 from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
+from src.utils.TCN_utils import train_test_and_report_acc as TCN_attack
 
-
+def get_attack_fn(config: configlib.Config):
+    if config.attack_model == "seq_mnist_tcn":
+        return TCN_attack
+    elif config.attack_model == "burst_and_beauty":
+        return BandB_attack
+    else:
+        raise NotImplementedError("The attack model is not implemented")
 
 def privacy_loss_vs_attacker_accuracy(config: configlib.Config, filtered_data):
 
@@ -25,12 +32,13 @@ def privacy_loss_vs_attacker_accuracy(config: configlib.Config, filtered_data):
     alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))   
     privacy_losses = np.linspace(config.privacy_loss_min, config.privacy_loss_max, config.privacy_loss_num)
     
+    attack_fn = get_attack_fn(config) 
         
     ## Baseline accuracy 
     baseline_results = {'attacker_accuracy': []}
     baseline_accuracies = [] 
     for i in range(config.attack_num_of_repeats):
-        baseline_accuracies.append(BandB_attack(filtered_data, config.num_of_unique_streams, config.attack_num_of_epochs, config.attack_batch_size)) 
+        baseline_accuracies.append(attack_fn(config, filtered_data)) 
     baseline_results['attacker_accuracy'].append(np.mean(baseline_accuracies)) 
 
 
@@ -46,7 +54,7 @@ def privacy_loss_vs_attacker_accuracy(config: configlib.Config, filtered_data):
             for i in range(config.attack_num_of_repeats):
                 original_data, DP_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier) 
                 
-                accuracies.append(BandB_attack(DP_data, config.num_of_unique_streams, config.attack_num_of_epochs, config.attack_batch_size))
+                accuracies.append(attack_fn(config, DP_data))
                 pbar.update(1)
             acc = np.mean(accuracies)
             
