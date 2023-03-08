@@ -1,0 +1,26 @@
+{ 
+
+  "experiment" : "BandB_vs_TCN",
+  "comparison_mode": "baseline",
+  "results_dir" : "/home/ubuntu/results/",
+  "num_of_unique_streams" : 0,
+  "min_classes_num" : 4,
+  "max_classes_num" : 100,
+  "classes_num_num" : 20,
+  "attack_num_of_repeats" : 2,
+  "attack_epoch_num": 50,
+  "attack_batch_size" : 32,
+  "num_of_traces_per_stream" : 50,
+  "filtering_type" : "deterministic",
+
+
+  "app_time_resolution_us" : 1e6 ,
+  "middlebox_period_us" : 1e6 ,
+  "privacy_window_size_s" : 100,
+
+  "data_source" : "memory",
+  "load_data_dir" : "/home/ubuntu/data/windowed_stream_100",
+  "max_num_of_unique_streams" : 100,
+  "max_num_of_traces_per_stream" : 100,
+  "data_time_resolution_us" : 1e6
+}

@@ -91,5 +91,5 @@ def result_saver(config: configlib.Config, results, baseline_results = None):
     
     # Save the baseline results if there is any
     if baseline_results is not None:
-        with open(child_dir + "baseline_results.json", "w") as f: 
+        with open(child_dir + "baseline_results.pkl", "wb") as f: 
             pickle.dump(baseline_results, f)

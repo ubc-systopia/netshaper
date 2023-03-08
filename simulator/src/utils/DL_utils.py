@@ -3,6 +3,7 @@ import pandas as pd
 
 
 from sklearn.model_selection import train_test_split
+import tensorflow as tf
 from tensorflow import keras as keras
 from tensorflow.keras import layers
 from tensorflow.keras import backend as K
@@ -10,6 +11,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv1D, Flatten, MaxPooling1D, Dropout
 from tensorflow.keras.utils import to_categorical
 
+tf.get_logger().setLevel('INFO')
 import configlib
 
 def normalization_l2(df):
@@ -47,7 +49,7 @@ def train_test_and_report_acc(config: configlib.Config, df):
     # Extracting labels
     x = df.loc[:, df.columns != 'label']
     y = df['label']
-    
+
     # One hot encoding and splitting dataset to test and train
     one_hot_encoded_y = to_categorical(df.label)
     train_X,test_X,train_label,test_label =  train_test_split(x, one_hot_encoded_y, test_size=0.2)

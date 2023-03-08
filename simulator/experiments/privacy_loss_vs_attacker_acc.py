@@ -37,9 +37,9 @@ def privacy_loss_vs_attacker_accuracy(config: configlib.Config, filtered_data):
     ## Baseline accuracy 
     baseline_results = {'attacker_accuracy': []}
     baseline_accuracies = [] 
-    for i in range(config.attack_num_of_repeats):
-        baseline_accuracies.append(attack_fn(config, filtered_data)) 
-    baseline_results['attacker_accuracy'].append(np.mean(baseline_accuracies)) 
+    # for i in range(config.attack_num_of_repeats):
+    #     baseline_accuracies.append(attack_fn(config, filtered_data)) 
+    # baseline_results['attacker_accuracy'].append(np.mean(baseline_accuracies)) 
 
 
     results = {'alpha': [], 'attacker_accuracy': [], 'privacy_loss': [], 'noise_multiplier': []}
@@ -53,7 +53,9 @@ def privacy_loss_vs_attacker_accuracy(config: configlib.Config, filtered_data):
             accuracies = []
             for i in range(config.attack_num_of_repeats):
                 original_data, DP_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier) 
-                
+                print(original_data.head()) 
+                print(DP_data.head()) 
+                # exit(1)
                 accuracies.append(attack_fn(config, DP_data))
                 pbar.update(1)
             acc = np.mean(accuracies)

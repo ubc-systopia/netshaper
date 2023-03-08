@@ -27,6 +27,9 @@ class Config(dict):
         else:
             return None
 
+    def __setattr__(self, key: str, value: Any):
+        self[key] = value
+
 def parse(config: Config = None, save_fname: str = "") -> Dict[str, Any]:
     """Parse given arguments."""
     if config is None:
