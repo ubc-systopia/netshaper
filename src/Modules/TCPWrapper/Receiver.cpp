@@ -8,7 +8,6 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
-#include <sstream>
 #include <thread>
 #include <cstring>
 
@@ -60,9 +59,8 @@ namespace TCP {
         throw std::runtime_error("Could not start listening on given address "
                                  "and port");
       default:
-        std::stringstream ss;
-        ss << "Started Listening on " << bindAddr << ":" << localPort;
-        log(DEBUG, ss.str());
+        log(DEBUG, "Started listening on " + bindAddr + ":"
+                   + std::to_string(localPort));
         std::thread loop(&Receiver::serverLoop, this);
         loop.detach();
     }
@@ -118,32 +116,33 @@ namespace TCP {
       freeaddrinfo(res);
     }
 
-    std::stringstream ss;
-    ss << "Receiver socket " << serverSocket << " opened";
-    log(DEBUG, ss.str());
+    log(DEBUG, "Receiver running on socket " + std::to_string(serverSocket));
     return serverSocket;
 
   }
 
   // Returns a string of the form "address:port"
   std::string Receiver::getAddress(struct sockaddr &sockAddr) {
-    std::stringstream ss;
     if (sockAddr.sa_family == AF_INET) {
       auto addrStruct = reinterpret_cast<struct sockaddr_in *>(&sockAddr);
       char addr[INET_ADDRSTRLEN];
       if (inet_ntop(AF_INET, &addrStruct->sin_addr, addr, INET_ADDRSTRLEN) ==
           nullptr)
         throw std::domain_error("Could not parse address");
-      ss << std::string(addr) << ":" << ntohs(addrStruct->sin_port);
+      return
+          std::string(addr) + ":" + std::to_string(ntohs(addrStruct->sin_port));
     } else if (sockAddr.sa_family == AF_INET6) {
       auto addrStruct = reinterpret_cast<struct sockaddr_in6 *>(&sockAddr);
       char addr[INET6_ADDRSTRLEN];
       if (inet_ntop(AF_INET, &addrStruct->sin6_addr, addr, INET6_ADDRSTRLEN) ==
           nullptr)
         throw std::domain_error("Could not parse address");
-      ss << std::string(addr) << ":" << ntohs(addrStruct->sin6_port);
+      return
+          std::string(addr) + ":" +
+          std::to_string(ntohs(addrStruct->sin6_port));
+    } else {
+      return "";
     }
-    return ss.str();
   }
 
   [[noreturn]] void Receiver::serverLoop() {
@@ -156,25 +155,22 @@ namespace TCP {
           accept(localSocket, (struct sockaddr *) &clientAddress,
                  &addrLen);
 
-      std::string address;
+
       try {
-        address = getAddress(*(struct sockaddr *) (&clientAddress));
+        auto address = getAddress(*(struct sockaddr *) (&clientAddress));
+        std::thread clientHandler(&Receiver::handleClient, this, clientSocket,
+                                  address);
+        clientHandler.detach();
       } catch (...) {
         log(ERROR, "Could not parse client address");
       }
-
-      std::thread clientHandler(&Receiver::handleClient, this, clientSocket,
-                                std::ref(address));
-      clientHandler.detach();
-
     }
 
   }
 
-  void Receiver::handleClient(int clientSocket, std::string &clientAddress) {
-    std::stringstream ss;
-    ss << "Client connected on socket " << clientSocket;
-    log(DEBUG, ss.str());
+  void Receiver::handleClient(int clientSocket, std::string clientAddress) {
+    log(DEBUG, "Client at " + clientAddress + " connected on socket " +
+               std::to_string(clientSocket));
     if (!onReceive(clientSocket, clientAddress, nullptr, 0, SYN)) {
       // No queues for this client. Don't receive data from it
       close(clientSocket);
@@ -190,28 +186,22 @@ namespace TCP {
 
     // Read from fromSocket and send to toSocket
     while ((bytesReceived = recv(socket, buffer, BUF_SIZE, 0)) > 0) {
-      std::stringstream ss;
-      ss << "Data received on socket " << socket;
-      log(DEBUG, ss.str());
+      log(DEBUG, "Data received on socket " + std::to_string(socket));
       onReceive(socket, clientAddress, buffer, bytesReceived, ONGOING);
     }
 
     if (bytesReceived < 0) {
-      log(ERROR, "Client at " + clientAddress + "disconnected abruptly with "
+      log(ERROR, "Client at " + clientAddress + " disconnected abruptly with "
                                                 "error " + strerror(errno));
     }
     // Stop other processes from using these sockets
-    std::stringstream ss;
-    ss << "Shutting down socket read " << socket;
-    log(DEBUG, ss.str());
+    log(DEBUG, "Shutting down read on socket " + std::to_string(socket));
     shutdown(socket, SHUT_RD);
     onReceive(socket, clientAddress, nullptr, 0, FIN);
   }
 
   ssize_t Receiver::sendData(int toSocket, uint8_t *buffer, size_t length) {
-    std::stringstream ss;
-    ss << "Sending data on socket: " << toSocket;
-    log(DEBUG, ss.str());
+    log(DEBUG, "Sending data on socket " + std::to_string(toSocket));
     return send(toSocket, buffer, length, 0);
   }
 

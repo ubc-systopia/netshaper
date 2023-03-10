@@ -2,6 +2,7 @@
 // Created by Rut Vora
 //
 
+#include <iomanip>
 #include "UnshapedReceiver.h"
 
 UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
@@ -12,6 +13,8 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
   socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
   queuesToSocket = new std::unordered_map<QueuePair,
       int, QueuePairHash>(maxClients);
+  pendingSignal =
+      new std::unordered_map<uint64_t, connectionStatus>(maxClients);
 
   initialiseSHM();
 
@@ -42,22 +45,25 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
     std::this_thread::sleep_for(std::chrono::microseconds(interval));
     for (auto &iterator: *queuesToSocket) {
       if (iterator.second == 0) continue;
-      auto size = iterator.first.fromShaped->size();
-      if (size == 0 && iterator.first.fromShaped->markedForDeletion) {
+      auto &queues = iterator.first;
+      auto size = queues.fromShaped->size();
+      if (size == 0 && (*pendingSignal)[queues.fromShaped->ID] == FIN) {
+        log(DEBUG,
+            "Sending FIN to socket " + std::to_string(iterator.second));
         unshapedReceiver->sendFIN(iterator.second);
+        (*pendingSignal).erase(queues.fromShaped->ID);
         // TODO: This definitely causes an issue. Find a better time to close
         //  socket
-        if (iterator.first.toShaped->markedForDeletion) {
-          log(DEBUG, "Erase Mapping of (toShaped) " +
-                     std::to_string(iterator.first.toShaped->ID));
-//          (*socketToQueues).erase(iterator.second);
-//          iterator.second = 0;
+        if (queues.toShaped->markedForDeletion) {
+          log(DEBUG, "Erase Mapping of {" +
+                     std::to_string(queues.fromShaped->ID) + "," +
+                     std::to_string(queues.toShaped->ID) + "}");
+          close(iterator.second);
+          (*socketToQueues).erase(iterator.second);
+          iterator.second = 0;
         }
       }
       if (size > 0) {
-        log(DEBUG, "Received data in (fromShaped) " +
-                   std::to_string(iterator.first.fromShaped->ID));
-
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.fromShaped->pop(buffer, size);
         auto sentBytes =
@@ -77,9 +83,9 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
     if (iterator.second == 0) {
       QueuePair queues = iterator.first;
       log(DEBUG, "Assigning socket " +
-                 std::to_string(clientSocket) +
-                 " to queues {" + std::to_string(queues.fromShaped->ID) + "," +
-                 std::to_string(queues.toShaped->ID) + "}");
+                 std::to_string(clientSocket) + " (client: " + clientAddress
+                 + ") to queues {" + std::to_string(queues.fromShaped->ID) +
+                 "," + std::to_string(queues.toShaped->ID) + "}");
       // No socket attached to this queue pair
       (*socketToQueues)[clientSocket] = iterator.first;
       (*queuesToSocket)[iterator.first] = clientSocket;
@@ -109,15 +115,6 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
   });
 }
 
-QueuePair UnshapedReceiver::findQueuesByID(uint64_t queueID) {
-  for (auto &iterator: *queuesToSocket) {
-    if (iterator.first.toShaped->ID == queueID) {
-      return iterator.first;
-    }
-  }
-  return {nullptr, nullptr};
-}
-
 void UnshapedReceiver::signalShapedProcess(uint64_t queueID,
                                            connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
@@ -128,20 +125,17 @@ void UnshapedReceiver::signalShapedProcess(uint64_t queueID,
   kill(sigInfo->shaped, SIGUSR1);
 }
 
-//void UnshapedReceiver::handleQueueSignal(int signum) {
-//  if (signum == SIGUSR1) {
-//    std::scoped_lock lock(readLock);
-//    struct SignalInfo::queueInfo queueInfo{};
-//    while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
-//      if (queueInfo.connStatus != FIN)
-//        std::cerr << "Peer1:Unshaped: Wrong signal from Shaped process" <<
-//                  std::endl;
-//      std::cout << "Peer1:Unshaped: Mapping removed on termination" <<
-//                std::endl;
-//
-//    }
-//  }
-//}
+void UnshapedReceiver::handleQueueSignal(int signum) {
+  if (signum == SIGUSR1) {
+    std::scoped_lock lock(readLock);
+    struct SignalInfo::queueInfo queueInfo{};
+    while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
+      if (queueInfo.connStatus == FIN) {
+        (*pendingSignal)[queueInfo.queueID] = FIN;
+      }
+    }
+  }
+}
 
 bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
                                             std::string &clientAddress,
@@ -172,10 +166,11 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
     case FIN: {
       auto &queues = (*socketToQueues)[fromSocket];
       log(DEBUG, "Received FIN on socket " + std::to_string(fromSocket)
-                 + " mapped to {" + std::to_string(queues.toShaped->ID) +
-                 "," +
-                 std::to_string(queues.fromShaped->ID) + "}");
+                 + " (client: " + clientAddress + ") mapped to {" +
+                 std::to_string(queues.fromShaped->ID) + "," +
+                 std::to_string(queues.toShaped->ID) + "}");
       queues.toShaped->markedForDeletion = true;
+      signalShapedProcess((*socketToQueues)[fromSocket].toShaped->ID, FIN);
       return true;
     }
 
@@ -205,6 +200,7 @@ inline void UnshapedReceiver::initialiseSHM() {
 }
 
 void UnshapedReceiver::log(logLevels level, const std::string &log) {
+  if (logLevel < level) return;
   std::string levelStr;
   switch (level) {
     case DEBUG:
@@ -218,8 +214,9 @@ void UnshapedReceiver::log(logLevels level, const std::string &log) {
       break;
 
   }
-  if (logLevel >= level) {
-
-    std::cerr << levelStr << log << std::endl;
-  }
+  auto time = std::time(nullptr);
+  auto localTime = std::localtime(&time);
+  std::scoped_lock lock(logWriter);
+  std::cerr << std::put_time(localTime, "[%H:%M:%S] ")
+            << levelStr << log << std::endl;
 }

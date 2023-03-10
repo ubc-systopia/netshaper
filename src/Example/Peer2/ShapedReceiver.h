@@ -21,14 +21,17 @@ private:
   std::string appName;
   const logLevels logLevel;
   QUIC::Receiver *shapedReceiver;
+  std::mutex logWriter;
 
   std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
   std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash>
       *queuesToStream;
+  std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
 
   class SignalInfo *sigInfo;
 
   std::mutex writeLock;
+  std::mutex readLock;
 
   // Map that stores streamIDs for which client information is received (but
   // the stream has not yet begun). Value is address, port.
@@ -72,7 +75,7 @@ private:
  * @brief Check for response in a separate thread
  * @param interval The interval with which the queues are checked for responses
  */
-  [[maybe_unused]] [[noreturn]] void sendResponseLoop(__useconds_t interval);
+//  [[maybe_unused]] [[noreturn]] void sendResponseLoop(__useconds_t interval);
 
 /**
  * @brief Signal the shaped process on change of queue status
@@ -157,7 +160,11 @@ public:
                  __useconds_t senderLoopInterval = 50000
   );
 
-
+  /**
+ * @brief Handle the queue status change signal sent by the unshaped process
+ * @param signal The signal that was received
+ */
+  void handleQueueSignal(int signum);
 };
 
 

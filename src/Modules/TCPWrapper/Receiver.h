@@ -100,7 +100,7 @@ namespace TCP {
      * @brief Handles the given client (called from serverLoop)
      * @param clientSocket The socket where the client connected
      */
-    void handleClient(int clientSocket, std::string &clientAddress);
+    void handleClient(int clientSocket, std::string clientAddress);
 
     /**
      * @brief Main loop of the server. Spawns of child processes for each new

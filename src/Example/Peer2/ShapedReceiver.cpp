@@ -4,6 +4,7 @@
 
 #include "ShapedReceiver.h"
 #include <utility>
+#include <iomanip>
 
 ShapedReceiver::ShapedReceiver(std::string appName,
                                const std::string &serverCert,
@@ -22,6 +23,9 @@ ShapedReceiver::ShapedReceiver(std::string appName,
 
   streamToQueues =
       new std::unordered_map<MsQuicStream *, QueuePair>(maxStreamsPerPeer);
+
+  pendingSignal =
+      new std::unordered_map<uint64_t, connectionStatus>(maxStreamsPerPeer);
 
   initialiseSHM(maxPeers * maxStreamsPerPeer);
 
@@ -120,31 +124,43 @@ MsQuicStream *ShapedReceiver::findStreamByID(QUIC_UINT62 ID) {
   return nullptr;
 }
 
-[[maybe_unused]] [[noreturn]] void
-ShapedReceiver::sendResponseLoop(__useconds_t interval) {
-  while (true) {
-    std::this_thread::sleep_for(std::chrono::microseconds(interval));
-    for (auto &iterator: *queuesToStream) {
-      auto size = iterator.first.toShaped->size();
-      if (size > 0) {
-        log(DEBUG, "Received response in queue (toShaped) " +
-                   std::to_string(iterator.first.toShaped->ID));
+//[[maybe_unused]] [[noreturn]] void
+//ShapedReceiver::sendResponseLoop(__useconds_t interval) {
+//  while (true) {
+//    std::this_thread::sleep_for(std::chrono::microseconds(interval));
+//    for (auto &iterator: *queuesToStream) {
+//      auto size = iterator.first.toShaped->size();
+//      if (size > 0) {
+//        log(DEBUG, "Received response in queue (toShaped) " +
+//                   std::to_string(iterator.first.toShaped->ID));
+//
+//        auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
+//        iterator.first.toShaped->pop(buffer, size);
+//        MsQuicStream *stream = iterator.second;
+//        if (stream == nullptr) {
+//          for (auto &itr: *streamToQueues) {
+//            if (itr.first != nullptr) {
+//              stream = itr.first;
+//              break;
+//            }
+//          }
+//        }
+//        QUIC_UINT62 streamId;
+//        stream->GetID(&streamId);
+////        log(DEBUG, "Sending response on stream " + std::to_string(streamId));
+//        sendResponse(stream, buffer, size);
+//      }
+//    }
+//  }
+//}
 
-        auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
-        iterator.first.toShaped->pop(buffer, size);
-        MsQuicStream *stream = iterator.second;
-        if (stream == nullptr) {
-          for (auto &itr: *streamToQueues) {
-            if (itr.first != nullptr) {
-              stream = itr.first;
-              break;
-            }
-          }
-        }
-        QUIC_UINT62 streamId;
-        stream->GetID(&streamId);
-        log(DEBUG, "Sending response on stream " + std::to_string(streamId));
-        sendResponse(stream, buffer, size);
+void ShapedReceiver::handleQueueSignal(int signum) {
+  if (signum == SIGUSR1) {
+    std::scoped_lock lock(readLock);
+    struct SignalInfo::queueInfo queueInfo{};
+    while (sigInfo->dequeue(SignalInfo::toShaped, queueInfo)) {
+      if (queueInfo.connStatus == FIN) {
+        (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
   }
@@ -245,7 +261,11 @@ void ShapedReceiver::receivedControlMessage(struct ControlMessage *ctrlMsg) {
       } else if (ctrlMsg->connStatus == FIN) {
         log(DEBUG, "Received FIN on stream " +
                    std::to_string(ctrlMsg->streamID));
-        queues.fromShaped->markedForDeletion = true;
+        if (queues.fromShaped != nullptr) {
+          // Else it's a retransmission of FIN, which has already been handled!
+          queues.fromShaped->markedForDeletion = true;
+          signalUnshapedProcess(queues.fromShaped->ID, FIN);
+        }
       }
     }
       break;
@@ -281,8 +301,15 @@ length) {
     return;
   } else if (controlStream == stream) {
     // A message from the controlStream
-    auto ctrlMsg = reinterpret_cast<struct ControlMessage *>(buffer);
-    receivedControlMessage(ctrlMsg);
+    if (length % sizeof(ControlMessage) != 0) {
+      log(ERROR, "Received half a control message!");
+    } else {
+      uint8_t messages = length / sizeof(ControlMessage);
+      for (uint8_t i = 0; i < messages; i++) {
+        auto ctrlMsg = reinterpret_cast<struct ControlMessage *>(buffer);
+        receivedControlMessage(ctrlMsg);
+      }
+    }
     return;
   }
 
@@ -294,8 +321,8 @@ length) {
   }
 
   // This is a data stream
-  log(DEBUG, "Received data from client on stream " +
-             std::to_string(streamID));
+//  log(DEBUG, "Received data from client on stream " +
+//             std::to_string(streamID));
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
     if (!assignQueues(stream))
       log(ERROR, "More streams from peer than allowed!");
@@ -324,7 +351,6 @@ void ShapedReceiver::sendDummy(size_t dummySize) {
 size_t ShapedReceiver::sendData(size_t dataSize) {
   auto origSize = dataSize;
 
-  uint64_t tmpStreamID;
   for (auto &iterator: *queuesToStream) {
     // We have sent enough
     if (dataSize == 0) break;
@@ -333,45 +359,56 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
     auto queueSize = queues.toShaped->size();
     // No data in this queue, check others
     if (queueSize == 0) {
-      if (iterator.second != nullptr && queues.toShaped->markedForDeletion) {
-        log(DEBUG, "(toShaped) " +
-                   std::to_string(queues.toShaped->ID) +
-                   " is marked for deletion");
+      if ((*pendingSignal)[queues.toShaped->ID] == FIN) {
         // Send a termination control message
         auto *message =
             reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
                 ControlMessage)));
         iterator.second->GetID(&message->streamID);
+        log(DEBUG,
+            "Sending FIN on stream " + std::to_string(message->streamID));
         message->streamType = Data;
         message->connStatus = FIN;
         sendResponse(controlStream,
                      reinterpret_cast<uint8_t *>(message),
                      sizeof(*message));
+        (*pendingSignal).erase(queues.toShaped->ID);
         // TODO: Check if this causes an issue
         if (queues.fromShaped->markedForDeletion) {
-//          (*queuesToStream)[queues] = nullptr;
+          log(DEBUG, "Clearing the mapping for the queuePair {" +
+                     std::to_string(queues.fromShaped->ID) + "," +
+                     std::to_string(queues.toShaped->ID) + "}");
+//          (*streamToQueues)[iterator.second].fromShaped = nullptr;
+//          (*streamToQueues)[iterator.second].toShaped = nullptr;
+          (*streamToQueues).erase(iterator.second);
+          (*queuesToStream)[queues] = nullptr;
         }
       }
       continue;
     }
 
     auto SizeToSendFromQueue = std::min(queueSize, dataSize);
-    auto buffer = reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue + 1)
-    );
+    auto buffer =
+        reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue + 1));
+
     iterator.first.toShaped->pop(buffer, SizeToSendFromQueue);
-    // We find the queue that has data, lets find the stream which is not null to send data on it.
+
     auto stream = iterator.second;
-    stream->GetID(&tmpStreamID);
-    log(DEBUG, "Sending data on stream " + std::to_string(tmpStreamID));
     if (!sendResponse(stream, buffer, SizeToSendFromQueue)) {
+      uint64_t streamID;
+      stream->GetID(&streamID);
+      log(ERROR, "Failed to send Shaped response on stream " +
+                 std::to_string(streamID));
+    } else {
+      dataSize -= SizeToSendFromQueue;
     }
-    dataSize -= SizeToSendFromQueue;
   }
   // We expect the data size to be zero if we have sent all the data
   return origSize - dataSize;
 }
 
 void ShapedReceiver::log(logLevels level, const std::string &log) {
+  if (logLevel < level) return;
   std::string levelStr;
   switch (level) {
     case DEBUG:
@@ -385,8 +422,10 @@ void ShapedReceiver::log(logLevels level, const std::string &log) {
       break;
 
   }
-  if (logLevel >= level) {
+  auto time = std::time(nullptr);
+  auto localTime = std::localtime(&time);
+  std::scoped_lock lock(logWriter);
+  std::cerr << std::put_time(localTime, "[%H:%M:%S] ")
+            << levelStr << log << std::endl;
 
-    std::cerr << levelStr << log << std::endl;
-  }
 }

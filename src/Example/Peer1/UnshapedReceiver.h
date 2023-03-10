@@ -19,6 +19,7 @@ class UnshapedReceiver {
 private:
   std::string appName;
   const logLevels logLevel;
+  std::mutex logWriter;
 
 // We fix the number of streams beforehand to avoid side-channels caused by
 // the additional size of the stream header.
@@ -29,10 +30,11 @@ private:
 
   std::unordered_map<int, QueuePair> *socketToQueues;
   std::unordered_map<QueuePair, int, QueuePairHash> *queuesToSocket;
+  std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
 
   class SignalInfo *sigInfo;
 
-//  std::mutex readLock;
+  std::mutex readLock;
   std::mutex writeLock;
 
   TCP::Receiver *unshapedReceiver;
@@ -54,13 +56,6 @@ private:
  */
   inline bool assignQueue(int clientSocket, std::string &clientAddress,
                           std::string serverAddress = "127.0.0.1:5555");
-
-  /**
- * @brief Find a queue pair by the ID of it's "toShaped" queue
- * @param queueID The ID of the "toShaped" queue to find
- * @return The QueuePair this ID belongs to
- */
-  QueuePair findQueuesByID(uint64_t queueID);
 
   /**
  * @brief Signal the shaped process on change of queue status
@@ -111,7 +106,7 @@ public:
  * @brief Handle the queue status change signal sent by the shaped process
  * @param signal The signal that was received
  */
-//  void handleQueueSignal(int signum);
+  void handleQueueSignal(int signum);
 
 };
 

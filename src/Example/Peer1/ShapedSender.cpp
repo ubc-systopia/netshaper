@@ -2,6 +2,7 @@
 // Created by Rut Vora
 //
 
+#include <iomanip>
 #include "ShapedSender.h"
 
 ShapedSender::ShapedSender(std::string &appName, int maxClients,
@@ -18,6 +19,8 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
           MsQuicStream *, QueuePairHash>(maxClients);
   streamToQueues =
       new std::unordered_map<MsQuicStream *, QueuePair>(maxClients);
+  pendingSignal =
+      new std::unordered_map<uint64_t, connectionStatus>(maxClients);
 
   noiseGenerator = new NoiseGenerator{epsilon, sensitivity};
   // Connect to the other middlebox
@@ -86,18 +89,29 @@ MsQuicStream *ShapedSender::findStreamByID(QUIC_UINT62 ID) {
   return nullptr;
 }
 
+void ShapedSender::signalUnshapedProcess(uint64_t queueID,
+                                         connectionStatus connStatus) {
+  std::scoped_lock lock(writeLock);
+  struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
+  sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
+
+  // Signal the other process (does not actually kill the unshaped process)
+  kill(sigInfo->unshaped, SIGUSR1);
+}
+
 void ShapedSender::handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
     struct SignalInfo::queueInfo queueInfo{};
     while (sigInfo->dequeue(SignalInfo::toShaped, queueInfo)) {
       auto queues = findQueuesByID(queueInfo.queueID);
-
       if (queueInfo.connStatus == SYN) {
         auto *message =
             reinterpret_cast<struct ControlMessage *>(malloc(
                 sizeof(struct ControlMessage)));
         (*queuesToStream)[queues]->GetID(&message->streamID);
+        log(DEBUG,
+            "Sending SYN on stream " + std::to_string(message->streamID));
         message->streamType = Data;
         message->connStatus = SYN;
         std::strcpy(message->srcIP, queues.toShaped->clientAddress);
@@ -107,6 +121,8 @@ void ShapedSender::handleQueueSignal(int signum) {
         shapedSender->send(controlStream,
                            reinterpret_cast<uint8_t *>(message),
                            sizeof(*message));
+      } else if (queueInfo.connStatus == FIN) {
+        (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
   }
@@ -147,38 +163,36 @@ inline void ShapedSender::initialiseSHM() {
 void ShapedSender::sendData(size_t dataSize) {
   // TODO: Add prioritisation
   for (auto &iterator: *queuesToStream) {
+    if (dataSize == 0) break;
     auto toShaped = iterator.first.toShaped;
-    auto size = toShaped->size();
-    if (size == 0 || dataSize == 0) {
-      if (toShaped->markedForDeletion) {
-        log(DEBUG, "(toShaped) " +
-                   std::to_string(iterator.first.toShaped->ID) +
-                   " is marked for deletion");
-
+//    log(DEBUG, "Checked (toShaped) " + std::to_string(iterator.first
+//                                                          .toShaped->ID));
+    auto queueSize = toShaped->size();
+    if (queueSize == 0) {
+      if ((*pendingSignal)[toShaped->ID] == FIN) {
         // Send a termination control message
         auto *message =
             reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
                 ControlMessage)));
         iterator.second->GetID(&message->streamID);
+        log(DEBUG,
+            "Sending FIN on stream " + std::to_string(message->streamID));
         message->streamType = Data;
         message->connStatus = FIN;
         shapedSender->send(controlStream,
                            reinterpret_cast<uint8_t *>(message),
                            sizeof(*message));
-
-        // Signal the unshaped process to clear the queue and related mappings
-//        signalUnshapedProcess(toShaped->ID, FIN);
+        (*pendingSignal).erase(toShaped->ID);
       }
-      continue; //TODO: Send at least 1 byte
+      continue;
     }
-
-    auto sizeToSend = std::min(dataSize, size);
+    auto sizeToSend = std::min(dataSize, queueSize);
     auto buffer = reinterpret_cast<uint8_t *>(malloc(sizeToSend));
     iterator.first.toShaped->pop(buffer, sizeToSend);
     shapedSender->send(iterator.second, buffer, sizeToSend);
     QUIC_UINT62 streamID;
     iterator.second->GetID(&streamID);
-    log(DEBUG, "Sending actual data on stream " + std::to_string(streamID));
+//    log(DEBUG, "Sending actual data on stream " + std::to_string(streamID));
     dataSize -= sizeToSend;
   }
 }
@@ -191,30 +205,52 @@ void ShapedSender::sendDummy(size_t dummySize) {
                      dummy, dummySize);
 }
 
-void
-ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
-  uint64_t streamId;
-  stream->GetID(&streamId);
-  if (streamId != dummyStreamID && streamId != controlStreamID) {
-    auto fromShaped = (*streamToQueues)[stream].fromShaped;
-    if (fromShaped == nullptr) {
-      log(ERROR, "Received data on unmapped stream " +
-                 std::to_string(streamId));
-      return;
-    }
-    fromShaped->push(buffer, length);
-    log(DEBUG, "Received response on stream " + std::to_string(streamId));
-  } else if (streamId == dummyStreamID) {
-  } else if (streamId == controlStreamID) {
-    auto ctrlMsg = reinterpret_cast<struct ControlMessage *>(buffer);
-    if (ctrlMsg->connStatus == FIN) {
-      log(DEBUG, "Received FIN for stream " +
-                 std::to_string(ctrlMsg->streamID));
-      auto dataStream = findStreamByID(ctrlMsg->streamID);
-      auto &queues = (*streamToQueues)[dataStream];
-      queues.fromShaped->markedForDeletion = true;
+void ShapedSender::handleControlMessage(uint8_t *buffer, size_t length) {
+  if (length % sizeof(ControlMessage) != 0) {
+    log(ERROR, "Received half a control message!");
+  } else {
+    uint8_t messages = length / sizeof(ControlMessage);
+    for (uint8_t i = 0; i < messages; i++) {
+      auto ctrlMsg =
+          reinterpret_cast<struct ControlMessage *>
+          (buffer + (i * sizeof(ControlMessage)));
+      if (ctrlMsg->connStatus == FIN) {
+        auto dataStream = findStreamByID(ctrlMsg->streamID);
+        auto &queues = (*streamToQueues)[dataStream];
+        queues.fromShaped->markedForDeletion = true;
+        signalUnshapedProcess(queues.fromShaped->ID, FIN);
+        log(DEBUG, "Received FIN for stream " +
+                   std::to_string(ctrlMsg->streamID) +
+                   ", marking (fromShaped)"
+                   + std::to_string(queues.fromShaped->ID) + " for deletion");
+      }
     }
   }
+}
+
+void
+ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
+  uint64_t streamID;
+  stream->GetID(&streamID);
+  if (streamID == controlStreamID) {
+    handleControlMessage(buffer, length);
+    return;
+  }
+  if (streamID == dummyStreamID) {
+    // Dummy received. Do nothing
+    return;
+  }
+
+  // All other streams that are not dummy or control
+  auto fromShaped = (*streamToQueues)[stream].fromShaped;
+  if (fromShaped == nullptr) {
+    log(ERROR, "Received data on unmapped stream " +
+               std::to_string(streamID));
+    return;
+  }
+  fromShaped->push(buffer, length);
+//  log(DEBUG, "Received response on stream " + std::to_string(streamID));
+
 }
 
 inline void ShapedSender::startControlStream() {
@@ -250,6 +286,7 @@ inline void ShapedSender::startDummyStream() {
 }
 
 void ShapedSender::log(logLevels level, const std::string &log) {
+  if (logLevel < level) return;
   std::string levelStr;
   switch (level) {
     case DEBUG:
@@ -263,8 +300,10 @@ void ShapedSender::log(logLevels level, const std::string &log) {
       break;
 
   }
-  if (logLevel >= level) {
+  auto time = std::time(nullptr);
+  auto localTime = std::localtime(&time);
+  std::scoped_lock lock(logWriter);
+  std::cerr << std::put_time(localTime, "[%H:%M:%S] ")
+            << levelStr << log << std::endl;
 
-    std::cerr << levelStr << log << std::endl;
-  }
 }

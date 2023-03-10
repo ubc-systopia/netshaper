@@ -19,6 +19,8 @@ void handleQueueSignal(int signum) {
 //  } else
   if (shapedSender != nullptr && unshapedReceiver == nullptr) {
     shapedSender->handleQueueSignal(signum);
+  } else if (shapedSender == nullptr && unshapedReceiver != nullptr) {
+    unshapedReceiver->handleQueueSignal(signum);
   } else {
     if (unshapedReceiver != nullptr && shapedSender != nullptr)
       std::cerr << "Peer1: Both pointers present! " << getpid() << std::endl;

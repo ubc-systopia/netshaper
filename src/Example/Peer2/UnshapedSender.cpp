@@ -5,6 +5,7 @@
 #include "UnshapedSender.h"
 
 #include <utility>
+#include <iomanip>
 
 UnshapedSender::UnshapedSender(std::string appName, int maxPeers,
                                int maxStreamsPerPeer,
@@ -13,7 +14,8 @@ UnshapedSender::UnshapedSender(std::string appName, int maxPeers,
   queuesToSender =
       new std::unordered_map<QueuePair, TCP::Sender *,
           QueuePairHash>(maxStreamsPerPeer);
-
+  pendingSignal =
+      new std::unordered_map<uint64_t, connectionStatus>(maxStreamsPerPeer);
   senderToQueues =
       new std::unordered_map<TCP::Sender *, QueuePair>();
 
@@ -51,7 +53,12 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
   if (connStatus == ONGOING) {
     (*senderToQueues)[sender].toShaped->push(buffer, length);
   } else if (connStatus == FIN) {
-    (*senderToQueues)[sender].toShaped->markedForDeletion = true;
+    auto &queues = (*senderToQueues)[sender];
+    log(DEBUG, "Received FIN on sender connected to queues {" +
+               std::to_string(queues.fromShaped->ID) + "," +
+               std::to_string(queues.toShaped->ID) + "}");
+    queues.toShaped->markedForDeletion = true;
+    signalShapedProcess(queues.toShaped->ID, FIN);
   }
 }
 
@@ -62,6 +69,16 @@ QueuePair UnshapedSender::findQueuesByID(uint64_t queueID) {
     }
   }
   return {nullptr, nullptr};
+}
+
+void UnshapedSender::signalShapedProcess(uint64_t queueID,
+                                         connectionStatus connStatus) {
+  std::scoped_lock lock(writeLock);
+  struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
+  sigInfo->enqueue(SignalInfo::toShaped, queueInfo);
+
+  // Signal the other process (does not actually kill the shaped process)
+  kill(sigInfo->shaped, SIGUSR1);
 }
 
 void UnshapedSender::handleQueueSignal(int signum) {
@@ -91,22 +108,7 @@ void UnshapedSender::handleQueueSignal(int signum) {
         (*queuesToSender)[queues] = unshapedSender;
         (*senderToQueues)[unshapedSender] = queues;
       } else if (queueInfo.connStatus == FIN) {
-//        std::cout << "Peer2:Unshaped: Connection Terminated" << std::endl;
-//        // Push all available data from queue to Sender
-//        auto size = queues.fromShaped->size();
-//        if (size > 0) {
-//          auto buffer = reinterpret_cast<uint8_t *>(alloca(size));
-//          queues.fromShaped->pop(buffer, size);
-//          (*queuesToSender)[queues]->sendData(buffer, size);
-//        }
-//        // Clear the queues and mapping
-//        queues.toShaped->clear();
-//        queues.fromShaped->clear();
-//        (*senderToQueues).erase((*queuesToSender)[queues]);
-//        delete (*queuesToSender)[queues];
-//        (*queuesToSender)[queues] = nullptr;
-//        queues.toShaped->markedForDeletion = false;
-//        queues.fromShaped->markedForDeletion = false;
+        (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
   }
@@ -117,33 +119,41 @@ void UnshapedSender::handleQueueSignal(int signum) {
     std::this_thread::sleep_for(std::chrono::microseconds(interval));
 //    usleep(100000);
     for (auto &iterator: *queuesToSender) {
-      auto size = iterator.first.fromShaped->size();
-      // If queue is marked for deletion, it will be flushed by the signal
-      // handler
-      if (size == 0 && iterator.first.fromShaped->markedForDeletion) {
+      if (iterator.second == nullptr) continue;
+      auto &queues = iterator.first;
+      auto size = queues.fromShaped->size();
+      if (size == 0 && (*pendingSignal)[queues.fromShaped->ID] == FIN) {
+        log(DEBUG, "Sending FIN on sender connected to (fromShaped)" +
+                   std::to_string(queues.fromShaped->ID));
         iterator.second->sendFIN();
+        (*pendingSignal).erase(queues.fromShaped->ID);
         // TODO: This definitely causes an issue. Find a better time to clear
         //  mappings
-        if (iterator.first.toShaped->markedForDeletion) {
+        if (queues.toShaped->markedForDeletion) {
+          log(DEBUG, "Clearing the mapping for the queuePair {" +
+                     std::to_string(queues.fromShaped->ID) + "," +
+                     std::to_string(queues.toShaped->ID) + "}");
           // Clear mappings
-//          (*senderToQueues).erase(iterator.second);
-//          delete iterator.second;
-//          iterator.second = nullptr;
+          (*senderToQueues).erase(iterator.second);
+          delete iterator.second;
+          iterator.second = nullptr;
         }
       } else if (size > 0) {
-        log(DEBUG, "Data in queue (fromShaped) " +
-                   std::to_string(iterator.first.fromShaped->ID));
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         iterator.first.fromShaped->pop(buffer, size);
         while (iterator.second == nullptr);
-        iterator.second->sendData(buffer, size);
-        free(buffer);
+        auto sentBytes = iterator.second->sendData(buffer, size);
+        if (sentBytes == size) {
+          free(buffer);
+        }
+
       }
     }
   }
 }
 
 void UnshapedSender::log(logLevels level, const std::string &log) {
+  if (logLevel < level) return;
   std::string levelStr;
   switch (level) {
     case DEBUG:
@@ -157,8 +167,9 @@ void UnshapedSender::log(logLevels level, const std::string &log) {
       break;
 
   }
-  if (logLevel >= level) {
-
-    std::cerr << levelStr << log << std::endl;
-  }
+  auto time = std::time(nullptr);
+  auto localTime = std::localtime(&time);
+  std::scoped_lock lock(logWriter);
+  std::cerr << std::put_time(localTime, "[%H:%M:%S] ")
+            << levelStr << log << std::endl;
 }

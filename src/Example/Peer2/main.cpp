@@ -16,6 +16,8 @@ const MsQuicApi *MsQuic;
 void handleQueueSignal(int signum) {
   if (unshapedSender != nullptr && shapedReceiver == nullptr) {
     unshapedSender->handleQueueSignal(signum);
+  } else if (unshapedSender == nullptr && shapedReceiver != nullptr) {
+    shapedReceiver->handleQueueSignal(signum);
   } else {
     std::cerr << "Peer2: Issue with handling queue signal!" << std::endl;
     exit(1);

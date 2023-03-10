@@ -18,6 +18,7 @@ class ShapedSender {
 private:
   std::string appName;
   const logLevels logLevel;
+  std::mutex logWriter;
 
   QUIC::Sender *shapedSender;
 
@@ -30,6 +31,7 @@ private:
 
   std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash> *queuesToStream;
   std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
+  std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
 
   class SignalInfo *sigInfo;
 
@@ -68,7 +70,7 @@ private:
  * @param queueID The ID of the queue whose status has changed
  * @param connStatus The changed status of the given queue
  */
-//  void signalUnshapedProcess(uint64_t ID, connectionStatus connStatus);
+  void signalUnshapedProcess(uint64_t ID, connectionStatus connStatus);
 
 /**
  * @brief Function that is called when a response is received
@@ -87,6 +89,13 @@ private:
  * @brief Starts the dummy stream
  */
   inline void startDummyStream();
+
+  /**
+   * @brief Handle received control messages
+   * @param buffer The buffer which stores the control messages
+   * @param length Length of the buffer
+   */
+  void handleControlMessage(uint8_t *buffer, size_t length);
 
   void log(logLevels level, const std::string &log);
 

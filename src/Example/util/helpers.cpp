@@ -125,7 +125,7 @@ namespace helpers {
         size_t dataSize = std::min(aggregatedSize, credit);
         size_t dummySize = credit - dataSize;
         if (dummySize > 0) sendDummy(dummySize);
-        if (dataSize > 0) sendData(dataSize);
+        sendData(dataSize);
         credit -= (dataSize + dummySize);
       }
       sendingCredit->store(credit, std::memory_order_release);

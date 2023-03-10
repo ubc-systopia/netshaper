@@ -17,8 +17,9 @@ class UnshapedSender {
 private:
   std::string appName;
   const logLevels logLevel;
-  std::unordered_map<QueuePair, TCP::Sender *,
-      QueuePairHash> *queuesToSender;
+  std::unordered_map<QueuePair, TCP::Sender *, QueuePairHash> *queuesToSender;
+  std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
+  std::mutex logWriter;
 
   // Sender to queue_in and queue_out. queue_out contains response received on
   // the sending socket
@@ -27,6 +28,7 @@ private:
   class SignalInfo *sigInfo;
 
   std::mutex readLock;
+  std::mutex writeLock;
 
   /**
  * @brief Create numStreams number of shared memory streams and initialise
@@ -56,6 +58,13 @@ private:
  * @param interval The interval at which the queues are checked
  */
   [[noreturn]] void checkQueuesForData(__useconds_t interval);
+
+  /**
+   * @brief Signal the shaped process
+   * @param queueID The queue to send the signal about
+   * @param connStatus The connection status (should be FIN)
+   */
+  void signalShapedProcess(uint64_t queueID, connectionStatus connStatus);
 
   void log(logLevels level, const std::string &log);
 
