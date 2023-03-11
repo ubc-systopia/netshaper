@@ -54,18 +54,33 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
     (*senderToQueues)[sender].toShaped->push(buffer, length);
   } else if (connStatus == FIN) {
     auto &queues = (*senderToQueues)[sender];
-    log(DEBUG, "Received FIN on sender connected to queues {" +
+    log(DEBUG, "Received FIN from sender connected to queues {" +
                std::to_string(queues.fromShaped->ID) + "," +
                std::to_string(queues.toShaped->ID) + "}");
     queues.toShaped->markedForDeletion = true;
+//    if (queues.fromShaped->markedForDeletion
+//        && queues.fromShaped->size() == 0) {
+//      eraseMapping(sender);
+//    }
     signalShapedProcess(queues.toShaped->ID, FIN);
   }
 }
 
+inline void UnshapedSender::eraseMapping(TCP::Sender *sender) {
+  auto queues = (*senderToQueues)[sender];
+  log(DEBUG, "Clearing the mapping for the queues {" +
+             std::to_string(queues.fromShaped->ID) + "," +
+             std::to_string(queues.toShaped->ID) + "}");
+  // Clear mappings
+  (*senderToQueues).erase(sender);
+  delete sender;
+  (*queuesToSender)[queues] = nullptr;
+}
+
 QueuePair UnshapedSender::findQueuesByID(uint64_t queueID) {
-  for (auto &iterator: *queuesToSender) {
-    if (iterator.first.fromShaped->ID == queueID) {
-      return iterator.first;
+  for (const auto &[queues, sender]: *queuesToSender) {
+    if (queues.fromShaped->ID == queueID) {
+      return queues;
     }
   }
   return {nullptr, nullptr};
@@ -115,35 +130,32 @@ void UnshapedSender::handleQueueSignal(int signum) {
 }
 
 [[noreturn]] void UnshapedSender::checkQueuesForData(__useconds_t interval) {
+  auto nextCheck = std::chrono::steady_clock::now();
+
   while (true) {
-    std::this_thread::sleep_for(std::chrono::microseconds(interval));
-//    usleep(100000);
-    for (auto &iterator: *queuesToSender) {
-      if (iterator.second == nullptr) continue;
-      auto &queues = iterator.first;
+    nextCheck += std::chrono::microseconds(interval);
+//    std::this_thread::sleep_for(std::chrono::microseconds(interval));
+    std::this_thread::sleep_until(nextCheck);
+
+    for (const auto &[queues, sender]: *queuesToSender) {
+      if (sender == nullptr) continue;
       auto size = queues.fromShaped->size();
       if (size == 0 && (*pendingSignal)[queues.fromShaped->ID] == FIN) {
-        log(DEBUG, "Sending FIN on sender connected to (fromShaped)" +
+        log(DEBUG, "Sending FIN to sender connected to (fromShaped)" +
                    std::to_string(queues.fromShaped->ID));
-        iterator.second->sendFIN();
+        sender->sendFIN();
         (*pendingSignal).erase(queues.fromShaped->ID);
         // TODO: This definitely causes an issue. Find a better time to clear
         //  mappings
         if (queues.toShaped->markedForDeletion) {
-          log(DEBUG, "Clearing the mapping for the queuePair {" +
-                     std::to_string(queues.fromShaped->ID) + "," +
-                     std::to_string(queues.toShaped->ID) + "}");
-          // Clear mappings
-          (*senderToQueues).erase(iterator.second);
-          delete iterator.second;
-          iterator.second = nullptr;
+          eraseMapping(sender);
         }
       } else if (size > 0) {
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
-        iterator.first.fromShaped->pop(buffer, size);
-        while (iterator.second == nullptr);
-        auto sentBytes = iterator.second->sendData(buffer, size);
-        if (sentBytes == size) {
+        queues.fromShaped->pop(buffer, size);
+        while (sender == nullptr);
+        auto sentBytes = sender->sendData(buffer, size);
+        if ((unsigned long) sentBytes == size) {
           free(buffer);
         }
 

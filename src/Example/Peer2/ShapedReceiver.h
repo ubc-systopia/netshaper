@@ -70,13 +70,6 @@ private:
  */
   MsQuicStream *findStreamByID(QUIC_UINT62 ID);
 
-// Reads all queues and sends the data on the related stream
-/**
- * @brief Check for response in a separate thread
- * @param interval The interval with which the queues are checked for responses
- */
-//  [[maybe_unused]] [[noreturn]] void sendResponseLoop(__useconds_t interval);
-
 /**
  * @brief Signal the shaped process on change of queue status
  * @param queueID The ID of the queue whose status has changed
@@ -98,6 +91,8 @@ private:
  * @return true if queue was assigned successfully
  */
   inline bool assignQueues(MsQuicStream *stream);
+
+  inline void eraseMapping(MsQuicStream *stream);
 
 /**
  * @brief Handle receiving control messages from the other middleBox

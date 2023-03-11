@@ -46,6 +46,8 @@ private:
   void onResponse(TCP::Sender *sender,
                   uint8_t *buffer, size_t length, connectionStatus connStatus);
 
+  inline void eraseMapping(TCP::Sender *sender);
+
   /**
  * @brief Find a queue pair by the ID of it's "fromShaped" queue
  * @param queueID The ID of the "fromShaped" queue

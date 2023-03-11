@@ -41,33 +41,36 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 }
 
 [[noreturn]] void UnshapedReceiver::receivedResponse(__useconds_t interval) {
+  auto nextCheck = std::chrono::steady_clock::now();
   while (true) {
-    std::this_thread::sleep_for(std::chrono::microseconds(interval));
-    for (auto &iterator: *queuesToSocket) {
-      if (iterator.second == 0) continue;
-      auto &queues = iterator.first;
+    nextCheck += std::chrono::microseconds(interval);
+//    std::this_thread::sleep_for(std::chrono::microseconds(interval));
+    std::this_thread::sleep_until(nextCheck);
+    for (const auto &[queues, socket]: *queuesToSocket) {
+      if (socket == 0) continue;
       auto size = queues.fromShaped->size();
-      if (size == 0 && (*pendingSignal)[queues.fromShaped->ID] == FIN) {
-        log(DEBUG,
-            "Sending FIN to socket " + std::to_string(iterator.second));
-        unshapedReceiver->sendFIN(iterator.second);
-        (*pendingSignal).erase(queues.fromShaped->ID);
+      if (size == 0) {
+        if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
+          log(DEBUG,
+              "Sending FIN to socket " + std::to_string(socket) +
+              " mapped to queues {" +
+              std::to_string(queues.fromShaped->ID) + "," +
+              std::to_string(queues.toShaped->ID) + "}");
+          TCP::Receiver::sendFIN(socket);
+          (*pendingSignal).erase(queues.fromShaped->ID);
+        }
         // TODO: This definitely causes an issue. Find a better time to close
         //  socket
-        if (queues.toShaped->markedForDeletion) {
-          log(DEBUG, "Erase Mapping of {" +
-                     std::to_string(queues.fromShaped->ID) + "," +
-                     std::to_string(queues.toShaped->ID) + "}");
-          close(iterator.second);
-          (*socketToQueues).erase(iterator.second);
-          iterator.second = 0;
+        if (queues.toShaped->markedForDeletion
+            && queues.fromShaped->markedForDeletion) {
+          eraseMapping(socket);
         }
       }
       if (size > 0) {
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
-        iterator.first.fromShaped->pop(buffer, size);
+        queues.fromShaped->pop(buffer, size);
         auto sentBytes =
-            unshapedReceiver->sendData(iterator.second, buffer, size);
+            unshapedReceiver->sendData(socket, buffer, size);
         if (sentBytes > 0 && (size_t) sentBytes == size) free(buffer);
       }
     }
@@ -80,8 +83,8 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
   // Find an unused queue and map it
   return std::ranges::any_of(*queuesToSocket, [&](auto &iterator) {
     // iterator.first is QueuePair, iterator.second is socket
-    if (iterator.second == 0) {
-      QueuePair queues = iterator.first;
+    QueuePair queues = iterator.first;
+    if (iterator.second == 0 && queues.toShaped->size() == 0) {
       log(DEBUG, "Assigning socket " +
                  std::to_string(clientSocket) + " (client: " + clientAddress
                  + ") to queues {" + std::to_string(queues.fromShaped->ID) +
@@ -115,6 +118,21 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
   });
 }
 
+inline void UnshapedReceiver::eraseMapping(int socket) {
+  auto queues = (*socketToQueues)[socket];
+  if (!queues.fromShaped->markedForDeletion
+      || !queues.toShaped->markedForDeletion) {
+    log(ERROR, "eraseMapping called before both queues were marked for "
+               "deletion");
+  }
+  log(DEBUG, "Erase Mapping of socket " + std::to_string(socket)
+             + " mapped to queues {" + std::to_string(queues.fromShaped->ID) +
+             "," + std::to_string(queues.toShaped->ID) + "}");
+  close(socket);
+  (*socketToQueues).erase(socket);
+  (*queuesToSocket)[queues] = 0;
+}
+
 void UnshapedReceiver::signalShapedProcess(uint64_t queueID,
                                            connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
@@ -146,7 +164,19 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
     case SYN: {
       if (!assignQueue(fromSocket, clientAddress)) {
         log(ERROR, "More clients than configured for!");
+//        for (auto &pair: *socketToQueues) {
+//          std::cout << pair.first << " --> {" << pair.second.fromShaped->ID
+//                    << "," << pair.second.toShaped->ID << "}" << std::endl;
+//        }
+//        exit(1);
         return false;
+      }
+      {
+        auto &queues = (*socketToQueues)[fromSocket];
+        log(DEBUG, "Received SYN from socket " + std::to_string(fromSocket)
+                   + " (client: " + clientAddress + ") mapped to {" +
+                   std::to_string(queues.fromShaped->ID) + "," +
+                   std::to_string(queues.toShaped->ID) + "}");
       }
       signalShapedProcess((*socketToQueues)[fromSocket].toShaped->ID, SYN);
       return true;
@@ -155,6 +185,7 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
       auto toShaped = (*socketToQueues)[fromSocket].toShaped;
       while (toShaped->push(buffer, length) == -1) {
         log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
+                     +" mapped to socket " + std::to_string(fromSocket) +
                      " is full, waiting for it to be empty!");
 
         // Sleep for some time. For performance reasons, this is the same as
@@ -165,7 +196,7 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
     }
     case FIN: {
       auto &queues = (*socketToQueues)[fromSocket];
-      log(DEBUG, "Received FIN on socket " + std::to_string(fromSocket)
+      log(DEBUG, "Received FIN from socket " + std::to_string(fromSocket)
                  + " (client: " + clientAddress + ") mapped to {" +
                  std::to_string(queues.fromShaped->ID) + "," +
                  std::to_string(queues.toShaped->ID) + "}");

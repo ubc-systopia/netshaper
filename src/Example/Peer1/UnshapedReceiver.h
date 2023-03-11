@@ -57,6 +57,8 @@ private:
   inline bool assignQueue(int clientSocket, std::string &clientAddress,
                           std::string serverAddress = "127.0.0.1:5555");
 
+  inline void eraseMapping(int socket);
+
   /**
  * @brief Signal the shaped process on change of queue status
  * @param queueID The ID of the queue whose status has changed

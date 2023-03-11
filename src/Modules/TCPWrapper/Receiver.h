@@ -63,7 +63,7 @@ namespace TCP {
 
     ~Receiver();
 
-    inline void sendFIN(int socket) const {
+    static inline void sendFIN(int socket) {
       shutdown(socket, SHUT_WR);
     };
 

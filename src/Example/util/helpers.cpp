@@ -94,14 +94,16 @@ namespace helpers {
                                    QueuePairHash> *queuesToStream,
                                NoiseGenerator *noiseGenerator,
                                __useconds_t decisionInterval) {
+    auto nextCheck = std::chrono::steady_clock::now();
     while (true) {
-
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
       size_t credit = sendingCredit->load(std::memory_order_acquire);
       credit += DPDecision;
       sendingCredit->store(credit, std::memory_order_release);
-      std::this_thread::sleep_for(std::chrono::microseconds(decisionInterval));
+      nextCheck += std::chrono::microseconds(decisionInterval);
+//      std::this_thread::sleep_for(std::chrono::microseconds(decisionInterval));
+      std::this_thread::sleep_until(nextCheck);
     }
   }
 
@@ -112,8 +114,11 @@ namespace helpers {
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
                       __useconds_t sendingInterval) {
+    auto nextCheck = std::chrono::steady_clock::now();
     while (true) {
-      std::this_thread::sleep_for(std::chrono::microseconds(sendingInterval));
+      nextCheck += std::chrono::microseconds(sendingInterval);
+//      std::this_thread::sleep_for(std::chrono::microseconds(sendingInterval));
+      std::this_thread::sleep_until(nextCheck);
       auto credit = sendingCredit->load(std::memory_order_acquire);
 //      std::cout << "Loaded credit: " << credit << std::endl;
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
