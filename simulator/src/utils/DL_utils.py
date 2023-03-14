@@ -12,6 +12,10 @@ from tensorflow.keras.layers import Dense, Conv1D, Flatten, MaxPooling1D, Dropou
 from tensorflow.keras.utils import to_categorical
 
 tf.get_logger().setLevel('INFO')
+configtf = tf.compat.v1.ConfigProto()
+configtf.gpu_options.allow_growth=True
+configtf.gpu_options.per_process_gpu_memory_fraction = 0.6
+
 import configlib
 
 def normalization_l2(df):

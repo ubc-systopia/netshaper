@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 import configlib
 from src.transport import DP_transport 
-from src.utils.DL_utils import train_test_and_report_acc as BandB_attack
+from src.utils.DL_utils_PT import train_test_and_report_acc as BandB_attack
 from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
 from src.utils.TCN_utils import train_test_and_report_acc as TCN_attack
 from src.data_utils.data_loader import data_filter_deterministic
@@ -17,11 +17,13 @@ def get_attack_fn(config: configlib.Config):
         raise NotImplementedError("The attack model is not implemented")
 
 
-def attack_accuracy(config:configlib.Config, attack_fn, data):
+def attack_accuracy(config:configlib.Config, attack_fn, DP_data, DP_step, noise_multiplier):
     accs = []
     for i in range(config.attack_num_of_repeats):
-        accs.append(attack_fn(config, data))
-    return np.mean(accs)
+        # original_data, DP_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier)  
+        accs.append(attack_fn(config, DP_data))
+
+    return accs
 
 
 def BandB_vs_TCN(config: configlib.Config, data: pd.DataFrame):
@@ -73,7 +75,7 @@ def BandB_vs_TCN(config: configlib.Config, data: pd.DataFrame):
                 
                 results['privacy_loss'].append(eps)
                 results['noise_multiplier'].append(noise_multiplier)
-                results['BandB_accuracy'].append(attack_accuracy(config, BandB_attack, DP_data))
-                results['TCN_accuracy'].append(attack_accuracy(config, TCN_attack, DP_data))
+                results['BandB_accuracy'].append(attack_accuracy(config, BandB_attack, DP_data, DP_step, noise_multiplier))
+                results['TCN_accuracy'].append(attack_accuracy(config, TCN_attack, DP_data, DP_step, noise_multiplier))
                 pbar.update(1)                    
         return {}, results 
