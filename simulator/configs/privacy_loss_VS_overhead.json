@@ -1,0 +1,27 @@
+{ 
+
+  "experiment" : "privacy_loss_vs_overhead",
+  "results_dir" : "/home/ubuntu/results/",
+  "num_of_unique_streams" : 10,
+  "num_of_traces_per_stream" : 50,
+  "filtering_type" : "deterministic",
+
+  "transport_type" : "DP_dynamic",
+  "DP_mechanism" : "Gaussian_rdp",
+  "privacy_loss_min" : 0.5,
+  "privacy_loss_max" : 50,
+  "privacy_loss_num" : 50, 
+  "delta" : 1e-5,
+  "sensitivity" : 5e3,
+
+  "app_time_resolution_us" : 5e4 ,
+  "middlebox_period_us" : 5e4 ,
+  "privacy_window_size_s" : 100,
+
+  "data_source" : "raw_data",
+  "load_data_dir" : "/home/ubuntu/data/raw_datasets/video/220508-1105/NIC1000-base/pervid_niter",
+  "save_data_dir" : "/home/ubuntu/data/windowed_stream_100",
+  "max_num_of_unique_streams" : 100,
+  "max_num_of_traces_per_stream" : 100,
+  "data_time_resolution_us" : 5e4
+}
