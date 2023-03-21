@@ -4,10 +4,11 @@ import os
 import numpy as np
 import datetime
 from src.data_utils.DataProcessor import DataProcessor
+from src.data_utils.DataProcessorNew import DataProcessorNew
 import configlib
 
 
-def data_loader(data_time_resolution_us, data_dir = None, load_from = 'raw_data', num_classes = 4):
+def data_loader_experimental(data_time_resolution_us, data_dir = None, load_from = 'raw_data', num_classes = 4):
     if(data_dir == None):
         print("Please specify the directory of the dataset you want to load.")
         df = None
@@ -25,10 +26,30 @@ def data_loader(data_time_resolution_us, data_dir = None, load_from = 'raw_data'
         df = None
     return df
 
+def data_loader_realistic(data_time_resolution_us, data_dir = None, load_from = 'raw_data', num_classes = 4, iter_num = 10):
+    if(data_dir == None):
+        print("Please specify the directory of the dataset you want to load.")
+        df = None
+    if(load_from == 'memory'):
+        file_name = 'data_trace_w_' + str(int(data_time_resolution_us)) + '_c_'+ str(int(num_classes)) + '.p'
+        file_dir = os.path.join(data_dir, file_name)
+        df = pickle.load(open(file_dir, "rb"))
+    elif(load_from == 'raw_data'):
+        print(num_classes)
+        dp = DataProcessorNew(data_dir, num_classes, iter_num)
+        df = dp.aggregated_dataframe(data_time_resolution_us) 
+        # Saving the dataframe in /tmp/ for future use
+        pickle.dump(df, open('/tmp/data_trace_w_' + str(int(data_time_resolution_us)) + '_c_'+ str(int(num_classes)) + '.p', "wb"))
+    else:
+        print("Please specify the data source you want to load from. ('memory' or 'raw_data')")
+        df = None
+    return df
+
 def data_saver(df, data_dir, data_time_resolution_us, num_classes):
-  data_path = os.path.join(data_dir, 'data_trace_w_' + str(int(data_time_resolution_us)) + '_c_'+ str(int(num_classes)) + '.p')
-  pickle.dump(df, open(data_path, "wb"))
-  
+    ensure_dir(data_dir)
+    data_path = os.path.join(data_dir, 'data_trace_w_' + str(int(data_time_resolution_us)) + '_c_'+ str(int(num_classes)) + '.p')
+    pickle.dump(df, open(data_path, "wb"))
+
 
 def data_filter_stochastic(config: configlib.Config, df):
 
@@ -59,10 +80,13 @@ def data_filter_deterministic(config: configlib.Config, df):
     num_of_traces_per_stream = config.num_of_traces_per_stream
     max_num_of_traces_per_stream = config.max_num_of_traces_per_stream
 
+    print(type(num_of_unique_streams))
+    print(type(df['label'][0])) 
     # Filter the dataframe based on the random labels
     filtered_df = df[df['label'] < num_of_unique_streams] 
     
     # From every unique label, select a num_of_traces_per_stream number of traces
+    print(num_of_traces_per_stream)
     filtered_df = filtered_df.groupby('label').apply(lambda x: x.sample(n=num_of_traces_per_stream, replace=False)) 
     
     # map the labels to the new labels
@@ -93,3 +117,9 @@ def result_saver(config: configlib.Config, results, baseline_results = None):
     if baseline_results is not None:
         with open(child_dir + "baseline_results.pkl", "wb") as f: 
             pickle.dump(baseline_results, f)
+            
+            
+def ensure_dir(file_path):
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)

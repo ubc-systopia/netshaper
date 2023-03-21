@@ -17,7 +17,7 @@ def get_attack_fn(config: configlib.Config):
         raise NotImplementedError("The attack model is not implemented")
 
 
-def attack_accuracy(config:configlib.Config, attack_fn, DP_data, DP_step, noise_multiplier):
+def attack_accuracy(config:configlib.Config, attack_fn, DP_data):
     accs = []
     for i in range(config.attack_num_of_repeats):
         # original_data, DP_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier)  

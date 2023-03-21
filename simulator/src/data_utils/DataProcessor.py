@@ -178,7 +178,7 @@ class DataProcessor():
     #     progress_counter += 1
         
     ds_keys = list(ds_name_dict.keys())
-    with tqdm(total=len(ds_keys)*len(ds_name_dict[ds_keys[0]]), desc="Processing DataL=:") as pbar:
+    with tqdm(total=len(ds_keys)*len(ds_name_dict[ds_keys[0]]), desc="Processing Data:") as pbar:
       for key in ds_keys:
         for ds in ds_name_dict[key]:
           df_raw = self.make_dataset_dataframe(ds)
