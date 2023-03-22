@@ -6,7 +6,7 @@ from src.utils.DP_utils import *
 from src.modules.Queue import Queue
 
 
-def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, verbose=True):
+def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, sensitivity, noise_multiplier = 1, verbose=False):
   DP_max_queue_size = 1e8
   DP_min_queue_size = 0
   DP_queues = []
@@ -24,24 +24,22 @@ def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, verb
   if(verbose):
     print("epsilon per update is: " + str(epsilon_per_update))
   #sensitivity = calculate_sensitivity_using_dataset(app.get_all_data())
-  sensitivity = 1e5 #Bytes
   if(verbose):
     print("The sensitivity of dataset is: " + str(sensitivity))
   i = 0
   while(not ((app.get_status() == "terminated") and (check_all_queues_empty(DP_queues)) )):
     # App step is number of windows application push together to the transport layer queue
-    app_step = 1
     DP_step = DP_step_
     # Push 
     if (app.get_status() == "terminated"):
       app_realtime_data = np.zeros((app.get_num_of_streams(),)) 
     else:
-      app_realtime_data = app.generate_data(app_step)
+      app_realtime_data = app.generate_data()
     queues_push(app_realtime_data, DP_queues)
 
     # DP Pull
     if(i%DP_step == 0):
-      push_values, dummy_values = queues_pull_DP(DP_queues, epsilon_per_update, sensitivity, DP_mechanism_)
+      push_values, dummy_values = queues_pull_DP(DP_queues, epsilon_per_update, sensitivity, DP_mechanism_, noise_multiplier)
     
     network_data.append(push_values)
     dummy_data.append(dummy_values)

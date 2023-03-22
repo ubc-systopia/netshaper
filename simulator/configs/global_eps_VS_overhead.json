@@ -1,0 +1,27 @@
+{ 
+
+  "experiment" : "global_epsilon_VS_overhead",
+  "results_dir" : "/home/ubuntu/results/",
+  "num_of_unique_streams" : 10,
+  "num_of_traces_per_stream" : 50,
+  "filtering_type" : "deterministic",
+
+  "transport_type" : "DP_dynamic",
+  "DP_mechanism" : "Gaussian",
+  "global_epsilon_min" : 0.1,
+  "global_epsilon_max" : 10,
+  "global_epsilon_num" : 20, 
+  "delta" : 1e-5,
+  "sensitivity" : 1e5,
+
+  "app_time_resolution_us" : 1e6 ,
+  "middlebox_period_us" : 1e6 ,
+  "privacy_window_size_s" : 100,
+
+  "data_source" : "memory",
+  "load_data_dir" : "/home/ubuntu/data/windowed_stream/",
+  "save_data_dir" : "/home/tmp",
+  "max_num_of_unique_streams" : 100,
+  "max_num_of_traces_per_stream" : 100,
+  "data_time_resolution_us" : 1e6
+}

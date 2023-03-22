@@ -17,7 +17,7 @@ class DataProcessor():
       key = 'v' + str(label)
       tmp_values = []
       for file in files_in_dir:
-        if (key + '.tshark') in file:
+        if (key + '.tshark.client') in file:
           tmp_values.append(file) 
       partioned_ds_names[str(label)] = tmp_values
     return partioned_ds_names
@@ -54,6 +54,29 @@ class DataProcessor():
     end_window_indx = self.binary_search(df, window_end_time, column_to_search_indx)
     burst_in_window = df.iloc[start_window_indx:end_window_indx,  pkt_size_column_indx].sum()
     return burst_in_window
+
+
+  def burst_in_window_pattern_simple(self, df, window_size):
+    
+    df['pkt_time']  = df['pkt_time'] * 1e6
+
+    pkt_time_column_indx = df.columns.get_loc('pkt_time')
+    pkt_size_column_indx = df.columns.get_loc('pkt_size')
+
+    
+
+    stream_start_time = df.iloc[0, pkt_time_column_indx]
+    stream_end_time = df.iloc[-1, pkt_time_column_indx]
+    window_num = int(math.ceil((stream_end_time - stream_start_time)/window_size)) 
+
+    burst_size_per_window = [0] * window_num
+    burst_time_per_window = [(elem + 1/2) * window_size for elem in range(window_num)]
+    for i in range(len(df)): 
+      burst_size_per_window[math.floor((df.iloc[i, pkt_time_column_indx] - stream_start_time)/window_size)] += df.iloc[i, pkt_size_column_indx]
+      
+    data = {'window time': burst_time_per_window, 'window size': burst_size_per_window}
+    windowed_df = pd.DataFrame(data=data)
+    return windowed_df  
 
 
 
@@ -155,13 +178,13 @@ class DataProcessor():
     #     progress_counter += 1
         
     ds_keys = list(ds_name_dict.keys())
-    with tqdm(total=len(ds_keys)*len(ds_name_dict[ds_keys[0]]), desc="Processing DataL=:") as pbar:
+    with tqdm(total=len(ds_keys)*len(ds_name_dict[ds_keys[0]]), desc="Processing Data:") as pbar:
       for key in ds_keys:
         for ds in ds_name_dict[key]:
           df_raw = self.make_dataset_dataframe(ds)
           #df_raw_copy = df_raw.copy()
           label = int(key)
-          windowed_df = self.burst_in_window_pattern(df_raw, window_size).drop(columns=['window time'])
+          windowed_df = self.burst_in_window_pattern_simple(df_raw, window_size).drop(columns=['window time'])
           labels.append(label)
           sample = (windowed_df.T).reset_index()
           sample['label'] = label
