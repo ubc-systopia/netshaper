@@ -65,13 +65,6 @@ namespace TCP {
     void log(logLevels level, const std::string &log);
 
     /**
-     * @brief check if the given IP address is IPv4 or IPv6
-     * @return returns the value AF_INET or AF_INET6 depending on the input
-     * IP address
-     */
-    int checkIPVersion(const std::string &);
-
-    /**
      * @brief Open a socket connection to the remote for each client that connects
      * @return File Descriptor of opened socket to remote host
      */
