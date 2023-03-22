@@ -100,18 +100,18 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
       queues.toShaped->clear();
       queues.fromShaped->clear();
 
-      std::strcpy(queues.fromShaped->clientAddress, address.c_str());
-      std::strcpy(queues.fromShaped->clientPort, port.c_str());
-      std::strcpy(queues.toShaped->clientAddress, address.c_str());
-      std::strcpy(queues.toShaped->clientPort, port.c_str());
+      std::strcpy(queues.fromShaped->addrPair.clientAddress, address.c_str());
+      std::strcpy(queues.fromShaped->addrPair.clientPort, port.c_str());
+      std::strcpy(queues.toShaped->addrPair.clientAddress, address.c_str());
+      std::strcpy(queues.toShaped->addrPair.clientPort, port.c_str());
 
       // Set server of queue to given server
       address = serverAddress.substr(0, serverAddress.find(':'));
       port = serverAddress.substr((address.size() + 1));
-      std::strcpy(queues.fromShaped->serverAddress, address.c_str());
-      std::strcpy(queues.fromShaped->serverPort, port.c_str());
-      std::strcpy(queues.toShaped->serverAddress, address.c_str());
-      std::strcpy(queues.toShaped->serverPort, port.c_str());
+      std::strcpy(queues.fromShaped->addrPair.serverAddress, address.c_str());
+      std::strcpy(queues.fromShaped->addrPair.serverPort, port.c_str());
+      std::strcpy(queues.toShaped->addrPair.serverAddress, address.c_str());
+      std::strcpy(queues.toShaped->addrPair.serverPort, port.c_str());
       return true;
     }
     return false;

@@ -11,6 +11,7 @@
 #include <sys/ipc.h>
 #include <atomic>
 #include <cstring>
+#include "../../../Common.h"
 
 #define BUFFER_SIZE 2500000
 
@@ -56,10 +57,7 @@ public:
   /**
    * @brief The current client this queue is bound to
    */
-  char clientAddress[16] = "";
-  char clientPort[6] = "";
-  char serverAddress[16] = "";
-  char serverPort[6] = "";
+  addressPair addrPair;
   uint64_t ID;
   bool markedForDeletion = false;
 

@@ -116,10 +116,14 @@ void ShapedSender::handleQueueSignal(int signum) {
             "," + std::to_string(queues.toShaped->ID) + "}");
         message->streamType = Data;
         message->connStatus = SYN;
-        std::strcpy(message->srcIP, queues.toShaped->clientAddress);
-        std::strcpy(message->srcPort, queues.toShaped->clientPort);
-        std::strcpy(message->destIP, queues.toShaped->serverAddress);
-        std::strcpy(message->destPort, queues.toShaped->serverPort);
+        std::strcpy(message->addrPair.clientAddress,
+                    queues.toShaped->addrPair.clientAddress);
+        std::strcpy(message->addrPair.clientPort,
+                    queues.toShaped->addrPair.clientPort);
+        std::strcpy(message->addrPair.serverAddress,
+                    queues.toShaped->addrPair.serverAddress);
+        std::strcpy(message->addrPair.serverPort,
+                    queues.toShaped->addrPair.serverPort);
         shapedSender->send(controlStream,
                            reinterpret_cast<uint8_t *>(message),
                            sizeof(*message));

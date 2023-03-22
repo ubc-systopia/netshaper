@@ -150,24 +150,24 @@ void ShapedReceiver::signalUnshapedProcess(uint64_t queueID,
 void ShapedReceiver::copyClientInfo(QueuePair queues,
                                     struct ControlMessage *ctrlMsg) {
   // Source/Client
-  std::strcpy(queues.toShaped->clientAddress,
-              ctrlMsg->srcIP);
-  std::strcpy(queues.toShaped->clientPort,
-              ctrlMsg->srcPort);
-  std::strcpy(queues.fromShaped->clientAddress,
-              ctrlMsg->srcIP);
-  std::strcpy(queues.fromShaped->clientPort,
-              ctrlMsg->srcPort);
+  std::strcpy(queues.toShaped->addrPair.clientAddress,
+              ctrlMsg->addrPair.clientAddress);
+  std::strcpy(queues.toShaped->addrPair.clientPort,
+              ctrlMsg->addrPair.clientPort);
+  std::strcpy(queues.fromShaped->addrPair.clientAddress,
+              ctrlMsg->addrPair.clientAddress);
+  std::strcpy(queues.fromShaped->addrPair.clientPort,
+              ctrlMsg->addrPair.clientPort);
 
-  //Dest/Server
-  std::strcpy(queues.toShaped->serverAddress,
-              ctrlMsg->destIP);
-  std::strcpy(queues.toShaped->serverPort,
-              ctrlMsg->destPort);
-  std::strcpy(queues.fromShaped->serverAddress,
-              ctrlMsg->destIP);
-  std::strcpy(queues.fromShaped->serverPort,
-              ctrlMsg->destPort);
+  //Destination/Server
+  std::strcpy(queues.toShaped->addrPair.serverAddress,
+              ctrlMsg->addrPair.serverAddress);
+  std::strcpy(queues.toShaped->addrPair.serverPort,
+              ctrlMsg->addrPair.serverPort);
+  std::strcpy(queues.fromShaped->addrPair.serverAddress,
+              ctrlMsg->addrPair.serverAddress);
+  std::strcpy(queues.fromShaped->addrPair.serverPort,
+              ctrlMsg->addrPair.serverPort);
 }
 
 inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {

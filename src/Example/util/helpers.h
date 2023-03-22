@@ -60,13 +60,10 @@ namespace helpers {
     Control, Dummy, Data
   };
   struct ControlMessage {
-    uint64_t streamID;
-    enum StreamType streamType;
-    enum connectionStatus connStatus;
-    char srcIP[16];
-    char srcPort[6];
-    char destIP[16];
-    char destPort[6];
+    uint64_t streamID{QUIC_UINT62_MAX};
+    enum StreamType streamType{};
+    enum connectionStatus connStatus{ONGOING};
+    addressPair addrPair{};
   };
 
 /**

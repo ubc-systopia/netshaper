@@ -124,8 +124,8 @@ void UnshapedSender::handleQueueSignal(int signum) {
                      std::forward<decltype(PH4)>(PH4));
         };
         auto unshapedSender = new TCP::Sender{
-            queues.fromShaped->serverAddress,
-            std::stoi(queues.fromShaped->serverPort),
+            queues.fromShaped->addrPair.serverAddress,
+            std::stoi(queues.fromShaped->addrPair.serverPort),
             onResponseFunc, WARNING};
         log(DEBUG, "Starting a new sender paired to queues {" +
                    std::to_string(queues.fromShaped->ID) + "," +
@@ -163,7 +163,7 @@ void UnshapedSender::handleQueueSignal(int signum) {
       } else if (size > 0) {
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         queues.fromShaped->pop(buffer, size);
-        while (sender == nullptr);
+//        while (sender == nullptr);
         auto sentBytes = sender->sendData(buffer, size);
         if ((unsigned long) sentBytes == size) {
           free(buffer);
