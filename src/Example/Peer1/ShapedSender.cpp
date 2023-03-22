@@ -203,14 +203,14 @@ void ShapedSender::sendData(size_t dataSize) {
 void ShapedSender::sendDummy(size_t dummySize) {
   uint8_t dummy[dummySize];
   memset(dummy, 0, dummySize);
-  dummyStream->GetID(&dummyStreamID);
   shapedSender->send(dummyStream,
                      dummy, dummySize);
 }
 
-void ShapedSender::handleControlMessage(uint8_t *buffer, size_t length) {
+void ShapedSender::handleControlMessages(uint8_t *buffer, size_t length) {
   if (length % sizeof(ControlMessage) != 0) {
     log(ERROR, "Received half a control message!");
+    return;
   } else {
     uint8_t messages = length / sizeof(ControlMessage);
     for (uint8_t i = 0; i < messages; i++) {
@@ -235,7 +235,7 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
   uint64_t streamID;
   stream->GetID(&streamID);
   if (streamID == controlStreamID) {
-    handleControlMessage(buffer, length);
+    handleControlMessages(buffer, length);
     return;
   }
   if (streamID == dummyStreamID) {

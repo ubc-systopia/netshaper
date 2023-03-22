@@ -95,7 +95,7 @@ private:
    * @param buffer The buffer which stores the control messages
    * @param length Length of the buffer
    */
-  void handleControlMessage(uint8_t *buffer, size_t length);
+  void handleControlMessages(uint8_t *buffer, size_t length);
 
   void log(logLevels level, const std::string &log);
 

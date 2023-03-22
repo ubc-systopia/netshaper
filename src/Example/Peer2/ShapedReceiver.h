@@ -34,13 +34,13 @@ private:
   std::mutex readLock;
 
   // Map that stores streamIDs for which client information is received (but
-  // the stream has not yet begun). Value is address, port.
-  std::unordered_map<QUIC_UINT62, struct ControlMessage>
-      streamIDtoCtrlMsg;
+  // the stream has not yet begun).
+  std::unordered_map<QUIC_UINT62, struct ControlMessage> streamIDtoCtrlMsg;
 
   MsQuicStream *controlStream;
-  //static QUIC_UINT62 controlStreamID;
   MsQuicStream *dummyStream;
+  // dummyStreamID is needed because ctrlMsg of dummyStream is received
+  // before the dummy stream begins.
   QUIC_UINT62 dummyStreamID;
 
   // The credit for sender such that it is the credit is maximum data it can send at any given time.
@@ -96,9 +96,12 @@ private:
 
 /**
  * @brief Handle receiving control messages from the other middleBox
- * @param ctrlMsg The control message that was received
+ * @param ctrlStream The control stream this message was received on
+ * @param buffer The buffer containing the messages
+ * @Param length The length of the buffer
  */
-  void receivedControlMessage(struct ControlMessage *ctrlMsg);
+  void handleControlMessages(MsQuicStream *ctrlStream,
+                             uint8_t *buffer, size_t length);
 
 /**
  * @brief The function that is called when shaped data is received from the

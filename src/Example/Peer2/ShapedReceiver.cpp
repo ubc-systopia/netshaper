@@ -117,9 +117,10 @@ bool ShapedReceiver::sendResponse(MsQuicStream *stream, uint8_t *data,
 MsQuicStream *ShapedReceiver::findStreamByID(QUIC_UINT62 ID) {
   QUIC_UINT62 streamID;
   for (const auto &[stream, queues]: *streamToQueues) {
-    if (stream == nullptr) continue;
-    stream->GetID(&streamID);
-    if (streamID == ID) return stream;
+    if (stream != nullptr) {
+      stream->GetID(&streamID);
+      if (streamID == ID) return stream;
+    }
   }
   return nullptr;
 }
@@ -222,80 +223,70 @@ inline void ShapedReceiver::eraseMapping(MsQuicStream *stream) {
   (*queuesToStream)[queues] = nullptr;
 }
 
-void ShapedReceiver::receivedControlMessage(struct ControlMessage *ctrlMsg) {
-  switch (ctrlMsg->streamType) {
-    case Dummy:
-      log(DEBUG, "Dummy stream is at " + std::to_string(ctrlMsg->streamID));
+void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
+                                           uint8_t *buffer, size_t length) {
+  if (length % sizeof(ControlMessage) != 0) {
+    log(ERROR, "Received half a control message!");
+    return;
+  }
+  auto ctrlMsgSize = sizeof(ControlMessage);
+  uint8_t msgCount = length / ctrlMsgSize;
 
-      dummyStreamID = ctrlMsg->streamID;
-      break;
-    case Data: {
-      auto dataStream = findStreamByID(ctrlMsg->streamID);
-      auto &queues = (*streamToQueues)[dataStream];
-      if (ctrlMsg->connStatus == SYN) {
-        log(DEBUG, "Received SYN on stream " +
-                   std::to_string(ctrlMsg->streamID));
-        if (dataStream != nullptr) {
-          copyClientInfo(queues, ctrlMsg);
-          signalUnshapedProcess(queues.fromShaped->ID, SYN);
-        } else {
-          // Map from stream (which has not yet started) to client
-          streamIDtoCtrlMsg[ctrlMsg->streamID] = *ctrlMsg;
+  for (uint8_t i = 0; i < msgCount; i++) {
+    auto ctrlMsg =
+        reinterpret_cast<ControlMessage *>(buffer + (i * ctrlMsgSize));
+    switch (ctrlMsg->streamType) {
+      case Dummy:
+        log(DEBUG, "Dummy stream is at " + std::to_string(ctrlMsg->streamID));
+
+        dummyStreamID = ctrlMsg->streamID;
+        break;
+      case Data: {
+        auto dataStream = findStreamByID(ctrlMsg->streamID);
+        auto &queues = (*streamToQueues)[dataStream];
+        switch (ctrlMsg->connStatus) {
+          case SYN:
+            log(DEBUG, "Received SYN on stream " +
+                       std::to_string(ctrlMsg->streamID));
+            if (dataStream != nullptr) {
+              copyClientInfo(queues, ctrlMsg);
+              signalUnshapedProcess(queues.fromShaped->ID, SYN);
+            } else {
+              // Map from stream (which has not yet started) to client
+              streamIDtoCtrlMsg[ctrlMsg->streamID] = *ctrlMsg;
+            }
+            break;
+          case FIN:
+            if (queues.fromShaped != nullptr) {
+              log(DEBUG, "Received FIN from stream " +
+                         std::to_string(ctrlMsg->streamID) +
+                         " mapped to queues {" +
+                         std::to_string(queues.fromShaped->ID) + "," +
+                         std::to_string(queues.toShaped->ID) + "}");
+              queues.fromShaped->markedForDeletion = true;
+              signalUnshapedProcess(queues.fromShaped->ID, FIN);
+            }
+            break;
+          default:
+            break;
         }
-      } else if (ctrlMsg->connStatus == FIN && queues.fromShaped != nullptr) {
-        log(DEBUG, "Received FIN from stream " +
-                   std::to_string(ctrlMsg->streamID) + " mapped to queues {" +
-                   std::to_string(queues.fromShaped->ID) + "," +
-                   std::to_string(queues.toShaped->ID) + "}");
-        queues.fromShaped->markedForDeletion = true;
-        signalUnshapedProcess(queues.fromShaped->ID, FIN);
       }
+        break;
+      case Control:
+        if (controlStream == nullptr) controlStream = ctrlStream;
+        // Else, this (re-identification of control stream) should never happen
+        break;
     }
-      break;
-    case Control:
-      // This (re-identification of control stream) should never happen
-      break;
   }
 }
 
-void
-ShapedReceiver::receivedShapedData(MsQuicStream *stream, uint8_t *buffer, size_t
-length) {
+void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
+                                        uint8_t *buffer, size_t length) {
   uint64_t streamID;
   stream->GetID(&streamID);
-  size_t ctrlMsgSize = sizeof(ControlMessage);
   // Check if this is first byte from the other middlebox
-  if (controlStream == nullptr) {
-    log(DEBUG, "Control Stream is at " + std::to_string(streamID));
-    size_t numMessages = length / ctrlMsgSize;
-
-    // struct ControlMessage *messages[length/sizeof(struct ControlMessage)];
-    for (size_t i = 0; i < numMessages; i++) {
-      auto ctrlMsg =
-          reinterpret_cast<struct ControlMessage *>(buffer + (ctrlMsgSize * i));
-      // auto ctrlMsg = static_cast<struct ControlMessage *>(buffer + (sizeof(struct ControlMessage) * i));
-      if (ctrlMsg->streamType == Control) {
-        controlStream = stream;
-//        controlStreamID = streamID;
-      } else if (ctrlMsg->streamType == Dummy) {
-        dummyStreamID = ctrlMsg->streamID;
-      }
-    }
-    return;
-  }
-  if (controlStream == stream) {
-    // A message from the controlStream
-    if (length % sizeof(ControlMessage) != 0) {
-      log(ERROR, "Received half a control message!");
-    } else {
-      uint8_t messages = length / ctrlMsgSize;
-      for (uint8_t i = 0; i < messages; i++) {
-        auto ctrlMsg =
-            reinterpret_cast<struct ControlMessage *>(buffer +
-                                                      (i * ctrlMsgSize));
-        receivedControlMessage(ctrlMsg);
-      }
-    }
+  if (stream == controlStream || controlStream == nullptr) {
+    handleControlMessages(stream, buffer, length);
     return;
   }
 
@@ -308,8 +299,10 @@ length) {
 
   // This is a data stream
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
-    if (!assignQueues(stream))
+    if (!assignQueues(stream)) {
       log(ERROR, "More streams from peer than allowed!");
+      return;
+    }
   }
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;

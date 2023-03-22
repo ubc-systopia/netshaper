@@ -51,7 +51,17 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
                                 uint8_t *buffer, size_t length,
                                 connectionStatus connStatus) {
   if (connStatus == ONGOING) {
-    (*senderToQueues)[sender].toShaped->push(buffer, length);
+    auto toShaped = (*senderToQueues)[sender].toShaped;
+//    log(DEBUG, "Received response on sender connected to (toShaped) " +
+//               std::to_string(toShaped->ID));
+    while (toShaped->push(buffer, length) == -1) {
+      log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
+                   " is full, waiting for it to be empty!");
+
+      // Sleep for some time. For performance reasons, this is the same as
+      // the interval with which DP Logic thread runs in Shaped component.
+      std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    }
   } else if (connStatus == FIN) {
     auto &queues = (*senderToQueues)[sender];
     log(DEBUG, "Received FIN from sender connected to queues {" +
