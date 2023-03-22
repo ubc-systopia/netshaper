@@ -31,7 +31,7 @@ double NoiseGenerator::gaussian(double mu, double sigma) {
 
 double NoiseGenerator::gaussianDP() const {
   double mu = 0;
-  double sigma = 10;
+  double sigma = sensitivity * noiseMultiplier;
   //      sensitivity * sqrt(2 * log(1.25 / delta)) / epsilon;
   // TODO: Choose a better value
   return gaussian(mu, sigma);
@@ -45,16 +45,9 @@ size_t NoiseGenerator::getDPDecision(size_t aggregatedQueueSize) {
                                                   gaussianNoise)));
 }
 
-NoiseGenerator::NoiseGenerator(double epsilon,
-                               double sensitivity,
-                               double delta,
-                               int maxDecisionSize,
-                               int minDecisionSize) : epsilon(epsilon),
-                                                      sensitivity(sensitivity),
-                                                      delta(delta),
-                                                      maxDecisionSize(
-                                                          maxDecisionSize),
-                                                      minDecisionSize(
-                                                          minDecisionSize) {
+NoiseGenerator::NoiseGenerator(double noiseMultiplier, double sensitivity,
+                               int maxDecisionSize, int minDecisionSize)
+    : noiseMultiplier(noiseMultiplier), sensitivity(sensitivity),
+      maxDecisionSize(maxDecisionSize), minDecisionSize(minDecisionSize) {
 
 }

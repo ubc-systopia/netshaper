@@ -105,7 +105,7 @@ public:
    * @param appName The name of this application. Used as a key to initialise
    * shared memory with the unshaped process
    * @param maxClients The maximum number of TCP flows to support
-   * @param epsilon The privacy budget (lower means more privacy but also
+   * @param noiseMultiplier The privacy budget (lower means more privacy but also
    * more overhead)
    * @param sensitivity The max "distance" between 2 queues that we want to
    * hide
@@ -119,7 +119,7 @@ public:
    * sender will read the tokens and send the shaped data
    */
   ShapedSender(std::string &appName, int maxClients,
-               double epsilon = 0.01, double sensitivity = 100,
+               double noiseMultiplier = 0.01, double sensitivity = 100,
                const std::string &peer2IP = "localhost",
                uint16_t peer2Port = 4567,
                uint64_t idleTimeout = 100000,

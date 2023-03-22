@@ -139,7 +139,7 @@ public:
    * @param bindPort The port to listen to
    * @param idleTimeout The time (in milliseconds) after which an idle
    * connection between the middleboxes will be terminated
-   * @param epsilon The privacy budget (lower means more privacy but also
+   * @param noiseMultiplier The privacy budget (lower means more privacy but also
    * more overhead)
    * @param sensitivity The max "distance" between 2 queues that we want to
    * hide
@@ -153,7 +153,7 @@ public:
                  int maxPeers = 1, int maxStreamsPerPeer = 10,
                  uint16_t bindPort = 4567,
                  uint64_t idleTimeout = 100000,
-                 double epsilon = 0.01, double sensitivity = 100,
+                 double noiseMultiplier = 0.01, double sensitivity = 100,
                  __useconds_t DPCreditorLoopInterval = 50000,
                  __useconds_t senderLoopInterval = 50000
   );

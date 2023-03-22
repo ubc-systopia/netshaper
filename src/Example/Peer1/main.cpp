@@ -34,9 +34,13 @@ void handleQueueSignal(int signum) {
 
 int main() {
   int maxClients;
+  std::string peer2Addr;
   std::cout << "Enter the maximum number of clients that should be supported:"
                " " << std::endl;
   std::cin >> maxClients;
+
+//  std::cout << "Enter peer2's Address" << std::endl;
+//  std::cin >> peer2Addr;
 
   std::string appName = "minesVPNPeer1";
 

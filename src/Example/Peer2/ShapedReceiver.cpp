@@ -10,7 +10,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                                const std::string &serverCert,
                                const std::string &serverKey, int maxPeers,
                                int maxStreamsPerPeer, uint16_t bindPort,
-                               uint64_t idleTimeout, double epsilon,
+                               uint64_t idleTimeout, double noiseMultiplier,
                                double sensitivity,
                                __useconds_t DPCreditorLoopInterval,
                                __useconds_t senderLoopInterval) :
@@ -38,15 +38,12 @@ ShapedReceiver::ShapedReceiver(std::string appName,
   // Start listening for connections from the other middlebox
   // Add additional stream for dummy data
   shapedReceiver =
-      new QUIC::Receiver{serverCert, serverKey,
-                         bindPort,
-                         receivedShapedDataFunc,
-                         WARNING,
-                         maxStreamsPerPeer + 1,
-                         idleTimeout};
+      new QUIC::Receiver{serverCert, serverKey, bindPort,
+                         receivedShapedDataFunc, WARNING,
+                         maxStreamsPerPeer + 1, idleTimeout};
   shapedReceiver->startListening();
 
-  noiseGenerator = new NoiseGenerator{epsilon, sensitivity};
+  noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity};
 
   std::thread dpCreditorThread(helpers::DPCreditor, &sendingCredit,
                                queuesToStream, noiseGenerator,

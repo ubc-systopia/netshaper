@@ -164,11 +164,6 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
     case SYN: {
       if (!assignQueue(fromSocket, clientAddress)) {
         log(ERROR, "More clients than configured for!");
-//        for (auto &pair: *socketToQueues) {
-//          std::cout << pair.first << " --> {" << pair.second.fromShaped->ID
-//                    << "," << pair.second.toShaped->ID << "}" << std::endl;
-//        }
-//        exit(1);
         return false;
       }
       {
