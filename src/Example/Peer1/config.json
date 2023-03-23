@@ -1,0 +1,18 @@
+{
+  "logLevel": "DEBUG",
+  "maxClients": 40,
+  "shapedSender": {
+    "peer2Addr": "localhost",
+    "peer2Port": 4567,
+    "noiseMultiplier": 38,
+    "sensitivity": 500000,
+    "DPCreditorLoopInterval": 50000,
+    "senderLoopInterval": 50000
+  },
+  "unshapedReceiver": {
+    "bindAddr": "",
+    "bindPort": 8000,
+    "checkResponseLoopInterval": 50000,
+    "serverAddr": "localhost:5555"
+  }
+}

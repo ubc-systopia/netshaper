@@ -8,10 +8,11 @@
 ShapedSender::ShapedSender(std::string &appName, int maxClients,
                            double noiseMultiplier, double sensitivity,
                            const std::string &peer2IP, uint16_t peer2Port,
-                           uint64_t idleTimeout,
                            __useconds_t DPCreditorLoopInterval,
-                           __useconds_t senderLoopInterval) :
-    appName(appName), logLevel(DEBUG), maxClients(maxClients),
+                           __useconds_t senderLoopInterval,
+                           logLevels logLevel,
+                           uint64_t idleTimeout) :
+    appName(appName), logLevel(logLevel), maxClients(maxClients),
     sigInfo(nullptr), dummyStream(nullptr), controlStream(nullptr),
     dummyStreamID(QUIC_UINT62_MAX), controlStreamID(QUIC_UINT62_MAX) {
   queuesToStream =

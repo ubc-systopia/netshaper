@@ -9,8 +9,9 @@
 
 UnshapedSender::UnshapedSender(std::string appName, int maxPeers,
                                int maxStreamsPerPeer,
-                               __useconds_t checkQueuesInterval) :
-    appName(std::move(appName)), logLevel(DEBUG), sigInfo(nullptr) {
+                               __useconds_t checkQueuesInterval,
+                               logLevels logLevel) :
+    appName(std::move(appName)), logLevel(logLevel), sigInfo(nullptr) {
   queuesToSender =
       new std::unordered_map<QueuePair, TCP::Sender *,
           QueuePairHash>(maxStreamsPerPeer);

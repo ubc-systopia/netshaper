@@ -29,7 +29,7 @@ namespace TCP {
      * function by using std::bind or lambda functions
      * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
      */
-    Sender(std::string remoteHost, int remotePort,
+    Sender(const std::string &remoteHost, int remotePort,
            std::function<void(TCP::Sender *, uint8_t *buffer,
                               size_t length, connectionStatus connStatus)>
            onReceiveFunc = [](

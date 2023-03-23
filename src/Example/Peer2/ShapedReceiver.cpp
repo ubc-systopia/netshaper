@@ -10,11 +10,11 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                                const std::string &serverCert,
                                const std::string &serverKey, int maxPeers,
                                int maxStreamsPerPeer, uint16_t bindPort,
-                               uint64_t idleTimeout, double noiseMultiplier,
-                               double sensitivity,
+                               double noiseMultiplier, double sensitivity,
                                __useconds_t DPCreditorLoopInterval,
-                               __useconds_t senderLoopInterval) :
-    appName(std::move(appName)), logLevel(DEBUG), sigInfo(nullptr),
+                               __useconds_t senderLoopInterval,
+                               logLevels logLevel, uint64_t idleTimeout) :
+    appName(std::move(appName)), logLevel(logLevel), sigInfo(nullptr),
     controlStream(nullptr), dummyStream(nullptr),
     dummyStreamID(QUIC_UINT62_MAX) {
   queuesToStream =

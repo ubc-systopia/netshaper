@@ -19,6 +19,7 @@ class UnshapedReceiver {
 private:
   std::string appName;
   const logLevels logLevel;
+  std::string serverAddr;
   std::mutex logWriter;
 
 // We fix the number of streams beforehand to avoid side-channels caused by
@@ -102,7 +103,9 @@ public:
    */
   UnshapedReceiver(std::string &appName, int maxClients,
                    std::string bindAddr = "", uint16_t bindPort = 8000,
-                   __useconds_t checkResponseInterval = 100000);
+                   __useconds_t checkResponseInterval = 100000,
+                   logLevels logLevel = WARNING,
+                   std::string serverAddr = "localhost:5555");
 
   /**
  * @brief Handle the queue status change signal sent by the shaped process

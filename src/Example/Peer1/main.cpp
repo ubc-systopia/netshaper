@@ -5,6 +5,16 @@
 #include <sys/prctl.h>
 #include "UnshapedReceiver.h"
 #include "ShapedSender.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
+
+using json = nlohmann::json;
+
+NLOHMANN_JSON_SERIALIZE_ENUM(logLevels, {
+  { DEBUG, "DEBUG" },
+  { WARNING, "WARNING" },
+  { ERROR, "ERROR" },
+})
 
 UnshapedReceiver *unshapedReceiver = nullptr;
 ShapedSender *shapedSender = nullptr;
@@ -33,16 +43,67 @@ void handleQueueSignal(int signum) {
 }
 
 int main() {
-  int maxClients;
-  std::string peer2Addr;
-  std::cout << "Enter the maximum number of clients that should be supported:"
-               " " << std::endl;
-  std::cin >> maxClients;
+  // Load configurations
+  std::string configFileName;
+  std::cout << "Enter the config file name/path" << std::endl;
+  std::cin >> configFileName;
+  std::ifstream configFile(configFileName);
 
+  json config;
+  try {
+    config = json::parse(configFile);
+  } catch (...) {
+    std::cout << "Could not load/parse config. Using default values" <<
+              std::endl;
+    config = json::parse(R"({})");
+  }
+  auto logLevel =
+      static_cast<json>(config.value("logLevel", "WARNING")).get<logLevels>();
+  auto maxClients =
+      static_cast<json>(config.value("maxClients", 40)).get<int>();
+
+  json shapedSenderConfig = config.value("shapedSender", json::parse(R"({})"));
+  json unshapedReceiverConfig = config.value("unshapedReceiver",
+                                             json::parse(R"({})"));
+
+  // Load shapedSenderConfig
+  std::string peer2Addr = shapedSenderConfig.value("peer2Addr", "localhost");
+  auto peer2Port =
+      static_cast<json>(shapedSenderConfig.value("peer2Port",
+                                                 4567)).get<uint16_t>();
+  auto noiseMultiplier =
+      static_cast<json>(shapedSenderConfig.value("noiseMultiplier",
+                                                 38)).get<double>();
+  auto sensitivity =
+      static_cast<json>(shapedSenderConfig.value("sensitivity",
+                                                 500000)).get<double>();
+  std::string appName = shapedSenderConfig.value("appName", "minesVPNPeer1");
+  auto DPCreditorLoopInterval =
+      static_cast<json>(shapedSenderConfig.value("DPCreditorLoopInterval",
+                                                 50000)).get<__useconds_t>();
+  auto senderLoopInterval =
+      static_cast<json>(shapedSenderConfig.value("senderLoopInterval",
+                                                 50000)).get<__useconds_t>();
+
+  // Load unshapedReceiverConfig
+  std::string bindAddr = unshapedReceiverConfig.value("bindAddr", "");
+  auto bindPort =
+      static_cast<json>(unshapedReceiverConfig.value("bindPort",
+                                                     8000)).get<uint16_t>();
+  auto checkResponseLoopInterval =
+      static_cast<json>(unshapedReceiverConfig.value(
+          "checkResponseLoopInterval", 50000)).get<uint16_t>();
+
+  std::string serverAddr = unshapedReceiverConfig.value("serverAddr",
+                                                        "localhost:5555");
+
+//  std::cout << "Enter the maximum number of clients that should be supported:"
+//               " " << std::endl;
+//  std::cin >> maxClients;
+//
 //  std::cout << "Enter peer2's Address" << std::endl;
 //  std::cin >> peer2Addr;
-
-  std::string appName = "minesVPNPeer1";
+//
 
   std::signal(SIGUSR1, handleQueueSignal);
 
@@ -52,12 +113,18 @@ int main() {
     // This process should get a SIGHUP when it's parent (the shaped
     // sender) dies
     prctl(PR_SET_PDEATHSIG, SIGHUP);
-    unshapedReceiver = new UnshapedReceiver{appName, maxClients};
+    unshapedReceiver = new UnshapedReceiver{appName, maxClients, bindAddr,
+                                            bindPort,
+                                            checkResponseLoopInterval,
+                                            logLevel, serverAddr};
   } else {
     // Parent Process - Shaped Sender
     sleep(2); // Wait for unshapedReceiver to initialise
     MsQuic = new MsQuicApi{};
-    shapedSender = new ShapedSender{appName, maxClients};
+    shapedSender = new ShapedSender{appName, maxClients, noiseMultiplier,
+                                    sensitivity, peer2Addr, peer2Port,
+                                    DPCreditorLoopInterval,
+                                    senderLoopInterval, logLevel};
     sleep(2);
     std::cout << "Peer is ready!" << std::endl;
   }

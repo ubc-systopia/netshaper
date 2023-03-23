@@ -1,0 +1,16 @@
+{
+  "logLevel": "DEBUG",
+  "maxStreamsPerPeer": 40,
+  "shapedReceiver": {
+    "serverCert": "server.cert",
+    "serverKey": "server.key",
+    "listeningPort": 4567,
+    "noiseMultiplier": 38,
+    "sensitivity": 500000,
+    "DPCreditorLoopInterval": 50000,
+    "senderLoopInterval": 50000
+  },
+  "unshapedSender": {
+    "checkQueuesInterval": 50000
+  }
+}

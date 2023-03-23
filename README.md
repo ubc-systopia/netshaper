@@ -1,6 +1,8 @@
 # TL;DR
 
-Run the following commands in the root directory of this repository
+Run the following commands in the root directory of this repository  
+_Note: Currently minesVPN supports only 1 pair of middleboxes per program
+instance_ (each peer can talk to only 1 other peer)
 
 ## Prerequisites (Commands are for ubuntu)
 
@@ -15,19 +17,14 @@ Run the following commands in the root directory of this repository
 
 ### End-to-end example
 
-_Note: Currently the actual server is hard-coded to be at "127.0.0.1:5555" in_ `src/Example/Peer1/unshaped.cpp`  
-_Note 2: Currently, the minesVPN peer1 listens on port 8000, where the actual client should connect_
-
-#### Automated test script
-
-3. `./test.sh`
-
 #### Run Individual components
-3. First start the actual server (note that currently, the actual server is expected to be at 127.0.0.1:5555 on the same node as peer2)
-4. Start Peer 2 using `./build/src/Example/Peer2/peer_2` and enter the maximum number of queues to initialise. Wait for the "Peer is ready" message to appear
-5. Start Peer 1 using `./build/src/Example/Peer1/peer_1` and enter the maximum number of queues to initialise. Wait for the "Peer is ready" message to appear
-   _Note: Peer 1, by default, expects Peer 2 to also be on localhost_  
-7. Now, you can send requests from any client to peer1's port 8000
+
+3. First start the actual server (or ensure it is up)
+4. Start Peer 2 using `./build/src/Example/Peer2/peer_2` and enter the path to
+   the config file. Wait for the "Peer is ready" message to appear
+5. Start Peer 1 using `./build/src/Example/Peer1/peer_1` and enter the path to
+   the config file. Wait for the   "Peer is ready" message to appear
+7. Now, you can send requests from any client to peer1
 
 ### UnshapedTransceiever Example
 
@@ -48,6 +45,127 @@ _(Can run either as a client or a server)_
    `-s` (for server)  
    _Note: The example expects both to run on the same device (i.e. client
    connects on localhost)_
-   
-# Pushing to this repository
-  All PRs and commits on "main" branch will be automatically tested by using test.sh in this repo. Make sure the commit passes the test before hand.
+
+# Configuration
+
+### Peer 1
+
+Peer 1 can be configured with the following parameters provided in a json
+file.  
+The parameters shown here are the default values that will be used if a
+parameter is not present in the config file
+
+```json
+{
+  "logLevel": "DEBUG",
+  "maxClients": 40,
+  "shapedSender": {
+    "peer2Addr": "localhost",
+    "peer2Port": 4567,
+    "noiseMultiplier": 38,
+    "sensitivity": 500000,
+    "DPCreditorLoopInterval": 50000,
+    "senderLoopInterval": 50000
+  },
+  "unshapedReceiver": {
+    "bindAddr": "",
+    "bindPort": 8000,
+    "checkResponseLoopInterval": 50000,
+    "serverAddr": "localhost:5555"
+  }
+}
+```
+
+#### General
+
+- `logLevel` can be one of `DEBUG`, `WARNING`, `ERROR` only. Any other value
+  will result in an error.
+- `maxClients` is the maximum number of clients this system
+  will support. The system will initialise exactly `maxClient` number of queue
+  pairs.
+- `shapedSender` is a json object containing the parameters to configure the
+  shapedSender component
+- `unshapedReceiver` is a json object containing the parameters to configure the
+  unshapedReceiver component
+
+#### shapedSender
+
+- `peer2Addr` is the address where Peer 2 is hosted
+- `peer2Port` is the port which Peer 2 is listening on (QUIC Listener)
+- `noiseMultiplier` and `sensitivity` are the Differential Privacy parameters
+- `DPCreditorLoopInterval` is the time interval in microseconds with which the
+  loop that reads the queue and adds to the "sending credit" should be run
+- `senderLoopInterval` is the time interval in microseconds with which the
+  loop that reads the "sending credit" and sends the data to Peer 2 should
+  be run
+
+#### unshapedReceiver
+
+- `bindAddr` is the address peer 1's TCP listener will listen on (for
+  unshaped traffic to be proxy-ied via minesVPN). The default is "", which
+  is equivalent to "::0" or "0.0.0.0"
+- `bindPort` is the port that peer 1 will listen to
+- `checkResponseLoopInterval` is the interval with which the queues will be
+  checked for responses from the shaped component
+- `serverAddr` is the address of the actual server that client is attempting
+  to reach. As minesVPN currently does NOT do MITM Proxy, we resort to the
+  assumption that all clients want to communicate to one server, mentioned here.
+
+### Peer 2
+
+Peer 2 can be configured with the following parameters provided in a json
+file.  
+The parameters shown here are the default values that will be used if a
+parameter is not present in the config file
+
+```json
+{
+  "logLevel": "DEBUG",
+  "maxStreamsPerPeer": 40,
+  "shapedReceiver": {
+    "serverCert": "server.cert",
+    "serverKey": "server.key",
+    "listeningPort": 4567,
+    "noiseMultiplier": 38,
+    "sensitivity": 500000,
+    "DPCreditorLoopInterval": 50000,
+    "senderLoopInterval": 50000
+  },
+  "unshapedSender": {
+    "checkQueuesInterval": 50000
+  }
+}
+```
+
+#### General
+
+- `logLevel` can be one of `DEBUG`, `WARNING`, `ERROR` only. Any other value
+  will result in an error.
+- `maxStreamsPerPeer` is the maximum number of streams this
+  system will support per peer. As minesVPN currently supports only 1 peer
+  at a time, the system will initialise exactly  `maxStreamsPerPeer`  number of
+  queue pairs.
+- `shapedSender` is a json object containing the parameters to configure the
+  shapedSender component
+- `unshapedReceiver` is a json object containing the parameters to configure the
+  unshapedReceiver component
+
+#### shapedReceiver
+
+- `serverCert` is the path to the server certificate file
+- `serverKey` is the path to the server key file  
+  _Note: Both can be generated
+  using `openssl req -nodes -new -x509 -keyout server.key -out server.cert`_
+
+
+- `noiseMultiplier` and `sensitivity` are the Differential Privacy parameters
+- `DPCreditorLoopInterval` is the time interval in microseconds with which the
+  loop that reads the queue and adds to the "sending credit" should be run
+- `senderLoopInterval` is the time interval in microseconds with which the
+  loop that reads the "sending credit" and sends the data to Peer 2 should
+  be run
+
+#### unshapedReceiver
+
+- `checkQueuesInterval` is the interval with which the queues will be
+  checked for responses from the shaped component

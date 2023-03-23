@@ -152,10 +152,10 @@ public:
                  const std::string &serverCert, const std::string &serverKey,
                  int maxPeers = 1, int maxStreamsPerPeer = 10,
                  uint16_t bindPort = 4567,
-                 uint64_t idleTimeout = 100000,
                  double noiseMultiplier = 0.01, double sensitivity = 100,
                  __useconds_t DPCreditorLoopInterval = 50000,
-                 __useconds_t senderLoopInterval = 50000
+                 __useconds_t senderLoopInterval = 50000,
+                 logLevels logLevel = WARNING, uint64_t idleTimeout = 100000
   );
 
   /**

@@ -74,7 +74,8 @@ public:
 
   explicit UnshapedSender(std::string appName, int maxPeers = 1,
                           int maxStreamsPerPeer = 10,
-                          __useconds_t checkQueuesInterval = 50000);
+                          __useconds_t checkQueuesInterval = 50000,
+                          logLevels logLevel = WARNING);
 
   /**
 * @brief Handle signal from the shaped process regarding a new client

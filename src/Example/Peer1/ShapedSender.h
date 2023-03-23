@@ -119,12 +119,13 @@ public:
    * sender will read the tokens and send the shaped data
    */
   ShapedSender(std::string &appName, int maxClients,
-               double noiseMultiplier = 0.01, double sensitivity = 100,
+               double noiseMultiplier = 38, double sensitivity = 500000,
                const std::string &peer2IP = "localhost",
                uint16_t peer2Port = 4567,
-               uint64_t idleTimeout = 100000,
                __useconds_t DPCreditorLoopInterval = 50000,
-               __useconds_t senderLoopInterval = 50000);
+               __useconds_t senderLoopInterval = 50000,
+               logLevels logLevel = WARNING,
+               uint64_t idleTimeout = 100000);
 
   void sendDummy(size_t dummySize);
 

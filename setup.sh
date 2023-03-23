@@ -9,7 +9,7 @@ RED='\033[0;31m'
 OFF='\033[0m'
 
 echo -e "${YELLOW}Installing prerequisites (G++, openSSL-1.1)"
-apt-get update && apt-get install -y zstd g++ cmake
+apt-get update && apt-get install -y zstd g++ cmake nlohmann-json3-dev
 wget -O - https://mirror.cmt.de/archlinux/core/os/x86_64/openssl-1.1-1.1.1.s-4-x86_64.pkg.tar.zst | unzstd --stdout | tar -xvf -
 chmod 644 usr/lib/lib*
 cp usr/lib/lib* /usr/lib/x86_64-linux-gnu/

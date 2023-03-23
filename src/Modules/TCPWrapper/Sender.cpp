@@ -13,7 +13,7 @@
 #include <cstring>
 
 namespace TCP {
-  Sender::Sender(std::string remoteHost, int remotePort,
+  Sender::Sender(const std::string &remoteHost, int remotePort,
                  std::function<void(TCP::Sender *,
                                     uint8_t *buffer, size_t length,
                                     connectionStatus connStatus)>
@@ -21,7 +21,7 @@ namespace TCP {
       : logLevel(level), remoteSocket(-1) {
     onReceive = std::move(onReceiveFunc);
 
-    this->remoteHost = std::move(remoteHost);
+    this->remoteHost = remoteHost;
     this->remotePort = remotePort;
 
     int error = connectToRemote();
@@ -29,11 +29,15 @@ namespace TCP {
       close(remoteSocket);
       switch (error) {
         case CLIENT_RESOLVE_ERROR:
-          throw std::runtime_error("Could not resolve remote host");
+          throw std::runtime_error("Could not resolve " + remoteHost + ":" +
+                                   std::to_string(remotePort));
         case CLIENT_SOCKET_ERROR:
-          throw std::runtime_error("Could not open socket to remote host");
+          throw std::runtime_error("Could not open socket to " + remoteHost +
+                                   ":" +
+                                   std::to_string(remotePort));
         case CLIENT_CONNECT_ERROR:
-          throw std::runtime_error("Could not connect to remote host");
+          throw std::runtime_error("Could not connect to " + remoteHost + ":" +
+                                   std::to_string(remotePort));
         default:
           throw std::runtime_error("Unhandled Exception");
       }

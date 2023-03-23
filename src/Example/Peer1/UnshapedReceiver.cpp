@@ -3,13 +3,15 @@
 //
 
 #include <iomanip>
+#include <utility>
 #include "UnshapedReceiver.h"
 
 UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
                                    std::string bindAddr, uint16_t bindPort,
-                                   __useconds_t checkResponseInterval) :
-    appName(appName), logLevel(DEBUG), maxClients(maxClients), sigInfo
-    (nullptr) {
+                                   __useconds_t checkResponseInterval,
+                                   logLevels logLevel, std::string serverAddr) :
+    appName(appName), logLevel(logLevel), serverAddr(std::move(serverAddr)),
+    maxClients(maxClients), sigInfo(nullptr) {
   socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
   queuesToSocket = new std::unordered_map<QueuePair,
       int, QueuePairHash>(maxClients);
@@ -162,7 +164,7 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
 
   switch (connStatus) {
     case SYN: {
-      if (!assignQueue(fromSocket, clientAddress)) {
+      if (!assignQueue(fromSocket, clientAddress, serverAddr)) {
         log(ERROR, "More clients than configured for!");
         return false;
       }
