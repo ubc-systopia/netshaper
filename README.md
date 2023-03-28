@@ -94,7 +94,8 @@ parameter is not present in the config file
 - `peer2Port` is the port which Peer 2 is listening on (QUIC Listener)
 - `noiseMultiplier` and `sensitivity` are the Differential Privacy parameters
 - `DPCreditorLoopInterval` is the time interval in microseconds with which the
-  loop that reads the queue and adds to the "sending credit" should be run
+  loop that reads the queue and adds to the "sending credit" should be run  
+  _Note: This should be a multiple of `senderLoopInterval`_
 - `senderLoopInterval` is the time interval in microseconds with which the
   loop that reads the "sending credit" and sends the data to Peer 2 should
   be run
@@ -160,7 +161,8 @@ parameter is not present in the config file
 
 - `noiseMultiplier` and `sensitivity` are the Differential Privacy parameters
 - `DPCreditorLoopInterval` is the time interval in microseconds with which the
-  loop that reads the queue and adds to the "sending credit" should be run
+  loop that reads the queue and adds to the "sending credit" should be run  
+  _Note: This should be a multiple of `senderLoopInterval`_
 - `senderLoopInterval` is the time interval in microseconds with which the
   loop that reads the "sending credit" and sends the data to Peer 2 should
   be run

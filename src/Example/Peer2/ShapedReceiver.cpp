@@ -63,7 +63,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                            sendData
                                (std::forward<decltype(PH1)>(PH1));
                          },
-                         senderLoopInterval);
+                         senderLoopInterval, DPCreditorLoopInterval);
   sendShaped.detach();
 }
 

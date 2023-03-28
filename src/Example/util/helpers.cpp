@@ -120,12 +120,14 @@ namespace helpers {
                           QueuePairHash> *queuesToStream,
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
-                      __useconds_t sendingInterval) {
+                      __useconds_t sendingInterval,
+                      __useconds_t decisionInterval) {
     auto nextCheck = std::chrono::steady_clock::now();
     while (true) {
       nextCheck += std::chrono::microseconds(sendingInterval);
 //      std::this_thread::sleep_for(std::chrono::microseconds(sendingInterval));
       std::this_thread::sleep_until(nextCheck);
+      auto divisor = decisionInterval / sendingInterval;
       auto credit = sendingCredit->load(std::memory_order_acquire);
 //      std::cout << "Loaded credit: " << credit << std::endl;
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
@@ -134,8 +136,9 @@ namespace helpers {
         continue;
       } else {
         // Get dummy and data size
-        size_t dataSize = std::min(aggregatedSize, credit);
-        size_t dummySize = credit - dataSize;
+        auto maxBytesToSend = credit / divisor;
+        size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
+        size_t dummySize = maxBytesToSend - dataSize;
         if (dummySize > 0) sendDummy(dummySize);
         sendData(dataSize);
         credit -= (dataSize + dummySize);

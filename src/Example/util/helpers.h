@@ -131,6 +131,8 @@ namespace helpers {
    * @param sendData The function to call when the decision is made to send
    * actual data
    * @param sendingInterval The interval with which this loop should iterate
+   * @param decisionInterval The interval at which the DP credit is updated.
+   * This should be a multiple of decisionInterval
    */
   [[noreturn]]
   void sendShapedData(std::atomic<size_t> *sendingCredit,
@@ -138,6 +140,7 @@ namespace helpers {
                           QueuePairHash> *queuesToStream,
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
-                      __useconds_t sendingInterval);
+                      __useconds_t sendingInterval,
+                      __useconds_t decisionInterval);
 }
 #endif //MINESVPN_HELPERS_H

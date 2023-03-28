@@ -66,7 +66,7 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
                             [this](auto &&PH1) {
                               sendData(std::forward<decltype(PH1)>(PH1));
                             },
-                            senderLoopInterval);
+                            senderLoopInterval, DPCreditorLoopInterval);
 
   sendingThread.detach();
 }

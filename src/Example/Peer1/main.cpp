@@ -85,6 +85,21 @@ int main() {
       static_cast<json>(shapedSenderConfig.value("senderLoopInterval",
                                                  50000)).get<__useconds_t>();
 
+  if (DPCreditorLoopInterval < senderLoopInterval) {
+    std::cerr
+        << "DPCreditorLoopInterval should be a multiple of senderLoopInterval"
+        << std::endl;
+    exit(1);
+  } else {
+    auto division = DPCreditorLoopInterval / senderLoopInterval;
+    if (division * senderLoopInterval != DPCreditorLoopInterval) {
+      std::cerr
+          << "DPCreditorLoopInterval should be a multiple of senderLoopInterval"
+          << std::endl;
+      exit(1);
+    }
+  }
+
   // Load unshapedReceiverConfig
   std::string bindAddr = unshapedReceiverConfig.value("bindAddr", "");
   auto bindPort =
