@@ -1,6 +1,4 @@
-# minesVPN example implementation
-
-_Note: This folder contains an example implementation of minesVPN_
+# minesVPN Example Implementation
 
 Data flow direction:  
 `Client <--> UnshapedReceiver <--> ShapedSender <--> ShapedReceiver <-->
