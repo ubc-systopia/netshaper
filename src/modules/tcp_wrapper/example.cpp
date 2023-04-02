@@ -4,23 +4,26 @@
 
 #include "Sender.h"
 #include "Receiver.h"
+#include <string.h>
 
 TCP::Receiver *receiver;
 TCP::Sender *sender;
 
 int clientSocket;
 
-bool receivedData(int fromSocket, std::string &clientAddress,
-                  uint8_t *buffer, size_t length, enum
-                      connectionStatus connStatus) {
-  (void) (connStatus);
+bool receiverCallback(int fromSocket, std::string &clientAddress,
+                      uint8_t *buffer, size_t length, enum
+                          connectionStatus connStatus) {
   (void) (clientAddress);
   clientSocket = fromSocket;
+  if (connStatus != ONGOING) return true;
+  std::cout << "Receiver callback..." << std::endl;
   return sender->sendData(buffer, length) > 0;
 }
 
-ssize_t sendData(TCP::Sender *receivedResponseFrom,
-                 uint8_t *buffer, size_t length, connectionStatus connStatus) {
+ssize_t senderCallback(TCP::Sender *receivedResponseFrom,
+                       uint8_t *buffer, size_t length,
+                       connectionStatus connStatus) {
   (void) (connStatus);
   (void) (receivedResponseFrom);
   return receiver->sendData(clientSocket, buffer, length);
@@ -39,8 +42,8 @@ int main() {
   std::cin >> remotePort;
 
 
-  receiver = new TCP::Receiver{"", 8000, receivedData};
-  sender = new TCP::Sender{remoteHost, remotePort, sendData};
+  receiver = new TCP::Receiver{"", 8000, receiverCallback};
+  sender = new TCP::Sender{remoteHost, remotePort, senderCallback};
 
   receiver->startListening();
 

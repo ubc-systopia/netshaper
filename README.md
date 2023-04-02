@@ -20,9 +20,9 @@ instance_ (each peer can talk to only 1 other peer)
 #### Run Individual components
 
 3. First start the actual server (or ensure it is up)
-4. Start Peer 2 using `./build/src/Example/Peer2/peer_2` and enter the path to
+4. Start Peer 2 using `./build/src/example/peer2/peer_2` and enter the path to
    the config file. Wait for the "Peer is ready" message to appear
-5. Start Peer 1 using `./build/src/Example/Peer1/peer_1` and enter the path to
+5. Start Peer 1 using `./build/src/example/peer1/peer_1` and enter the path to
    the config file. Wait for the   "Peer is ready" message to appear
 7. Now, you can send requests from any client to peer1
 
@@ -30,7 +30,7 @@ instance_ (each peer can talk to only 1 other peer)
 
 _(Runs as a simple proxy that can handle one client at a time)_
 
-3. `./build/UnshapedTransceiver/unshapedTransciever` (Listens on port 8000)  
+3. `./build/src/modules/tcp_wrapper/exampleTCPWrapper` (Listens on port 8000)  
    Enter the IP address of the remote host and then the port of the remote host
 
 ### ShapedTransciever Example
@@ -38,8 +38,8 @@ _(Runs as a simple proxy that can handle one client at a time)_
 _(Can run either as a client or a server)_
 
 3. Generate a self-signed certificate
-   using `openssl req -nodes -new -x509 -keyout ./build/ShapedTransciever/server.key -out ./build/ShapedTransciever/server.cert`
-4. `./build/ShapedTransciever/shapedTransciever <option>`  
+   using `openssl req -nodes -new -x509 -keyout ./build/src/modules/quic_wrapper/server.key -out ./build/src/modules/quic_wrapper/server.cert`
+4. `./build/src/modules/quic_wrapper/exampleQUICWrapper <option>`  
    Options:  
    `-c` (for client)  
    `-s` (for server)  
