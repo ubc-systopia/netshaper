@@ -7,8 +7,8 @@
 
 #include <thread>
 #include <algorithm>
-#include "../../Modules/TCPWrapper/Sender.h"
-#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/tcp_wrapper/Sender.h"
+#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 
 using namespace helpers;

@@ -8,9 +8,10 @@
 #include <thread>
 #include <unordered_map>
 #include <csignal>
-#include "../../Modules/QUICWrapper/Sender.h"
-#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/quic_wrapper/Sender.h"
+#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
+#include "../../modules/shaper/NoiseGenerator.h"
 
 using namespace helpers;
 

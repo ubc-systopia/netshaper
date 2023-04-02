@@ -9,10 +9,10 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
-#include "../../Modules/QUICWrapper/Receiver.h"
-#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/quic_wrapper/Receiver.h"
+#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
-#include "../../Modules/shaper/NoiseGenerator.h"
+#include "../../modules/shaper/NoiseGenerator.h"
 
 using namespace helpers;
 

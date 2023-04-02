@@ -8,9 +8,9 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
-#include "../../Modules/TCPWrapper/Receiver.h"
-#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
-#include "../../Modules/Common.h"
+#include "../../modules/tcp_wrapper/Receiver.h"
+#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/Common.h"
 #include "../util/helpers.h"
 
 using namespace helpers;

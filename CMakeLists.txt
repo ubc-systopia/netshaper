@@ -34,13 +34,13 @@ find_package(nlohmann_json REQUIRED)
 
 include_directories(msquic/src/inc)
 
-add_subdirectory(src/Modules/QUICWrapper)
-add_subdirectory(src/Modules/TCPWrapper)
-add_subdirectory(src/Modules/lamport_queue/queue)
-add_subdirectory(src/Modules/shaper)
-add_subdirectory(src/Example/util)
+add_subdirectory(src/modules/quic_wrapper)
+add_subdirectory(src/modules/tcp_wrapper)
+add_subdirectory(src/modules/lamport_queue/queue)
+add_subdirectory(src/modules/shaper)
+add_subdirectory(src/example/util)
 
 
 # Build example
-add_subdirectory(src/Example/Peer1)
-add_subdirectory(src/Example/Peer2)
+add_subdirectory(src/example/peer1)
+add_subdirectory(src/example/peer2)

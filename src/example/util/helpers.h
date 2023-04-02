@@ -5,10 +5,10 @@
 #ifndef MINESVPN_HELPERS_H
 #define MINESVPN_HELPERS_H
 
-#include "../../Modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
-#include "../../Modules/Common.h"
+#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/Common.h"
 #include "msquic.hpp"
-#include "../../Modules/shaper/NoiseGenerator.h"
+#include "../../modules/shaper/NoiseGenerator.h"
 #include <csignal>
 #include <cstdarg>
 #include <unistd.h>
