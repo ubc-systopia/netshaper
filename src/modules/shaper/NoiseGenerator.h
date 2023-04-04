@@ -17,7 +17,7 @@ public:
   size_t getDPDecision(size_t aggregatedQueueSize);
 
   NoiseGenerator(double noiseMultiplier, double sensitivity,
-                 int maxDecisionSize = 10000, int minDecisionSize = 0);
+                 int maxDecisionSize = 500000, int minDecisionSize = 0);
 };
 
 #endif //MINESVPN_NOISE_GENERATOR_H

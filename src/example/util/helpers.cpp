@@ -127,7 +127,7 @@ namespace helpers {
       nextCheck += std::chrono::microseconds(sendingInterval);
 //      std::this_thread::sleep_for(std::chrono::microseconds(sendingInterval));
       std::this_thread::sleep_until(nextCheck);
-      auto divisor = decisionInterval / sendingInterval;
+//      auto divisor = decisionInterval / sendingInterval;
       auto credit = sendingCredit->load(std::memory_order_acquire);
 //      std::cout << "Loaded credit: " << credit << std::endl;
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
@@ -136,7 +136,8 @@ namespace helpers {
         continue;
       } else {
         // Get dummy and data size
-        auto maxBytesToSend = credit / divisor;
+        auto maxBytesToSend = credit;
+//        auto maxBytesToSend = credit / divisor;
         size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
         size_t dummySize = maxBytesToSend - dataSize;
         if (dummySize > 0) sendDummy(dummySize);
