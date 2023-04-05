@@ -240,12 +240,13 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
         break;
       case Data: {
         auto dataStream = findStreamByID(ctrlMsg->streamID);
-        auto &queues = (*streamToQueues)[dataStream];
+        QueuePair queues = {nullptr, nullptr};
         switch (ctrlMsg->connStatus) {
           case SYN:
             log(DEBUG, "Received SYN on stream " +
                        std::to_string(ctrlMsg->streamID));
             if (dataStream != nullptr) {
+              queues = (*streamToQueues)[dataStream];
               copyClientInfo(queues, ctrlMsg);
               signalUnshapedProcess(queues.fromShaped->ID, SYN);
             } else {
@@ -254,6 +255,7 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
             }
             break;
           case FIN:
+            queues = (*streamToQueues)[dataStream];
             if (queues.fromShaped != nullptr) {
               log(DEBUG, "Received FIN from stream " +
                          std::to_string(ctrlMsg->streamID) +

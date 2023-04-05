@@ -151,17 +151,20 @@ void UnshapedSender::handleQueueSignal(int signum) {
     for (const auto &[queues, sender]: *queuesToSender) {
       if (sender == nullptr) continue;
       auto size = queues.fromShaped->size();
-      if (size == 0 && (*pendingSignal)[queues.fromShaped->ID] == FIN) {
-        log(DEBUG, "Sending FIN to sender connected to (fromShaped)" +
-                   std::to_string(queues.fromShaped->ID));
-        sender->sendFIN();
-        (*pendingSignal).erase(queues.fromShaped->ID);
+      if (size == 0) {
+        if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
+          log(DEBUG, "Sending FIN to sender connected to (fromShaped)" +
+                     std::to_string(queues.fromShaped->ID));
+          sender->sendFIN();
+          (*pendingSignal).erase(queues.fromShaped->ID);
+        }
         // TODO: This definitely causes an issue. Find a better time to clear
         //  mappings
-        if (queues.toShaped->markedForDeletion) {
+        if (queues.fromShaped->markedForDeletion
+            && queues.toShaped->markedForDeletion) {
           eraseMapping(sender);
         }
-      } else if (size > 0) {
+      } else {
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         queues.fromShaped->pop(buffer, size);
 //        while (sender == nullptr);

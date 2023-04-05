@@ -206,10 +206,10 @@ void ShapedSender::sendData(size_t dataSize) {
 }
 
 void ShapedSender::sendDummy(size_t dummySize) {
-  uint8_t dummy[dummySize];
-  memset(dummy, 0, dummySize);
+  auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
+  memset(buffer, 0, dummySize);
   shapedSender->send(dummyStream,
-                     dummy, dummySize);
+                     buffer, dummySize);
 }
 
 void ShapedSender::handleControlMessages(uint8_t *buffer, size_t length) {
