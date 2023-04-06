@@ -65,6 +65,10 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
     }
   } else if (connStatus == FIN) {
     auto &queues = (*senderToQueues)[sender];
+    if (queues.fromShaped == nullptr || queues.toShaped == nullptr) {
+      log(WARNING, "No queues mapped to the sender!");
+      return;
+    }
     log(DEBUG, "Received FIN from sender connected to queues {" +
                std::to_string(queues.fromShaped->ID) + "," +
                std::to_string(queues.toShaped->ID) + "}");
