@@ -15,7 +15,7 @@ class DataProcessorNew():
         first_iter_dir = os.path.join(self.directory, '1')
         video_names = os.listdir(first_iter_dir)
         ## PATCH: REMOVING THE VIDEO WITH NAME yt-QYGXcuVLNeg-frag'
-        video_names.remove('yt-QYGXcuVLNeg-frag')
+        # video_names.remove('yt-QYGXcuVLNeg-frag')
         return video_names
     
     def map_video_names_to_labels(self, video_names):
@@ -30,7 +30,11 @@ class DataProcessorNew():
         for iter in range(1, self.iter_num+1):
             iter_dir = os.path.join(self.directory, str(iter))
             video_dir = os.path.join(iter_dir, video_name)
-            video_file = os.listdir(video_dir)[0]
+            # Check weather video_dir is a directory or a file
+            if(os.path.isdir(video_dir)):
+                video_file = os.listdir(video_dir)[0]
+            else:   
+                video_file = video_dir
             all_iters_for_label.append(os.path.join(iter_dir, video_name, video_file))
         return all_iters_for_label
     
@@ -50,19 +54,19 @@ class DataProcessorNew():
                 label_file_mapping[str(label)] = os.path.join(iter_dir, video_names[label])
         return label_file_mapping
 
-    def map_filename_to_label(self, label):
-        files_for_label = []
-        dir_of_label = os.path.join(self.directory, str(label+1))
+    # def map_filename_to_label(self, label):
+    #     files_for_label = []
+    #     dir_of_label = os.path.join(self.directory, str(label+1))
         
-        # Getting list of all directories in the directory of the label
-        all_dirs_for_label = os.listdir(dir_of_label)
-        for dir in all_dirs_for_label:
-            # Getting list off all files in the directory of the label
-            file_in_dir = os.listdir(os.path.join(dir_of_label, dir))
+    #     # Getting list of all directories in the directory of the label
+    #     all_dirs_for_label = os.listdir(dir_of_label)
+    #     for dir in all_dirs_for_label:
+    #         # Getting list off all files in the directory of the label
+    #         file_in_dir = os.listdir(os.path.join(dir_of_label, dir))
             
-            # Adding the file name to the list of files for the label
-            files_for_label.append(os.path.join(dir_of_label, dir, file_in_dir[0]))
-        return files_for_label
+    #         # Adding the file name to the list of files for the label
+    #         files_for_label.append(os.path.join(dir_of_label, dir, file_in_dir[0]))
+    #     return files_for_label
     
     # def get_label_filename_mapping(self):
     #     label_file_mapping = {}
@@ -73,6 +77,7 @@ class DataProcessorNew():
     def get_dataframe(self, dataset_name):
         colnames = ['pkt_time', 'pkt_size']
         df = pd.read_csv(dataset_name, delimiter = "\t", names = colnames, header=None)
+        df.fillna(0, inplace=True)
         return df
     
     def burst_in_window_pattern_simple(self, df, window_size):
@@ -98,6 +103,7 @@ class DataProcessorNew():
         return windowed_df   
      
     def aggregated_dataframe(self, time_resolution_us):
+        print(time_resolution_us)
         ds_name_dict = self.get_label_filename_mapping()
         flag = True
         keys = list(ds_name_dict.keys())
@@ -125,12 +131,17 @@ class DataProcessorNew():
 
     def test(self):
         ad = self.aggregated_dataframe(1e6)
-        
+        # ds_name_dict = self.get_label_filename_mapping()
+        # for video_title in ds_name_dict:
+        #     for trace in ds_name_dict[video_title]:
+        #         df = self.get_dataframe(trace)
+        #         print(df.tail(10))
+        #         break        
         print(ad.head(10))
-        print(ad.shape)
+        
     
         
 if __name__ == "__main__":
-    dp = DataProcessorNew("/home/ubuntu/data/real_dataset/", 9, 50)
+    dp = DataProcessorNew("/home/ubuntu/data/st-v10-t10-T50000-s38/Peer1", 10, 10)
     dp.test()
         

@@ -4,14 +4,14 @@
   "setup" : "realistic",
   "comparison_mode": "baseline",
   "results_dir" : "/home/ubuntu/results/",
-  "num_of_unique_streams" : 9,
+  "num_of_unique_streams" : 10,
   "min_classes_num" : 4,
-  "max_classes_num" : 9,
+  "max_classes_num" : 10,
   "classes_num_num" : 5,
   "attack_num_of_repeats" : 5,
-  "attack_epoch_num": 50,
+  "attack_epoch_num": 10,
   "attack_batch_size" : 32,
-  "num_of_traces_per_stream" : 50,
+  "num_of_traces_per_stream" : 10,
   "filtering_type" : "deterministic",
 
 
@@ -19,9 +19,9 @@
   "middlebox_period_us" : 1e6 ,
   "privacy_window_size_s" : 100,
 
-  "data_source" : "memory",
-  "load_data_dir" : "/home/ubuntu/data/windowed_real_stream/50/",
-  "max_num_of_unique_streams" : 9,
-  "max_num_of_traces_per_stream" : 50,
+  "data_source" : "raw_data",
+  "load_data_dir" : "/home/ubuntu/data/st-v10-t10-T50000-s38/Peer1/",
+  "max_num_of_unique_streams" : 10,
+  "max_num_of_traces_per_stream" : 10,
   "data_time_resolution_us" : 1e6
 }

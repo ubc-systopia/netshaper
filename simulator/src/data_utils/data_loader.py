@@ -96,13 +96,13 @@ def data_filter_deterministic(config: configlib.Config, df):
     return filtered_df
 
 
-def result_saver(config: configlib.Config, results, baseline_results = None):
+def experiment_result_saver(config: configlib.Config, results, baseline_results = None):
     if not os.path.exists(config.results_dir):
         os.mkdir(config.results_dir)
 
     # Create a directory based on the experiment date and time
     now = datetime.datetime.now()
-    child_dir = child_dir = config.results_dir + config.experiment + "_(" + now.strftime("%Y-%m-%d_%H-%M") + ")/" 
+    child_dir =  config.results_dir + config.experiment + "_(" + now.strftime("%Y-%m-%d_%H-%M") + ")/" 
     os.mkdir(child_dir)
     
     # save the config file in the results directory if results 
@@ -118,6 +118,16 @@ def result_saver(config: configlib.Config, results, baseline_results = None):
         with open(child_dir + "baseline_results.pkl", "wb") as f: 
             pickle.dump(baseline_results, f)
             
+
+def analysis_result_saver(config: configlib.Config, results):
+    analysis_dir = os.path.join(config.results_dir, "data_analysis")
+    ensure_dir(config.results_dir)
+    now = datetime.datetime.now()
+    child_dir = os.path.join(analysis_dir, config.analysis_type + "_(" + now.strftime("%Y-%m-%d_%H-%M") + ")")
+    os.makedirs(child_dir) 
+
+    with open(child_dir + "/results.pkl", "wb") as f:
+        pickle.dump(results, f)
             
 def ensure_dir(file_path):
     directory = os.path.dirname(file_path)

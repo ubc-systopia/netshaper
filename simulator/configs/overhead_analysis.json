@@ -1,0 +1,13 @@
+{
+  "run_type": "analysis",
+  "analysis_type": "overhead",
+  "data_root_dir": "/home/ubuntu/data/testbed_data",
+  "max_num_of_unique_streams": 11,
+  "privacy_window_length_s": 300,
+  "delta": 1e-4,
+  "results_dir" : "/home/ubuntu/results/",
+  "max_num_of_traces_per_stream": 50,
+  "data_time_resolution_us": 1e6
+   
+
+}

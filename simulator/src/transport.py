@@ -35,6 +35,7 @@ def NonDP_transport(data, app_time_resolution_us, data_time_resolution_us):
   app_labels = app.get_all_labels()
   app_data = app.get_all_data()
   max_value = (app_data.max()).max()
+  print("Max queue size is: " + str(max_value))
   reshaped_data = [[max_value] * len(app_data.columns)] * len(app_data)
   reshaped_data = pd.DataFrame(reshaped_data) 
   reshaped_df = pd.concat([reshaped_data, app_labels], axis=1)

@@ -1,108 +1,26 @@
+import argparse
+import pprint
+import json
+from typing import Dict, Any
 import numpy as np
 import pandas as pd
-from src.utils.queue_utils import *
+import sys
 
 
-def calculate_sensitivity_using_dataset(app_data):
-  max_colBased = app_data.max()
-  min_colBased = app_data.min()
-  diff = max_colBased - min_colBased
-  print(len(diff))
-  sensitivity = max(diff.to_numpy())
-  return sensitivity
-
-def laplace_mechanism(value, l1_sensitivity, epsilon):
-  mu = 0
-  gamma = l1_sensitivity/epsilon
-  DP_value = value + np.random.laplace(mu, gamma, 1)[0]
-  return DP_value
-
-def gaussian_mechanism(value, l2_sensitivity, epsilon, delta=1e-5):
-  mu = 0
-  sigma = (l2_sensitivity/epsilon) * np.sqrt(2*np.log(1.25/delta))
-  DP_value = value + np.random.normal(mu, sigma, 1)[0]
-  return DP_value
-
-def gaussian_mechanism_rdp(value, l2_sensitivity, noise_multiplier ):
-  mu = 0
-  sigma = l2_sensitivity * noise_multiplier
-  DP_value = value + np.random.normal(mu, sigma, 1)[0]
-  return DP_value
-
-def queues_pull_DP(queues_list, epsilon, sensitivity, DP_mechanism, noise_multiplier=1, min_DP_size = 0, max_DP_size = 10e6):
-  DP_data_sizes = []
-  dummy_sizes = []
-  for i in range(len(queues_list)):
-    true_size = queues_list[i].get_size()
-
-    # Making DP decision about dequeue size
-    #DP_size = true_size + random.choice([-10,0])
-    if(DP_mechanism == "Gaussian"):
-      DP_size = gaussian_mechanism(true_size, sensitivity, epsilon, 1e-5)
-    elif(DP_mechanism == "Laplace"):
-      DP_size = laplace_mechanism(true_size, sensitivity, epsilon)
-    elif(DP_mechanism == "Gaussian_rdp"):
-      DP_size = gaussian_mechanism_rdp(true_size, sensitivity, noise_multiplier)
-
-    DP_size = min_DP_size if DP_size < min_DP_size else DP_size
-    DP_size = max_DP_size if DP_size > max_DP_size else DP_size
-    
-    DP_data_sizes.append(DP_size)
-
-    # Updating queue size
-    if(DP_size > true_size):
-      queues_list[i].dequeue(true_size)
-      dummy_size = DP_size - true_size
-    else:
-      queues_list[i].dequeue(DP_size)
-      dummy_size = 0
-    dummy_sizes.append(dummy_size)
-  return DP_data_sizes, dummy_sizes
-
-def queues_pull_wDP(queues_list, wPrivacy_modules, sensitivity, DP_mechanism):
-  DP_data_sizes = []
-  for i in range(len(queues_list)):
-    true_size = queues_list[i].get_size()
-
-    # Making DP decision about queue size
-    if(DP_mechanism == "Gaussian"):
-      pass
-    elif(DP_mechanism == "Laplace"):
-      DP_size = wPrivacy_modules[i].make_query_wDP(true_size)  
-
-    DP_size = 0 if DP_size < 0 else DP_size
-    DP_data_sizes.append(DP_size)
-
-    # Updating queue size
-    if(DP_size > true_size):
-      queues_list[i].dequeue(true_size)
-    else:
-      queues_list[i].dequeue(DP_size)
-  return DP_data_sizes
-  
-def check_BudgetAbsorption_correctness(epsilons_df, w):
-  upper_bound_indx = len(epsilons_df.columns) - w - 1
-  w_epsilons = []
-  for i in range(upper_bound_indx):
-    w_epsilon = epsilons_df.iloc[:,i:i+w].sum(axis=1)
-    w_epsilons.append(list(w_epsilon))
-    
-def get_all_assigned_epsilons(wPrivacy_modules):
-  epsilons_df = []
-  for wPrivacy_module in wPrivacy_modules:
-    epsilons_df.append(wPrivacy_module.get_assigned_epsilons())
-  epsilons_df = pd.DataFrame(epsilons_df)
-  return epsilons_df
 
 
-# def FPA_mechanism(app_data, epsilon, sensitivity, k):
-#   nonPrivate_arr = app_data.to_numpy()
-#   private_arr = []
-#   for idx, line in enumerate(nonPrivate_arr):
-#     retQ = list(fpa(line, epsilon, sensitivity, k)) 
-#     private_arr.append(retQ)
-#   private_df = pd.DataFrame(private_arr)
-#   return private_df
+
+
+# Defining a global parser
+parser = argparse.ArgumentParser(description="parsing simulator configs", argument_default=argparse.SUPPRESS)
+
+# Adding arguments to the parser
+p = parser.add_argument_group('configs')
+p.add_argument('--load_json', type=str, metavar='PATH', help='Path to the json file containing the configs')
+p.add_argument('--total_loss', type=float, metavar="X", help='Total privacy loss')
+p.add_argument('--num_of_queries', type=int, metavar="Y", help='Number of queries')
+p.add_argument('--delta', type=float, metavar="Z", help='Delta')
+
 
 def get_noise_multiplier(total_loss, num_of_queries, alphas, delta):
   threshold = 0.01
@@ -311,3 +229,23 @@ def _log_sub(logx, logy):
 
 def _log_erfc(x):
     return math.log(2) + special.log_ndtr(-x * 2 ** 0.5)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="parsing simulator configs", argument_default=argparse.SUPPRESS)
+
+    # Adding arguments to the parser
+    p = parser.add_argument_group('configs')
+    p.add_argument('--total_loss', type=float, metavar="X", help='Total privacy loss')
+    p.add_argument('--num_of_queries', type=int, metavar="Y", help='Number of queries')
+    p.add_argument('--delta', type=float, metavar="Z", help='Delta')
+    args = parser.parse_args()
+    
+    ## Checking the number of arguments is correct
+    if len(vars(args)) != 3:
+        print("Usage: python3 privacy_calculator.py --total_loss X --num_of_queries Y --delta Z")
+        exit() 
+    
+    alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
+    
+    noise_multiplier = get_noise_multiplier(args.total_loss, args.num_of_queries, alphas, args.delta)
+    print(noise_multiplier)

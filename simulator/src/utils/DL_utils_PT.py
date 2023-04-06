@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 import torch.nn.functional as F
 import torch.optim as optim
 import configlib
-
+from sklearn.metrics import recall_score, precision_score
 
 class CustomDataset(Dataset):
     def __init__(self, data, labels):
@@ -101,15 +101,22 @@ def train_test_model(model, train_loader, test_loader, optimizer, criterion, num
     with torch.no_grad():
         test_loss = 0
         test_acc = 0
+        all_preds = []
+        all_targets = []
         for data, target in test_loader:
             output = model(data.float())
             test_loss += F.cross_entropy(output, target, reduction='sum').item()
             pred_int = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
             labels_int = target.argmax(dim=1, keepdim=True)
-            test_acc += (pred_int == labels_int).sum().item() 
+            test_acc += (pred_int == labels_int).sum().item()
+            all_preds += pred_int.flatten().tolist()
+            all_targets += labels_int.flatten().tolist()
         test_loss /= len(test_loader.dataset)
         test_acc /= len(test_loader.dataset)
-    return test_acc      
+        precision = precision_score(all_targets, all_preds, average='macro')
+        recall = recall_score(all_targets, all_preds, average='macro')
+    return test_acc, precision, recall
+    
 
             
       
