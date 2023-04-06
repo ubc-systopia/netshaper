@@ -52,19 +52,17 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
       if (socket == 0) continue;
       auto size = queues.fromShaped->size();
       if (size == 0) {
-        if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
-          log(DEBUG,
-              "Sending FIN to socket " + std::to_string(socket) +
-              " mapped to queues {" +
-              std::to_string(queues.fromShaped->ID) + "," +
-              std::to_string(queues.toShaped->ID) + "}");
-          TCP::Receiver::sendFIN(socket);
-          (*pendingSignal).erase(queues.fromShaped->ID);
-        }
-        // TODO: This definitely causes an issue. Find a better time to close
-        //  socket
         if (queues.toShaped->markedForDeletion
             && queues.fromShaped->markedForDeletion) {
+          if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
+            log(DEBUG,
+                "Sending FIN to socket " + std::to_string(socket) +
+                " mapped to queues {" +
+                std::to_string(queues.fromShaped->ID) + "," +
+                std::to_string(queues.toShaped->ID) + "}");
+            TCP::Receiver::sendFIN(socket);
+            (*pendingSignal).erase(queues.fromShaped->ID);
+          }
           eraseMapping(socket);
         }
       }
@@ -126,6 +124,7 @@ inline void UnshapedReceiver::eraseMapping(int socket) {
       || !queues.toShaped->markedForDeletion) {
     log(ERROR, "eraseMapping called before both queues were marked for "
                "deletion");
+    return;
   }
   log(DEBUG, "Erase Mapping of socket " + std::to_string(socket)
              + " mapped to queues {" + std::to_string(queues.fromShaped->ID) +
