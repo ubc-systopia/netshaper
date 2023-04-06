@@ -9,6 +9,8 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, random_split
 from TCN.TCN.mnist_pixel.model import TCN
 import configlib
+import numpy as np
+from sklearn.metrics import recall_score, precision_score
 
 class TrafficTraces(Dataset):
     def __init__(self,
@@ -119,35 +121,43 @@ def train_test_and_report_acc(config: configlib.Config, df: pd.DataFrame, verbos
         model.eval()
         test_loss = 0
         correct = 0
+        all_preds = []
+        all_targets = []
         with torch.no_grad():
             for data, target in test_loader:
-                
                 data, target = data.cuda(), target.cuda()
                 data = torch.unsqueeze(data, 1).float()
-                # data = data.view(-1, input_channels, seq_length)
-                # if args.permute:
-                #     data = data[:, :, permute]
-                data, target = Variable(data, volatile=True), Variable(target)
+                data, target = Variable(data), Variable(target)
                 output = model(data)
-                test_loss += F.nll_loss(output, target, size_average=False).item()
+                test_loss += F.nll_loss(output, target, reduction='sum').item()
                 pred = output.data.max(1, keepdim=True)[1]
                 correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-
+                all_preds.append(pred.cpu().numpy())
+                all_targets.append(target.cpu().numpy())
+                
             test_loss /= len(test_loader.dataset)
-            test_acc =   correct / len(test_loader.dataset)
+            test_acc = correct / len(test_loader.dataset)
+            all_preds = np.concatenate(all_preds)
+            all_targets = np.concatenate(all_targets)
+            # precision = precision_score(all_targets, all_preds, average='macro')
+            # recall = recall_score(all_targets, all_preds, average='macro')
+            precision = 0
+            recall = 0            
             if verbose:
                 print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
                 test_loss, correct, len(test_loader.dataset),
                 100. * correct / len(test_loader.dataset)))
-            return test_acc
+                print('Precision: {:.4f}, Recall: {:.4f}\n'.format(precision, recall))
+            return test_acc, precision, recall
+
         
     
     for epoch in range(1, epoch_num+1):
        train(epoch)
-       acc = test()
+       acc, prec, recal = test()
        if epoch % 10 == 0:
            lr /= 10
            for param_group in optimizer.param_groups:
                param_group['lr']
-    return acc
+    return acc, prec, recal
         
