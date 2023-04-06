@@ -11,6 +11,7 @@
 #include <sstream>
 #include <thread>
 #include <cstring>
+#include <iomanip>
 
 namespace TCP {
   Sender::Sender(const std::string &remoteHost, int remotePort,
@@ -121,21 +122,24 @@ namespace TCP {
   }
 
   void Sender::log(logLevels level, const std::string &log) {
+    auto time = std::time(nullptr);
+    auto localTime = std::localtime(&time);
     std::string levelStr;
     switch (level) {
       case DEBUG:
-        levelStr = "DEBUG: ";
+        levelStr = "TS:DEBUG: ";
         break;
       case ERROR:
-        levelStr = "ERROR: ";
+        levelStr = "TS:ERROR: ";
         break;
       case WARNING:
-        levelStr = "WARNING: ";
+        levelStr = "TS:WARNING: ";
         break;
 
     }
     if (logLevel >= level) {
-      std::cerr << levelStr << log << std::endl;
+      std::cerr << std::put_time(localTime, "[%H:%M:%S] ") << levelStr
+                << log << std::endl;
     }
   }
 }

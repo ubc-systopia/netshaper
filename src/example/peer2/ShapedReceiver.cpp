@@ -39,7 +39,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
   // Add additional stream for dummy data
   shapedReceiver =
       new QUIC::Receiver{serverCert, serverKey, bindPort,
-                         receivedShapedDataFunc, WARNING,
+                         receivedShapedDataFunc, logLevel,
                          maxStreamsPerPeer + 1, idleTimeout};
   shapedReceiver->startListening();
 

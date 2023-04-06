@@ -37,7 +37,7 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
   // shapedSender and in middlebox 2 we have shapedReceiver
   shapedSender = new QUIC::Sender{peer2IP, peer2Port, onResponseFunc,
                                   true,
-                                  WARNING,
+                                  logLevel,
                                   idleTimeout};
 
   // We map a pair of queues over the shared memory region to every stream

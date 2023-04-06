@@ -6,25 +6,29 @@
 #include <sstream>
 #include <iostream>
 #include <utility>
+#include <ctime>
+#include <iomanip>
 
 namespace QUIC {
   void Sender::log(logLevels level, const std::string &log) {
+    auto time = std::time(nullptr);
+    auto localTime = std::localtime(&time);
     std::string levelStr;
     switch (level) {
       case DEBUG:
-        levelStr = "DEBUG: ";
+        levelStr = "QS:DEBUG: ";
         break;
       case ERROR:
-        levelStr = "ERROR: ";
+        levelStr = "QS:ERROR: ";
         break;
       case WARNING:
-        levelStr = "WARNING: ";
+        levelStr = "QS:WARNING: ";
         break;
 
     }
     if (logLevel >= level) {
-
-      std::cerr << levelStr << log << std::endl;
+      std::cerr << std::put_time(localTime, "[%H:%M:%S] ") << levelStr
+                << log << std::endl;
     }
   }
 
@@ -40,7 +44,7 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
         stream->Shutdown(0);
         ss << "shut down as peer aborted";
-        sender->log(DEBUG, ss.str());
+        sender->log(WARNING, ss.str());
         break;
 
       case QUIC_STREAM_EVENT_PEER_ACCEPTED:
@@ -53,7 +57,7 @@ namespace QUIC {
         //Send a FIN
         stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
         ss << "shut down as peer sent a shutdown signal";
-        sender->log(DEBUG, ss.str());
+        sender->log(WARNING, ss.str());
         break;
 
       case QUIC_STREAM_EVENT_RECEIVE: {
@@ -65,10 +69,6 @@ namespace QUIC {
 
           auto length = event->RECEIVE.Buffers[i].Length;
           ss << " \n\t Length: " << length;
-          ss << "\n\t Data: ";
-          for (uint32_t j = 0; j < length; j++) {
-            ss << event->RECEIVE.Buffers[i].Buffer[j];
-          }
         }
         sender->log(DEBUG, ss.str());
       }
@@ -83,9 +83,8 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE:
         //Automatically handled as cleanUpAutoDelete is set when creating the
         // stream class instance in connectionHandler
-        ss << "The underlying connection was shutdown and cleaned up "
-              "successfully";
-        sender->log(DEBUG, ss.str());
+        ss << "The stream was shutdown and cleaned up successfully";
+        sender->log(WARNING, ss.str());
         break;
 
       case QUIC_STREAM_EVENT_START_COMPLETE:
@@ -112,9 +111,7 @@ namespace QUIC {
 
     switch (event->Type) {
       case QUIC_CONNECTION_EVENT_CONNECTED:
-        //
         // The handshake has completed for the connection.
-        //
         ss << "Connected";
         sender->log(DEBUG, ss.str());
         sender->connected = true;
@@ -150,12 +147,12 @@ namespace QUIC {
         connection->Close();
 
         ss << "closed successfully";
-        sender->log(DEBUG, ss.str());
+        sender->log(WARNING, ss.str());
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
         ss << "shut down by peer";
-        sender->log(DEBUG, ss.str());
+        sender->log(WARNING, ss.str());
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:

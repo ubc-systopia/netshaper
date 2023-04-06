@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <thread>
 #include <cstring>
+#include <iomanip>
 
 namespace TCP {
   Receiver::Receiver(std::string bindAddr, int localPort,
@@ -223,21 +224,23 @@ namespace TCP {
   }
 
   void Receiver::log(logLevels level, const std::string &log) {
+    auto time = std::time(nullptr);
+    auto localTime = std::localtime(&time);
     std::string levelStr;
     switch (level) {
       case DEBUG:
-        levelStr = "TCPReceiver:DEBUG: ";
+        levelStr = "TR:DEBUG: ";
         break;
       case ERROR:
-        levelStr = "TCPReceiver:ERROR: ";
+        levelStr = "TR:ERROR: ";
         break;
       case WARNING:
-        levelStr = "TCPReceiver:WARNING: ";
+        levelStr = "TR:WARNING: ";
         break;
-
     }
     if (logLevel >= level) {
-      std::cerr << levelStr << log << std::endl;
+      std::cerr << std::put_time(localTime, "[%H:%M:%S] ") << levelStr
+                << log << std::endl;
     }
   }
 }

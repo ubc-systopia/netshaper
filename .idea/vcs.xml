@@ -3,5 +3,9 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/msquic" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/msquic/submodules/clog" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/msquic/submodules/googletest" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/msquic/submodules/openssl" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/simulator/TCN" vcs="Git" />
   </component>
 </project>

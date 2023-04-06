@@ -31,7 +31,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
   };
 
   unshapedReceiver = new TCP::Receiver{std::move(bindAddr), bindPort,
-                                       tcpReceiveFunc, WARNING};
+                                       tcpReceiveFunc, logLevel};
   unshapedReceiver->startListening();
 
   std::thread responseLoop([=, this]() {
