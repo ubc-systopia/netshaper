@@ -46,7 +46,8 @@ size_t NoiseGenerator::getDPDecision(size_t aggregatedQueueSize) {
 }
 
 NoiseGenerator::NoiseGenerator(double noiseMultiplier, double sensitivity,
-                               int maxDecisionSize, int minDecisionSize)
+                               uint64_t maxDecisionSize,
+                               uint64_t minDecisionSize)
     : noiseMultiplier(noiseMultiplier), sensitivity(sensitivity),
       maxDecisionSize(maxDecisionSize), minDecisionSize(minDecisionSize) {
 

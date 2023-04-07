@@ -7,7 +7,7 @@
 class NoiseGenerator {
 private:
   double noiseMultiplier, sensitivity;
-  int maxDecisionSize, minDecisionSize;
+  uint64_t maxDecisionSize, minDecisionSize;
 
   static double gaussian(double mu, double sigma);
 
@@ -17,7 +17,8 @@ public:
   size_t getDPDecision(size_t aggregatedQueueSize);
 
   NoiseGenerator(double noiseMultiplier, double sensitivity,
-                 int maxDecisionSize = 500000, int minDecisionSize = 0);
+                 uint64_t maxDecisionSize = 500000,
+                 uint64_t minDecisionSize = 0);
 };
 
 #endif //MINESVPN_NOISE_GENERATOR_H
