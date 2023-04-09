@@ -11,6 +11,8 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                                const std::string &serverKey, int maxPeers,
                                int maxStreamsPerPeer, uint16_t bindPort,
                                double noiseMultiplier, double sensitivity,
+                               uint64_t maxDecisionSize,
+                               uint64_t minDecisionSize,
                                __useconds_t DPCreditorLoopInterval,
                                __useconds_t senderLoopInterval,
                                logLevels logLevel, uint64_t idleTimeout) :
@@ -43,7 +45,8 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                          maxStreamsPerPeer + 1, idleTimeout};
   shapedReceiver->startListening();
 
-  noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity};
+  noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity,
+                                      maxDecisionSize, minDecisionSize};
 
   std::thread dpCreditorThread(helpers::DPCreditor, &sendingCredit,
                                queuesToStream, noiseGenerator,

@@ -7,6 +7,7 @@
 
 ShapedSender::ShapedSender(std::string &appName, int maxClients,
                            double noiseMultiplier, double sensitivity,
+                           uint64_t maxDecisionSize, uint64_t minDecisionSize,
                            const std::string &peer2IP, uint16_t peer2Port,
                            __useconds_t DPCreditorLoopInterval,
                            __useconds_t senderLoopInterval,
@@ -23,7 +24,8 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
   pendingSignal =
       new std::unordered_map<uint64_t, connectionStatus>(maxClients);
 
-  noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity};
+  noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity,
+                                      maxDecisionSize, minDecisionSize};
   // Connect to the other middlebox
 
   auto onResponseFunc = [this](auto &&PH1, auto &&PH2, auto &&PH3) {

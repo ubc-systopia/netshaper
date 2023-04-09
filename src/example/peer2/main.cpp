@@ -72,6 +72,12 @@ int main() {
   auto sensitivity =
       static_cast<json>(shapedReceiverConfig.value("sensitivity",
                                                    500000)).get<double>();
+  auto maxDecisionSize =
+      static_cast<json>(shapedReceiverConfig.value("maxDecisionSize",
+                                                   500000)).get<uint64_t>();
+  auto minDecisionSize =
+      static_cast<json>(shapedReceiverConfig.value("minDecisionSize",
+                                                   0)).get<uint64_t>();
   std::string appName = shapedReceiverConfig.value("appName", "minesVPNPeer1");
   auto DPCreditorLoopInterval =
       static_cast<json>(shapedReceiverConfig.value("DPCreditorLoopInterval",
@@ -124,6 +130,7 @@ int main() {
     shapedReceiver = new ShapedReceiver{appName, serverCert, serverKey,
                                         1, maxStreamsPerPeer, listeningPort,
                                         noiseMultiplier, sensitivity,
+                                        maxDecisionSize, minDecisionSize,
                                         DPCreditorLoopInterval,
                                         senderLoopInterval, logLevel};
     sleep(1);

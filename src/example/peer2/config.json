@@ -7,6 +7,8 @@
     "listeningPort": 4567,
     "noiseMultiplier": 38,
     "sensitivity": 500000,
+    "maxDecisionSize": 500000,
+    "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
     "senderLoopInterval": 50000
   },

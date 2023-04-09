@@ -121,6 +121,7 @@ public:
    */
   ShapedSender(std::string &appName, int maxClients,
                double noiseMultiplier = 38, double sensitivity = 500000,
+               uint64_t maxDecisionSize = 500000, uint64_t minDecisionSize = 0,
                const std::string &peer2IP = "localhost",
                uint16_t peer2Port = 4567,
                __useconds_t DPCreditorLoopInterval = 50000,

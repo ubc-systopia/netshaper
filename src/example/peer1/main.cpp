@@ -77,6 +77,12 @@ int main() {
   auto sensitivity =
       static_cast<json>(shapedSenderConfig.value("sensitivity",
                                                  500000)).get<double>();
+  auto maxDecisionSize =
+      static_cast<json>(shapedSenderConfig.value("maxDecisionSize",
+                                                 500000)).get<uint64_t>();
+  auto minDecisionSize =
+      static_cast<json>(shapedSenderConfig.value("minDecisionSize",
+                                                 0)).get<uint64_t>();
   std::string appName = shapedSenderConfig.value("appName", "minesVPNPeer1");
   auto DPCreditorLoopInterval =
       static_cast<json>(shapedSenderConfig.value("DPCreditorLoopInterval",
@@ -137,7 +143,8 @@ int main() {
     sleep(2); // Wait for unshapedReceiver to initialise
     MsQuic = new MsQuicApi{};
     shapedSender = new ShapedSender{appName, maxClients, noiseMultiplier,
-                                    sensitivity, peer2Addr, peer2Port,
+                                    sensitivity, maxDecisionSize,
+                                    minDecisionSize, peer2Addr, peer2Port,
                                     DPCreditorLoopInterval,
                                     senderLoopInterval, logLevel};
     sleep(2);

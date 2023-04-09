@@ -153,6 +153,8 @@ public:
                  int maxPeers = 1, int maxStreamsPerPeer = 10,
                  uint16_t bindPort = 4567,
                  double noiseMultiplier = 0.01, double sensitivity = 100,
+                 uint64_t maxDecisionSize = 500000,
+                 uint64_t minDecisionSize = 0,
                  __useconds_t DPCreditorLoopInterval = 50000,
                  __useconds_t senderLoopInterval = 50000,
                  logLevels logLevel = WARNING, uint64_t idleTimeout = 100000
