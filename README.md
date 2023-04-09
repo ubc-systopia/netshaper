@@ -64,6 +64,8 @@ parameter is not present in the config file
     "peer2Port": 4567,
     "noiseMultiplier": 38,
     "sensitivity": 500000,
+    "maxDecisionSize": 500000,
+    "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
     "senderLoopInterval": 50000
   },
@@ -93,6 +95,9 @@ parameter is not present in the config file
 - `peer2Addr` is the address where Peer 2 is hosted
 - `peer2Port` is the port which Peer 2 is listening on (QUIC Listener)
 - `noiseMultiplier` and `sensitivity` are the Differential Privacy parameters
+- `minDecisionSize` and `maxDecisionSize` are the minimum and maximum
+  decision size that the system should give out (we curb the maximum to
+  ensure we don't get a decision of "infinite")
 - `DPCreditorLoopInterval` is the time interval in microseconds with which the
   loop that reads the queue and adds to the "sending credit" should be run  
   _Note: This should be a multiple of `senderLoopInterval`_
@@ -129,6 +134,8 @@ parameter is not present in the config file
     "listeningPort": 4567,
     "noiseMultiplier": 38,
     "sensitivity": 500000,
+    "maxDecisionSize": 500000,
+    "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
     "senderLoopInterval": 50000
   },
@@ -158,8 +165,10 @@ parameter is not present in the config file
   _Note: Both can be generated
   using `openssl req -nodes -new -x509 -keyout server.key -out server.cert`_
 
-
 - `noiseMultiplier` and `sensitivity` are the Differential Privacy parameters
+- `minDecisionSize` and `maxDecisionSize` are the minimum and maximum
+  decision size that the system should give out (we curb the maximum to
+  ensure we don't get a decision of "infinite")
 - `DPCreditorLoopInterval` is the time interval in microseconds with which the
   loop that reads the queue and adds to the "sending credit" should be run  
   _Note: This should be a multiple of `senderLoopInterval`_
