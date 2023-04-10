@@ -42,7 +42,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
   shapedReceiver =
       new QUIC::Receiver{serverCert, serverKey, bindPort,
                          receivedShapedDataFunc, logLevel,
-                         maxStreamsPerPeer + 1, idleTimeout};
+                         maxStreamsPerPeer + 2, idleTimeout};
   shapedReceiver->startListening();
 
   noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity,

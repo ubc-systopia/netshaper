@@ -259,11 +259,11 @@ namespace QUIC {
     SendBuffer->Buffer = data;
     SendBuffer->Length = length;
 
-    const void *streamPtr = static_cast<const void *>(stream);
+    uint64_t streamID;
+    stream->GetID(&streamID);
     std::stringstream ss;
-    ss << "[Stream ]" << streamPtr;
-    const void *bufferPtr = static_cast<const void *>(SendBuffer->Buffer);
-    ss << " sending buffer: " << bufferPtr;
+    ss << "[Stream " << streamID << "] ";
+    ss << " sentLength=" << length;
     log(DEBUG, ss.str());
 
     if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, this))) {

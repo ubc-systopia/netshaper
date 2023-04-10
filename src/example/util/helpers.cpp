@@ -100,11 +100,6 @@ namespace helpers {
     while (true) {
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
-//      if (DPDecision > 0) test = true;
-//      if (test && DPDecision == 0) {
-//        std::cerr << "DP Decision was: " << DPDecision
-//                  << " aggregated size was: " << aggregatedSize << std::endl;
-//      }
       size_t credit = sendingCredit->load(std::memory_order_acquire);
       credit += DPDecision;
       sendingCredit->store(credit, std::memory_order_release);
