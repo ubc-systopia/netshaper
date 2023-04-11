@@ -98,13 +98,13 @@ namespace helpers {
                                __useconds_t decisionInterval) {
     auto nextCheck = std::chrono::steady_clock::now();
     while (true) {
+      nextCheck = std::chrono::steady_clock::now() +
+                  std::chrono::microseconds(decisionInterval);
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
       size_t credit = sendingCredit->load(std::memory_order_acquire);
       credit += DPDecision;
       sendingCredit->store(credit, std::memory_order_release);
-      nextCheck += std::chrono::microseconds(decisionInterval);
-//      std::this_thread::sleep_for(std::chrono::microseconds(decisionInterval));
       std::this_thread::sleep_until(nextCheck);
     }
   }
@@ -119,9 +119,8 @@ namespace helpers {
                       __useconds_t decisionInterval) {
     auto nextCheck = std::chrono::steady_clock::now();
     while (true) {
-      nextCheck += std::chrono::microseconds(sendingInterval);
-//      std::this_thread::sleep_for(std::chrono::microseconds(sendingInterval));
-      std::this_thread::sleep_until(nextCheck);
+      nextCheck = std::chrono::steady_clock::now() +
+                  std::chrono::microseconds(sendingInterval);
 //      auto divisor = decisionInterval / sendingInterval;
       auto credit = sendingCredit->load(std::memory_order_acquire);
 //      std::cout << "Loaded credit: " << credit << std::endl;
@@ -140,6 +139,7 @@ namespace helpers {
         credit -= (dataSize + dummySize);
       }
       sendingCredit->store(credit, std::memory_order_release);
+      std::this_thread::sleep_until(nextCheck);
     }
   }
 }
