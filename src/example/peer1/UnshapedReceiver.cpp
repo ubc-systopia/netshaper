@@ -9,9 +9,11 @@
 UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
                                    std::string bindAddr, uint16_t bindPort,
                                    __useconds_t checkResponseInterval,
+                                   __useconds_t shapedSenderLoopInterval,
                                    logLevels logLevel, std::string serverAddr) :
     appName(appName), logLevel(logLevel), serverAddr(std::move(serverAddr)),
-    maxClients(maxClients), sigInfo(nullptr) {
+    shapedSenderLoopInterval(shapedSenderLoopInterval), maxClients(maxClients),
+    sigInfo(nullptr) {
   socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
   queuesToSocket = new std::unordered_map<QueuePair,
       int, QueuePairHash>(maxClients);
@@ -187,7 +189,8 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
 
         // Sleep for some time. For performance reasons, this is the same as
         // the interval with which DP Logic thread runs in Shaped component.
-        std::this_thread::sleep_for(std::chrono::microseconds(500000));
+        std::this_thread::sleep_for(
+            std::chrono::microseconds(shapedSenderLoopInterval));
       }
       return true;
     }

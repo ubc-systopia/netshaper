@@ -20,6 +20,7 @@ private:
   std::unordered_map<QueuePair, TCP::Sender *, QueuePairHash> *queuesToSender;
   std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
   std::mutex logWriter;
+  __useconds_t shapedReceiverLoopInterval;
 
   // Sender to queue_in and queue_out. queue_out contains response received on
   // the sending socket
@@ -75,6 +76,7 @@ public:
   explicit UnshapedSender(std::string appName, int maxPeers = 1,
                           int maxStreamsPerPeer = 10,
                           __useconds_t checkQueuesInterval = 50000,
+                          __useconds_t shapedReceiverLoopInterval = 50000,
                           logLevels logLevel = WARNING);
 
   /**

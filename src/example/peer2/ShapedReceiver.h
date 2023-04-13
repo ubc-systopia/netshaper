@@ -22,6 +22,7 @@ private:
   const logLevels logLevel;
   QUIC::Receiver *shapedReceiver;
   std::mutex logWriter;
+  __useconds_t unshapedSenderLoopInterval;
 
   std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
   std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash>
@@ -157,8 +158,8 @@ public:
                  uint64_t minDecisionSize = 0,
                  __useconds_t DPCreditorLoopInterval = 50000,
                  __useconds_t senderLoopInterval = 50000,
-                 logLevels logLevel = WARNING, uint64_t idleTimeout = 100000
-  );
+                 __useconds_t unshapedSenderLoopInterval = 50000,
+                 logLevels logLevel = WARNING, uint64_t idleTimeout = 100000);
 
   /**
  * @brief Handle the queue status change signal sent by the unshaped process

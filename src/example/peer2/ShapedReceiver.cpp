@@ -8,15 +8,18 @@
 
 ShapedReceiver::ShapedReceiver(std::string appName,
                                const std::string &serverCert,
-                               const std::string &serverKey, int maxPeers,
-                               int maxStreamsPerPeer, uint16_t bindPort,
+                               const std::string &serverKey,
+                               int maxPeers, int maxStreamsPerPeer,
+                               uint16_t bindPort,
                                double noiseMultiplier, double sensitivity,
                                uint64_t maxDecisionSize,
                                uint64_t minDecisionSize,
                                __useconds_t DPCreditorLoopInterval,
                                __useconds_t senderLoopInterval,
+                               __useconds_t unshapedSenderLoopInterval,
                                logLevels logLevel, uint64_t idleTimeout) :
-    appName(std::move(appName)), logLevel(logLevel), sigInfo(nullptr),
+    appName(std::move(appName)), logLevel(logLevel),
+    unshapedSenderLoopInterval(unshapedSenderLoopInterval), sigInfo(nullptr),
     controlStream(nullptr), dummyStream(nullptr),
     dummyStreamID(QUIC_UINT62_MAX) {
   queuesToStream =
@@ -314,7 +317,8 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
 
     // Sleep for some time. For performance reasons, this is the same as
     // the interval with the unshaped components checks queues for data.
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    std::this_thread::sleep_for(
+        std::chrono::microseconds(unshapedSenderLoopInterval));
   }
 }
 

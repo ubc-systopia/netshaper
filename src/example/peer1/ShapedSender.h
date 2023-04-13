@@ -20,6 +20,7 @@ private:
   std::string appName;
   const logLevels logLevel;
   std::mutex logWriter;
+  __useconds_t unshapedResponseLoopInterval;
 
   QUIC::Sender *shapedSender;
 
@@ -126,6 +127,7 @@ public:
                uint16_t peer2Port = 4567,
                __useconds_t DPCreditorLoopInterval = 50000,
                __useconds_t senderLoopInterval = 50000,
+               __useconds_t unshapedResponseLoopInterval = 50000,
                logLevels logLevel = WARNING,
                uint64_t idleTimeout = 100000);
 

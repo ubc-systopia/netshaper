@@ -122,7 +122,8 @@ int main() {
     prctl(PR_SET_PDEATHSIG, SIGHUP);
 
     unshapedSender = new UnshapedSender{appName, 1, maxStreamsPerPeer,
-                                        checkQueuesInterval, logLevel};
+                                        checkQueuesInterval,
+                                        senderLoopInterval, logLevel};
   } else {
     // Parent Process - Shaped Receiver
     sleep(2); // Wait for unshapedSender to initialise
@@ -132,7 +133,8 @@ int main() {
                                         noiseMultiplier, sensitivity,
                                         maxDecisionSize, minDecisionSize,
                                         DPCreditorLoopInterval,
-                                        senderLoopInterval, logLevel};
+                                        senderLoopInterval,
+                                        checkQueuesInterval, logLevel};
     sleep(1);
     std::cout << "Peer is ready!" << std::endl;
   }

@@ -10,8 +10,10 @@
 UnshapedSender::UnshapedSender(std::string appName, int maxPeers,
                                int maxStreamsPerPeer,
                                __useconds_t checkQueuesInterval,
+                               __useconds_t shapedReceiverLoopInterval,
                                logLevels logLevel) :
-    appName(std::move(appName)), logLevel(logLevel), sigInfo(nullptr) {
+    appName(std::move(appName)), logLevel(logLevel),
+    shapedReceiverLoopInterval(shapedReceiverLoopInterval), sigInfo(nullptr) {
   queuesToSender =
       new std::unordered_map<QueuePair, TCP::Sender *,
           QueuePairHash>(maxStreamsPerPeer);
@@ -61,7 +63,8 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
 
       // Sleep for some time. For performance reasons, this is the same as
       // the interval with which DP Logic thread runs in Shaped component.
-      std::this_thread::sleep_for(std::chrono::microseconds(500000));
+      std::this_thread::sleep_for(
+          std::chrono::microseconds(shapedReceiverLoopInterval));
     }
   } else if (connStatus == FIN) {
     auto &queues = (*senderToQueues)[sender];

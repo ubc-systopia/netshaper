@@ -21,6 +21,7 @@ private:
   const logLevels logLevel;
   std::string serverAddr;
   std::mutex logWriter;
+  __useconds_t shapedSenderLoopInterval;
 
 // We fix the number of streams beforehand to avoid side-channels caused by
 // the additional size of the stream header.
@@ -39,7 +40,6 @@ private:
   std::mutex writeLock;
 
   TCP::Receiver *unshapedReceiver;
-
 
   /**
  * @brief Read queues periodically and send the responses to the
@@ -100,10 +100,17 @@ public:
    * @param bindPort The port to listen to TCP traffic on
    * @param checkResponseInterval The interval with which to check the queues
    * containing data received from the other middlebox
+   * @param shapedSenderLoopInterval The interval with which the shapedSender
+   * sends the data (used only for efficiently checking when the queue
+   * empties out in case it's full)
+   * @param logLevel The log level you want to use
+   * @param serverAddr The server (on the other side of the 2nd middlebox)
+   * you want to connect to
    */
   UnshapedReceiver(std::string &appName, int maxClients,
                    std::string bindAddr = "", uint16_t bindPort = 8000,
                    __useconds_t checkResponseInterval = 100000,
+                   __useconds_t shapedSenderLoopInterval = 50000,
                    logLevels logLevel = WARNING,
                    std::string serverAddr = "localhost:5555");
 

@@ -11,11 +11,14 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
                            const std::string &peer2IP, uint16_t peer2Port,
                            __useconds_t DPCreditorLoopInterval,
                            __useconds_t senderLoopInterval,
+                           __useconds_t unshapedResponseLoopInterval,
                            logLevels logLevel,
                            uint64_t idleTimeout) :
-    appName(appName), logLevel(logLevel), maxClients(maxClients),
-    sigInfo(nullptr), dummyStream(nullptr), controlStream(nullptr),
-    dummyStreamID(QUIC_UINT62_MAX), controlStreamID(QUIC_UINT62_MAX) {
+    appName(appName), logLevel(logLevel),
+    unshapedResponseLoopInterval(unshapedResponseLoopInterval),
+    maxClients(maxClients), sigInfo(nullptr), dummyStream(nullptr),
+    controlStream(nullptr), dummyStreamID(QUIC_UINT62_MAX),
+    controlStreamID(QUIC_UINT62_MAX) {
   queuesToStream =
       new std::unordered_map<QueuePair,
           MsQuicStream *, QueuePairHash>(maxClients);
@@ -257,7 +260,13 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
                std::to_string(streamID));
     return;
   }
-  fromShaped->push(buffer, length);
+  while (fromShaped->push(buffer, length) == -1) {
+    log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
+                 +" mapped to stream " + std::to_string(streamID) +
+                 " is full, waiting for it to be empty!");
+    std::this_thread::sleep_for(
+        std::chrono::microseconds(unshapedResponseLoopInterval));
+  }
 
 }
 

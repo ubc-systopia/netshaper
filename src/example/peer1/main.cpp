@@ -137,6 +137,7 @@ int main() {
     unshapedReceiver = new UnshapedReceiver{appName, maxClients, bindAddr,
                                             bindPort,
                                             checkResponseLoopInterval,
+                                            senderLoopInterval,
                                             logLevel, serverAddr};
   } else {
     // Parent Process - Shaped Sender
@@ -146,7 +147,9 @@ int main() {
                                     sensitivity, maxDecisionSize,
                                     minDecisionSize, peer2Addr, peer2Port,
                                     DPCreditorLoopInterval,
-                                    senderLoopInterval, logLevel};
+                                    senderLoopInterval,
+                                    checkResponseLoopInterval,
+                                    logLevel};
     sleep(2);
     std::cout << "Peer is ready!" << std::endl;
   }
