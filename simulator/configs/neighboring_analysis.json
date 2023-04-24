@@ -1,19 +1,20 @@
 { 
 
   "experiment" : "neighboring_analysis",
+  "run_type" : "experiment",
   "setup" : "realistic",
   "results_dir" : "/home/ubuntu/results/",
-  "num_of_unique_streams" : 9,
-  "num_of_traces_per_stream" : 50,
+  "num_of_unique_streams" : 15,
+  "num_of_traces_per_stream" : 10,
   "filtering_type" : "deterministic",
 
-  "app_time_resolution_us" : 5e4 ,
-  "middlebox_period_us" : 5e4 ,
+  "app_time_resolution_us" :  1e6,
+  "middlebox_period_us" : 1e6 ,
   "privacy_window_size_s" : 300,
 
-  "data_source" : "raw_data",
-  "load_data_dir" : "/home/ubuntu/data/real_dataset/",
-  "max_num_of_unique_streams" : 9,
-  "max_num_of_traces_per_stream" : 50,
-  "data_time_resolution_us" : 5e4
+  "data_source" : "memory",
+  "load_data_dir": "/home/ubuntu/csvs_cache/",
+  "max_num_of_unique_streams" : 100,
+  "max_num_of_traces_per_stream" : 100,
+  "data_time_resolution_us" : 1e6
 }
