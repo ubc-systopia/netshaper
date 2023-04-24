@@ -16,10 +16,10 @@ parser = argparse.ArgumentParser(description="parsing simulator configs", argume
 
 # Adding arguments to the parser
 p = parser.add_argument_group('configs')
-p.add_argument('--load_json', type=str, metavar='PATH', help='Path to the json file containing the configs')
-p.add_argument('--total_loss', type=float, metavar="X", help='Total privacy loss')
-p.add_argument('--num_of_queries', type=int, metavar="Y", help='Number of queries')
-p.add_argument('--delta', type=float, metavar="Z", help='Delta')
+
+# p.add_argument('--total_loss', type=float, metavar="X", help='Total privacy loss')
+# p.add_argument('--num_of_queries', type=int, metavar="Y", help='Number of queries')
+# p.add_argument('--delta', type=float, metavar="Z", help='Delta')
 
 
 def get_noise_multiplier(total_loss, num_of_queries, alphas, delta):
@@ -231,21 +231,31 @@ def _log_erfc(x):
     return math.log(2) + special.log_ndtr(-x * 2 ** 0.5)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="parsing simulator configs", argument_default=argparse.SUPPRESS)
+    # parser = argparse.ArgumentParser(description="parsing simulator configs", argument_default=argparse.SUPPRESS)
 
     # Adding arguments to the parser
     p = parser.add_argument_group('configs')
-    p.add_argument('--total_loss', type=float, metavar="X", help='Total privacy loss')
+    p.add_argument('--total_loss', type=float, default=None, metavar="X", help='Total privacy loss')
     p.add_argument('--num_of_queries', type=int, metavar="Y", help='Number of queries')
     p.add_argument('--delta', type=float, metavar="Z", help='Delta')
+    p.add_argument('--noise_multiplier', type=float, default=None, metavar="Z", help='Noise Multiplier')
     args = parser.parse_args()
-    
+
     ## Checking the number of arguments is correct
-    if len(vars(args)) != 3:
-        print("Usage: python3 privacy_calculator.py --total_loss X --num_of_queries Y --delta Z")
+    if len(vars(args)) != 4:
+        print("Usage (First Format): python3 privacy_calculator.py --total_loss X --num_of_queries Y --delta Z")
+        print("Usage (Second Format): python3 privacy_calculator.py --noise_multipier X --num_of_queries Y --delta Z")
         exit() 
     
     alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
+    noise_multipliers = [3, 6, 12, 25, 50]
+    if (args.total_loss is not None and args.noise_multiplier is not None):
+        print("You can either specify the total privacy loss or the noise multiplier. Not both.")
+        exit(1)
     
-    noise_multiplier = get_noise_multiplier(args.total_loss, args.num_of_queries, alphas, args.delta)
-    print(noise_multiplier)
+    if (args.noise_multiplier is not None):    
+        total_loss = calculate_privacy_loss(args.num_of_queries, alphas, args.noise_multiplier, args.delta)
+        print("total_loss:",total_loss[0])
+    elif (args.total_loss is not None):
+        noise_multiplier = get_noise_multiplier(args.total_loss, args.num_of_queries, alphas, args.delta)
+        print("noise multiplier:", noise_multiplier)
