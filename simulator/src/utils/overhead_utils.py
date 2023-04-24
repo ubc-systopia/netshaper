@@ -2,6 +2,15 @@ import pandas as pd
 import numpy as np  
 from scipy.stats import wasserstein_distance
 
+
+def get_fpa_failure_rate(original_df, fpa_df):
+    # Iterating over the rows of the original df
+    diff   = fpa_df.sum(axis=1) - original_df.sum(axis=1) 
+    # calculate number of negative values in the diff
+    negative_diff = diff[diff < 0]
+    return len(negative_diff)/len(diff)
+
+
 def df_zero_padding_row(original_df, remapped_df):
   assert original_df.shape[0]==remapped_df.shape[0], "The number of rows should be the same!"
   # We assume original df always has smaller number of columns and should be padded  
