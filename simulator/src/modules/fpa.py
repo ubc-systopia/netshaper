@@ -2,11 +2,11 @@ import math
 import numpy as np
 import pandas as pd
 
-def FPA_mechanism(app_data, epsilon, sensitivity, k):
+def FPA_mechanism(app_data, epsilon, sensitivity, k=10):
   nonPrivate_arr = app_data.to_numpy()
   private_arr = []
   for idx, line in enumerate(nonPrivate_arr):
-    retQ = list(fpa(line, epsilon, sensitivity, k)) 
+    retQ = list(fpa(line, epsilon, sensitivity, k)) + [0]
     private_arr.append(retQ)
   private_df = pd.DataFrame(private_arr)
   return private_df
