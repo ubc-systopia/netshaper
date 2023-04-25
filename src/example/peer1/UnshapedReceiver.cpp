@@ -45,11 +45,11 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 }
 
 [[noreturn]] void UnshapedReceiver::receivedResponse(__useconds_t interval) {
-  auto nextCheck = std::chrono::steady_clock::now();
+//  auto nextCheck = std::chrono::steady_clock::now();
   while (true) {
-    nextCheck += std::chrono::microseconds(interval);
+//    nextCheck += std::chrono::microseconds(interval);
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
-    std::this_thread::sleep_until(nextCheck);
+//    std::this_thread::sleep_until(nextCheck);
     for (const auto &[queues, socket]: *queuesToSocket) {
       if (socket == 0) continue;
       auto size = queues.fromShaped->size();

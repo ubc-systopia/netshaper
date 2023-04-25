@@ -335,8 +335,6 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
   auto origSize = dataSize;
 
   for (const auto &[queues, stream]: *queuesToStream) {
-    // We have sent enough
-    if (dataSize == 0) break;
     if (stream == nullptr) continue;
 
     auto queueSize = queues.toShaped->size();
@@ -368,6 +366,8 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
       continue;
     }
 
+    // We have sent enough
+    if (dataSize == 0) break;
     auto SizeToSendFromQueue = std::min(queueSize, dataSize);
     auto buffer =
         reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue + 1));

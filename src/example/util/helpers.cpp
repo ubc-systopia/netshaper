@@ -46,6 +46,7 @@ namespace helpers {
   }
 
   void waitForSignal() {
+    signal(SIGPIPE, SIG_IGN);
     sigset_t set;
     int sig;
     int ret_val;
@@ -91,22 +92,22 @@ namespace helpers {
     return shmAddr;
   }
 
-  [[noreturn]] void DPCreditor(std::atomic<size_t> *sendingCredit,
-                               std::unordered_map<QueuePair, MsQuicStream *,
-                                   QueuePairHash> *queuesToStream,
-                               NoiseGenerator *noiseGenerator,
-                               __useconds_t decisionInterval) {
-    auto nextCheck = std::chrono::steady_clock::now();
-    while (true) {
-      nextCheck = std::chrono::steady_clock::now() +
-                  std::chrono::microseconds(decisionInterval);
-      auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
-      auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
-      size_t credit = sendingCredit->load(std::memory_order_acquire);
-      credit += DPDecision;
-      sendingCredit->store(credit, std::memory_order_release);
-      std::this_thread::sleep_until(nextCheck);
-    }
+  void DPCreditor(std::atomic<size_t> *sendingCredit,
+                  std::unordered_map<QueuePair, MsQuicStream *,
+                      QueuePairHash> *queuesToStream,
+                  NoiseGenerator *noiseGenerator,
+                  __useconds_t decisionInterval) {
+//    auto nextCheck = std::chrono::steady_clock::now();
+//    while (true) {
+//      nextCheck = std::chrono::steady_clock::now() +
+//                  std::chrono::microseconds(decisionInterval);
+//      auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
+//      auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
+//      size_t credit = sendingCredit->load(std::memory_order_acquire);
+//      credit += DPDecision;
+//      sendingCredit->store(credit, std::memory_order_release);
+//      std::this_thread::sleep_until(nextCheck);
+//    }
   }
 
   [[noreturn]]
@@ -117,29 +118,30 @@ namespace helpers {
                       const std::function<void(size_t)> &sendData,
                       __useconds_t sendingInterval,
                       __useconds_t decisionInterval) {
-    auto nextCheck = std::chrono::steady_clock::now();
+//    auto nextCheck = std::chrono::steady_clock::now();
     while (true) {
-      nextCheck = std::chrono::steady_clock::now() +
-                  std::chrono::microseconds(sendingInterval);
-//      auto divisor = decisionInterval / sendingInterval;
-      auto credit = sendingCredit->load(std::memory_order_acquire);
-//      std::cout << "Loaded credit: " << credit << std::endl;
+//      nextCheck = std::chrono::steady_clock::now() +
+//                  std::chrono::microseconds(sendingInterval);
+////      auto divisor = decisionInterval / sendingInterval;
+//      auto credit = sendingCredit->load(std::memory_order_acquire);
+////      std::cout << "Loaded credit: " << credit << std::endl;
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
-      if (credit == 0) {
-        // Don't send anything
-        continue;
-      } else {
-        // Get dummy and data size
-        auto maxBytesToSend = credit;
+//      if (credit == 0) {
+//        // Don't send anything
+//        continue;
+//      } else {
+      // Get dummy and data size
+//        auto maxBytesToSend = credit;
 //        auto maxBytesToSend = credit / divisor;
-        size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
-        size_t dummySize = maxBytesToSend - dataSize;
-        if (dummySize > 0) sendDummy(dummySize);
-        sendData(dataSize);
-        credit -= (dataSize + dummySize);
-      }
-      sendingCredit->store(credit, std::memory_order_release);
-      std::this_thread::sleep_until(nextCheck);
+//        size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
+//        size_t dummySize = maxBytesToSend - dataSize;
+//        if (dummySize > 0) sendDummy(dummySize);
+//        sendData(dataSize);
+      sendData(aggregatedSize);
+//        credit -= (dataSize + dummySize);
+//      }
+//      sendingCredit->store(credit, std::memory_order_release);
+//      std::this_thread::sleep_until(nextCheck);
     }
   }
 }

@@ -115,11 +115,11 @@ namespace helpers {
    * @param noiseGenerator The configured noise generator instance
    * @param decisionInterval The interval with which this loop will run
    */
-  [[noreturn]] void DPCreditor(std::atomic<size_t> *sendingCredit,
-                               std::unordered_map<QueuePair, MsQuicStream *,
-                                   QueuePairHash> *queuesToStream,
-                               NoiseGenerator *noiseGenerator,
-                               __useconds_t decisionInterval);
+  void DPCreditor(std::atomic<size_t> *sendingCredit,
+                  std::unordered_map<QueuePair, MsQuicStream *,
+                      QueuePairHash> *queuesToStream,
+                  NoiseGenerator *noiseGenerator,
+                  __useconds_t decisionInterval);
 
   /**
    * @brief Loop which sends Shaped Data at sendingInterval

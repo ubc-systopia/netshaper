@@ -148,12 +148,12 @@ void UnshapedSender::handleQueueSignal(int signum) {
 }
 
 [[noreturn]] void UnshapedSender::checkQueuesForData(__useconds_t interval) {
-  auto nextCheck = std::chrono::steady_clock::now();
+//  auto nextCheck = std::chrono::steady_clock::now();
 
   while (true) {
-    nextCheck += std::chrono::microseconds(interval);
+//    nextCheck += std::chrono::microseconds(interval);
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
-    std::this_thread::sleep_until(nextCheck);
+//    std::this_thread::sleep_until(nextCheck);
 
     for (const auto &[queues, sender]: *queuesToSender) {
       if (sender == nullptr) continue;
