@@ -6,6 +6,14 @@
 #include <utility>
 #include <iomanip>
 
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    tcpOut;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    quicIn;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    quicOut;
+
 ShapedReceiver::ShapedReceiver(std::string appName,
                                const std::string &serverCert,
                                const std::string &serverKey,
@@ -303,6 +311,7 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
   }
 
   // This is a data stream
+  quicIn.push_back(std::chrono::steady_clock::now());
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
     if (!assignQueues(stream)) {
       log(ERROR, "More streams from peer than allowed!");
@@ -374,6 +383,7 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
 
     queues.toShaped->pop(buffer, SizeToSendFromQueue);
 
+    quicOut.push_back(std::chrono::steady_clock::now());
     if (!sendResponse(stream, buffer, SizeToSendFromQueue)) {
       uint64_t streamID;
       stream->GetID(&streamID);

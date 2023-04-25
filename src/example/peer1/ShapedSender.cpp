@@ -5,6 +5,14 @@
 #include <iomanip>
 #include "ShapedSender.h"
 
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    tcpOut;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    quicIn;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    quicOut;
+
 ShapedSender::ShapedSender(std::string &appName, int maxClients,
                            double noiseMultiplier, double sensitivity,
                            uint64_t maxDecisionSize, uint64_t minDecisionSize,
@@ -203,6 +211,7 @@ void ShapedSender::sendData(size_t dataSize) {
     auto sizeToSend = std::min(dataSize, queueSize);
     auto buffer = reinterpret_cast<uint8_t *>(malloc(sizeToSend));
     queues.toShaped->pop(buffer, sizeToSend);
+    quicOut.push_back(std::chrono::steady_clock::now());
     shapedSender->send(stream, buffer, sizeToSend);
     QUIC_UINT62 streamID;
     stream->GetID(&streamID);
@@ -252,6 +261,7 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
     // Dummy received. Do nothing
     return;
   }
+  quicIn.push_back(std::chrono::steady_clock::now());
 
   // All other streams that are not dummy or control
   auto fromShaped = (*streamToQueues)[stream].fromShaped;

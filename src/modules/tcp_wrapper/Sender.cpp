@@ -13,6 +13,14 @@
 #include <cstring>
 #include <iomanip>
 
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    tcpOut;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    quicIn;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    quicOut;
+
 namespace TCP {
   Sender::Sender(const std::string &remoteHost, int remotePort,
                  std::function<void(TCP::Sender *,
@@ -100,6 +108,7 @@ namespace TCP {
 
     // Read from fromSocket and send to toSocket
     while ((bytesReceived = recv(remoteSocket, buffer, BUF_SIZE, 0)) > 0) {
+      tcpIn.push_back(std::chrono::steady_clock::now());
       std::stringstream ss;
       ss << "Received data on socket: " << remoteSocket;
       log(DEBUG, ss.str());
@@ -118,6 +127,7 @@ namespace TCP {
     std::stringstream ss;
     ss << "Sending data to socket: " << remoteSocket;
     log(DEBUG, ss.str());
+    tcpOut.push_back(std::chrono::steady_clock::now());
     return send(remoteSocket, buffer, length, 0);
   }
 

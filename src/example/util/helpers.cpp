@@ -4,9 +4,17 @@
 
 #include <thread>
 #include <functional>
+#include <sstream>
+#include <fstream>
 #include "helpers.h"
 
-//static bool test = false;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    tcpOut;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    quicIn;
+extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+    quicOut;
 
 namespace helpers {
   bool SignalInfo::dequeue(Direction direction, SignalInfo::queueInfo &info) {
@@ -45,7 +53,7 @@ namespace helpers {
 
   }
 
-  void waitForSignal() {
+  void waitForSignal(bool shaped) {
     signal(SIGPIPE, SIG_IGN);
     sigset_t set;
     int sig;
@@ -62,6 +70,37 @@ namespace helpers {
     else {
       if (sigismember(&set, sig)) {
         std::cout << "\nExiting with signal " << sig << std::endl;
+
+        if (shaped) {
+          std::ofstream unshapedEval;
+          unshapedEval.open("shaped.csv");
+          unshapedEval << "quicIn,";
+          for (auto elem: quicIn) {
+            unshapedEval << elem.time_since_epoch().count() << ",";
+          }
+          unshapedEval << "\n";
+          unshapedEval << "quicOut,";
+          for (auto elem: quicOut) {
+            unshapedEval << elem.time_since_epoch().count() << ",";
+          }
+          unshapedEval << std::endl;
+          unshapedEval.close();
+        } else {
+          std::ofstream shapedEval;
+          shapedEval.open("unshaped.csv");
+          shapedEval << "tcpIn,";
+          for (auto elem: tcpIn) {
+            shapedEval << elem.time_since_epoch().count() << ",";
+          }
+          shapedEval << "\n";
+          shapedEval << "tcpOut,";
+          for (auto elem: tcpOut) {
+            shapedEval << elem.time_since_epoch().count() << ",";
+          }
+          shapedEval << std::endl;
+          shapedEval.close();
+        }
+
         exit(0);
       }
     }

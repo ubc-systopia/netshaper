@@ -8,7 +8,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <sched.h>
-
+#include "../../modules/PerfEval.h"
 
 using json = nlohmann::json;
 
@@ -140,6 +140,8 @@ int main() {
     unshapedSender = new UnshapedSender{appName, 1, maxStreamsPerPeer,
                                         checkQueuesInterval,
                                         senderLoopInterval, logLevel};
+    // Wait for signal to exit
+    waitForSignal(false);
   } else {
     // Parent Process - Shaped Receiver
     std::vector<int> cpus{5, 6, 7, 13, 14, 15};
@@ -155,8 +157,7 @@ int main() {
                                         checkQueuesInterval, logLevel};
     sleep(1);
     std::cout << "Peer is ready!" << std::endl;
+    // Wait for signal to exit
+    waitForSignal(true);
   }
-
-  // Wait for signal to exit
-  waitForSignal();
 }

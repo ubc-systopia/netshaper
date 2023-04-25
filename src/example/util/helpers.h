@@ -77,7 +77,7 @@ namespace helpers {
 /**
  * @brief Waits for signal and then processes it
  */
-  void waitForSignal();
+  void waitForSignal(bool shaped);
 
   /**
    * @brief Initialise Shared Memory in the given process
