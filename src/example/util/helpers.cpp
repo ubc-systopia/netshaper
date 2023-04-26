@@ -130,11 +130,11 @@ namespace helpers {
         // Don't send anything
         continue;
       } else {
+        auto maxBytesToSend = credit / divisor;
         for (unsigned int i = 0; i < divisor; i++) {
           nextCheck = std::chrono::steady_clock::now() +
                       std::chrono::microseconds(sendingInterval);
           // Get dummy and data size
-          auto maxBytesToSend = credit / divisor;
           size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
           size_t dummySize = maxBytesToSend - dataSize;
           if (dummySize > 0) sendDummy(dummySize);
