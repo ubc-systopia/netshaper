@@ -17,7 +17,8 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                                __useconds_t DPCreditorLoopInterval,
                                __useconds_t senderLoopInterval,
                                __useconds_t unshapedSenderLoopInterval,
-                               logLevels logLevel, uint64_t idleTimeout) :
+                               logLevels logLevel, sendingStrategy strategy,
+                               uint64_t idleTimeout) :
     appName(std::move(appName)), logLevel(logLevel),
     unshapedSenderLoopInterval(unshapedSenderLoopInterval), sigInfo(nullptr),
     controlStream(nullptr), dummyStream(nullptr),
@@ -69,7 +70,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                            sendData
                                (std::forward<decltype(PH1)>(PH1));
                          },
-                         senderLoopInterval, DPCreditorLoopInterval);
+                         senderLoopInterval, DPCreditorLoopInterval, strategy);
   sendShaped.detach();
 }
 

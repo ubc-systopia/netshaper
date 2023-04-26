@@ -141,6 +141,6 @@ namespace helpers {
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
                       __useconds_t sendingInterval,
-                      __useconds_t decisionInterval);
+                      __useconds_t decisionInterval, sendingStrategy strategy);
 }
 #endif //MINESVPN_HELPERS_H

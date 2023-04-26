@@ -128,7 +128,7 @@ public:
                __useconds_t DPCreditorLoopInterval = 50000,
                __useconds_t senderLoopInterval = 50000,
                __useconds_t unshapedResponseLoopInterval = 50000,
-               logLevels logLevel = WARNING,
+               logLevels logLevel = WARNING, sendingStrategy strategy = BURST,
                uint64_t idleTimeout = 100000);
 
   void sendDummy(size_t dummySize);

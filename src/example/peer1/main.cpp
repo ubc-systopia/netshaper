@@ -16,6 +16,11 @@ NLOHMANN_JSON_SERIALIZE_ENUM(logLevels, {
   { ERROR, "ERROR" },
 })
 
+NLOHMANN_JSON_SERIALIZE_ENUM(sendingStrategy, {
+  { BURST, "BURST" },
+  { UNIFORM, "UNIFORM" },
+})
+
 UnshapedReceiver *unshapedReceiver = nullptr;
 ShapedSender *shapedSender = nullptr;
 // Load the API table. Necessary before any calls to MsQuic
@@ -105,6 +110,9 @@ int main() {
       exit(1);
     }
   }
+  auto strategy =
+      static_cast<json>(shapedSenderConfig.value("sendingStrategy",
+                                                 "BURST")).get<sendingStrategy>();
 
   // Load unshapedReceiverConfig
   std::string bindAddr = unshapedReceiverConfig.value("bindAddr", "");
@@ -149,7 +157,7 @@ int main() {
                                     DPCreditorLoopInterval,
                                     senderLoopInterval,
                                     checkResponseLoopInterval,
-                                    logLevel};
+                                    logLevel, strategy};
     sleep(2);
     std::cout << "Peer is ready!" << std::endl;
   }

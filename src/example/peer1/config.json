@@ -9,7 +9,8 @@
     "maxDecisionSize": 500000,
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
-    "senderLoopInterval": 50000
+    "senderLoopInterval": 50000,
+    "sendingStrategy": "BURST"
   },
   "unshapedReceiver": {
     "bindAddr": "",

@@ -67,7 +67,8 @@ parameter is not present in the config file
     "maxDecisionSize": 500000,
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
-    "senderLoopInterval": 50000
+    "senderLoopInterval": 50000,
+    "sendingStrategy": "BURST"
   },
   "unshapedReceiver": {
     "bindAddr": "",
@@ -104,6 +105,10 @@ parameter is not present in the config file
 - `senderLoopInterval` is the time interval in microseconds with which the
   loop that reads the "sending credit" and sends the data to Peer 2 should
   be run
+- `sendingStrategy` defines how to send the data when the DP Creditor loop
+  is run at a higher interval than the sending loop. Currently, the values it
+  accepts are "BURST" (send all data ASAP) and "UNIFORM" (divide the credit
+  equally across all intervals till the next decision time)
 
 #### unshapedReceiver
 
@@ -137,7 +142,8 @@ parameter is not present in the config file
     "maxDecisionSize": 500000,
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
-    "senderLoopInterval": 50000
+    "senderLoopInterval": 50000,
+    "sendingStrategy": "BURST"
   },
   "unshapedSender": {
     "checkQueuesInterval": 50000
@@ -175,6 +181,10 @@ parameter is not present in the config file
 - `senderLoopInterval` is the time interval in microseconds with which the
   loop that reads the "sending credit" and sends the data to Peer 2 should
   be run
+- `sendingStrategy` defines how to send the data when the DP Creditor loop
+  is run at a higher interval than the sending loop. Currently, the values it
+  accepts are "BURST" (send all data ASAP) and "UNIFORM" (divide the credit
+  equally across all intervals till the next decision time)
 
 #### unshapedReceiver
 

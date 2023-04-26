@@ -12,7 +12,7 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
                            __useconds_t DPCreditorLoopInterval,
                            __useconds_t senderLoopInterval,
                            __useconds_t unshapedResponseLoopInterval,
-                           logLevels logLevel,
+                           logLevels logLevel, sendingStrategy strategy,
                            uint64_t idleTimeout) :
     appName(appName), logLevel(logLevel),
     unshapedResponseLoopInterval(unshapedResponseLoopInterval),
@@ -71,7 +71,8 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
                             [this](auto &&PH1) {
                               sendData(std::forward<decltype(PH1)>(PH1));
                             },
-                            senderLoopInterval, DPCreditorLoopInterval);
+                            senderLoopInterval, DPCreditorLoopInterval,
+                            strategy);
 
   sendingThread.detach();
 }

@@ -9,6 +9,10 @@ enum logLevels {
   ERROR, WARNING, DEBUG
 };
 
+enum sendingStrategy {
+  BURST, UNIFORM
+};
+
 enum connectionStatus {
   SYN, ONGOING, FIN
 };
