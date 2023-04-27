@@ -135,12 +135,14 @@ namespace helpers {
                   std::unordered_map<QueuePair, MsQuicStream *,
                       QueuePairHash> *queuesToStream,
                   NoiseGenerator *noiseGenerator,
-                  __useconds_t decisionInterval) {
+                  __useconds_t decisionInterval, std::mutex &mapLock) {
 //    auto nextCheck = std::chrono::steady_clock::now();
 //    while (true) {
 //      nextCheck = std::chrono::steady_clock::now() +
 //                  std::chrono::microseconds(decisionInterval);
+//      mapLock.lock();
 //      auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
+//      mapLock.unlock;
 //      auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
 //      size_t credit = sendingCredit->load(std::memory_order_acquire);
 //      credit += DPDecision;
@@ -156,7 +158,7 @@ namespace helpers {
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
                       __useconds_t sendingInterval,
-                      __useconds_t decisionInterval) {
+                      __useconds_t decisionInterval, std::mutex &mapLock) {
 //    auto nextCheck = std::chrono::steady_clock::now();
     while (true) {
 //      nextCheck = std::chrono::steady_clock::now() +
@@ -164,7 +166,9 @@ namespace helpers {
 ////      auto divisor = decisionInterval / sendingInterval;
 //      auto credit = sendingCredit->load(std::memory_order_acquire);
 ////      std::cout << "Loaded credit: " << credit << std::endl;
+      mapLock.lock();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
+      mapLock.unlock();
 //      if (credit == 0) {
 //        // Don't send anything
 //        continue;

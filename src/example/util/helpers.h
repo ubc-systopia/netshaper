@@ -119,7 +119,7 @@ namespace helpers {
                   std::unordered_map<QueuePair, MsQuicStream *,
                       QueuePairHash> *queuesToStream,
                   NoiseGenerator *noiseGenerator,
-                  __useconds_t decisionInterval);
+                  __useconds_t decisionInterval, std::mutex &mapLock);
 
   /**
    * @brief Loop which sends Shaped Data at sendingInterval
@@ -141,6 +141,6 @@ namespace helpers {
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
                       __useconds_t sendingInterval,
-                      __useconds_t decisionInterval);
+                      __useconds_t decisionInterval, std::mutex &mapLock);
 }
 #endif //MINESVPN_HELPERS_H

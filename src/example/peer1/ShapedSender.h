@@ -39,6 +39,7 @@ private:
 
   std::mutex readLock;
   std::mutex writeLock;
+  std::mutex mapLock;
 
   MsQuicStream *dummyStream;
   MsQuicStream *controlStream;
