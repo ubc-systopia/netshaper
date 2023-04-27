@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
+#include <queue>
 #include "../../modules/tcp_wrapper/Receiver.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../../modules/Common.h"
@@ -33,11 +34,13 @@ private:
   std::unordered_map<int, QueuePair> *socketToQueues;
   std::unordered_map<QueuePair, int, QueuePairHash> *queuesToSocket;
   std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
+  std::queue<QueuePair> *unassignedQueues;
 
   class SignalInfo *sigInfo;
 
   std::mutex readLock;
   std::mutex writeLock;
+  std::mutex mapLock;
 
   TCP::Receiver *unshapedReceiver;
 

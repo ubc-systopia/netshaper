@@ -33,12 +33,11 @@ ShapedReceiver::ShapedReceiver(std::string appName,
   queuesToStream =
       new std::unordered_map<QueuePair,
           MsQuicStream *, QueuePairHash>(maxStreamsPerPeer);
-
   streamToQueues =
       new std::unordered_map<MsQuicStream *, QueuePair>(maxStreamsPerPeer);
-
   pendingSignal =
       new std::unordered_map<uint64_t, connectionStatus>(maxStreamsPerPeer);
+  unassignedQueues = new std::queue<QueuePair>{};
 
   initialiseSHM(maxPeers * maxStreamsPerPeer);
 
@@ -101,7 +100,8 @@ inline void ShapedReceiver::initialiseSHM(int numStreams) {
         (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
 
     // Data streams
-    (*queuesToStream)[{queue1, queue2}] = nullptr;
+//    (*queuesToStream)[{queue1, queue2}] = nullptr;
+    unassignedQueues->push({queue1, queue2});
   }
 }
 
@@ -182,43 +182,40 @@ void ShapedReceiver::copyClientInfo(QueuePair queues,
 }
 
 inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
-  // Find an unused QueuePair and map it
-  return std::ranges::any_of(*queuesToStream, [&](auto &iterator) {
-    // iterator.first is QueuePair, iterator.second is sender
-    QueuePair queues = iterator.first;
-    if (iterator.second == nullptr && queues.fromShaped->size() == 0) {
-      // No sender attached to this queue pair
-      (*streamToQueues)[stream] = iterator.first;
-      (*queuesToStream)[iterator.first] = stream;
+  if (unassignedQueues->empty()) return false;
+  mapLock.lock();
+  auto queues = unassignedQueues->front();
+  unassignedQueues->pop();
+  (*streamToQueues)[stream] = queues;
+  (*queuesToStream)[queues] = stream;
 
-      QUIC_UINT62 streamID;
-      stream->GetID(&streamID);
-      log(DEBUG,
-          "Assigning stream " + std::to_string(streamID) + " to queues {" +
-          std::to_string(queues.fromShaped->ID) + "," +
-          std::to_string(queues.toShaped->ID) + "}");
-      //TODO: Check assumption that unshaped sender closed the connection
-      // before this queue was re-assigned
-      queues.fromShaped->markedForDeletion = false;
-      queues.toShaped->markedForDeletion = false;
-      queues.toShaped->clear();
-      queues.fromShaped->clear();
+  QUIC_UINT62 streamID;
+  stream->GetID(&streamID);
+  log(DEBUG,
+      "Assigning stream " + std::to_string(streamID) + " to queues {" +
+      std::to_string(queues.fromShaped->ID) + "," +
+      std::to_string(queues.toShaped->ID) + "}");
+  //TODO: Check assumption that unshaped sender closed the connection
+  // before this queue was re-assigned
+  queues.fromShaped->markedForDeletion = false;
+  queues.toShaped->markedForDeletion = false;
+  queues.toShaped->clear();
+  queues.fromShaped->clear();
 
-      if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
-        copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
-        signalUnshapedProcess((*streamToQueues)[stream].fromShaped->ID,
-                              SYN);
+  if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
+    copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
+    signalUnshapedProcess((*streamToQueues)[stream].fromShaped->ID,
+                          SYN);
 
-        streamIDtoCtrlMsg.erase(streamID);
+    streamIDtoCtrlMsg.erase(streamID);
 
-      }
-      return true;
-    }
-    return false;
-  });
+  }
+  mapLock.unlock();
+  return true;
 }
 
 inline void ShapedReceiver::eraseMapping(MsQuicStream *stream) {
+  mapLock.lock();
   uint64_t streamID;
   stream->GetID(&streamID);
   auto queues = (*streamToQueues)[stream];
@@ -231,7 +228,9 @@ inline void ShapedReceiver::eraseMapping(MsQuicStream *stream) {
              std::to_string(queues.fromShaped->ID) + "," +
              std::to_string(queues.toShaped->ID) + "}");
   (*streamToQueues).erase(stream);
-  (*queuesToStream)[queues] = nullptr;
+  (*queuesToStream).erase(queues);
+  unassignedQueues->push(queues);
+  mapLock.unlock();
 }
 
 void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
@@ -257,6 +256,7 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
         QueuePair queues = {nullptr, nullptr};
         switch (ctrlMsg->connStatus) {
           case SYN:
+            mapLock.lock();
             log(DEBUG, "Received SYN on stream " +
                        std::to_string(ctrlMsg->streamID));
             if (dataStream != nullptr) {
@@ -267,6 +267,7 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
               // Map from stream (which has not yet started) to client
               streamIDtoCtrlMsg[ctrlMsg->streamID] = *ctrlMsg;
             }
+            mapLock.unlock();
             break;
           case FIN:
             queues = (*streamToQueues)[dataStream];

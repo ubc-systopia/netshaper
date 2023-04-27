@@ -19,6 +19,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
       int, QueuePairHash>(maxClients);
   pendingSignal =
       new std::unordered_map<uint64_t, connectionStatus>(maxClients);
+  unassignedQueues = new std::queue<QueuePair>{};
 
   initialiseSHM();
 
@@ -50,7 +51,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 //    nextCheck += std::chrono::microseconds(interval);
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
 //    std::this_thread::sleep_until(nextCheck);
-    for (const auto &[queues, socket]: *queuesToSocket) {
+    for (const auto [queues, socket]: *queuesToSocket) {
       if (socket == 0) continue;
       auto size = queues.fromShaped->size();
       if (size == 0) {
@@ -82,45 +83,44 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 inline bool
 UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
                               std::string serverAddress) {
-  // Find an unused queue and map it
-  return std::ranges::any_of(*queuesToSocket, [&](auto &iterator) {
-    // iterator.first is QueuePair, iterator.second is socket
-    QueuePair queues = iterator.first;
-    if (iterator.second == 0 && queues.toShaped->size() == 0) {
-      log(DEBUG, "Assigning socket " +
-                 std::to_string(clientSocket) + " (client: " + clientAddress
-                 + ") to queues {" + std::to_string(queues.fromShaped->ID) +
-                 "," + std::to_string(queues.toShaped->ID) + "}");
-      // No socket attached to this queue pair
-      (*socketToQueues)[clientSocket] = iterator.first;
-      (*queuesToSocket)[iterator.first] = clientSocket;
-      // Set client of queue to the new client
-      auto address = clientAddress.substr(0, clientAddress.find(':'));
-      auto port = clientAddress.substr(address.size() + 1);
-      queues.toShaped->markedForDeletion = false;
-      queues.fromShaped->markedForDeletion = false;
-      queues.toShaped->clear();
-      queues.fromShaped->clear();
+  if (unassignedQueues->empty()) return false;
+  mapLock.lock();
+  auto queues = unassignedQueues->front();
+  unassignedQueues->pop();
 
-      std::strcpy(queues.fromShaped->addrPair.clientAddress, address.c_str());
-      std::strcpy(queues.fromShaped->addrPair.clientPort, port.c_str());
-      std::strcpy(queues.toShaped->addrPair.clientAddress, address.c_str());
-      std::strcpy(queues.toShaped->addrPair.clientPort, port.c_str());
+  log(DEBUG, "Assigning socket " +
+             std::to_string(clientSocket) + " (client: " + clientAddress
+             + ") to queues {" + std::to_string(queues.fromShaped->ID) +
+             "," + std::to_string(queues.toShaped->ID) + "}");
+  // No socket attached to this queue pair
+  (*socketToQueues)[clientSocket] = queues;
+  (*queuesToSocket)[queues] = clientSocket;
+  // Set client of queue to the new client
+  auto address = clientAddress.substr(0, clientAddress.find(':'));
+  auto port = clientAddress.substr(address.size() + 1);
+  queues.toShaped->markedForDeletion = false;
+  queues.fromShaped->markedForDeletion = false;
+  queues.toShaped->clear();
+  queues.fromShaped->clear();
 
-      // Set server of queue to given server
-      address = serverAddress.substr(0, serverAddress.find(':'));
-      port = serverAddress.substr((address.size() + 1));
-      std::strcpy(queues.fromShaped->addrPair.serverAddress, address.c_str());
-      std::strcpy(queues.fromShaped->addrPair.serverPort, port.c_str());
-      std::strcpy(queues.toShaped->addrPair.serverAddress, address.c_str());
-      std::strcpy(queues.toShaped->addrPair.serverPort, port.c_str());
-      return true;
-    }
-    return false;
-  });
+  std::strcpy(queues.fromShaped->addrPair.clientAddress, address.c_str());
+  std::strcpy(queues.fromShaped->addrPair.clientPort, port.c_str());
+  std::strcpy(queues.toShaped->addrPair.clientAddress, address.c_str());
+  std::strcpy(queues.toShaped->addrPair.clientPort, port.c_str());
+
+  // Set server of queue to given server
+  address = serverAddress.substr(0, serverAddress.find(':'));
+  port = serverAddress.substr((address.size() + 1));
+  std::strcpy(queues.fromShaped->addrPair.serverAddress, address.c_str());
+  std::strcpy(queues.fromShaped->addrPair.serverPort, port.c_str());
+  std::strcpy(queues.toShaped->addrPair.serverAddress, address.c_str());
+  std::strcpy(queues.toShaped->addrPair.serverPort, port.c_str());
+  mapLock.unlock();
+  return true;
 }
 
 inline void UnshapedReceiver::eraseMapping(int socket) {
+  mapLock.lock();
   auto queues = (*socketToQueues)[socket];
   if (!queues.fromShaped->markedForDeletion
       || !queues.toShaped->markedForDeletion) {
@@ -133,7 +133,9 @@ inline void UnshapedReceiver::eraseMapping(int socket) {
              "," + std::to_string(queues.toShaped->ID) + "}");
   close(socket);
   (*socketToQueues).erase(socket);
-  (*queuesToSocket)[queues] = 0;
+  (*queuesToSocket).erase(queues);
+  unassignedQueues->push(queues);
+  mapLock.unlock();
 }
 
 void UnshapedReceiver::signalShapedProcess(uint64_t queueID,
@@ -226,7 +228,7 @@ inline void UnshapedReceiver::initialiseSHM() {
     auto queue2 =
         new(shmAddr + ((i + 1) * sizeof(class LamportQueue)))
             LamportQueue(i + 1);
-    (*queuesToSocket)[{queue1, queue2}] = 0;
+    unassignedQueues->push({queue1, queue2});
   }
 }
 
