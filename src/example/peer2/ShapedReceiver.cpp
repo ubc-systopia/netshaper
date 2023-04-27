@@ -344,9 +344,11 @@ void ShapedReceiver::sendDummy(size_t dummySize) {
 size_t ShapedReceiver::sendData(size_t dataSize) {
   auto origSize = dataSize;
 
-  for (const auto &[queues, stream]: *queuesToStream) {
-    if (stream == nullptr) continue;
-
+  mapLock.lock();
+  auto tempMap = *queuesToStream;
+  mapLock.unlock();
+  for (const auto &[queues, stream]: tempMap) {
+//    if (stream == nullptr) continue;
     auto queueSize = queues.toShaped->size();
     // No data in this queue, check for FINs and erase mappings
     if (queueSize == 0) {

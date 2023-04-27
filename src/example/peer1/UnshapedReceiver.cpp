@@ -51,8 +51,11 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 //    nextCheck += std::chrono::microseconds(interval);
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
 //    std::this_thread::sleep_until(nextCheck);
-    for (const auto [queues, socket]: *queuesToSocket) {
-      if (socket == 0) continue;
+    mapLock.lock();
+    auto tempMap = *queuesToSocket;
+    mapLock.unlock();
+    for (const auto &[queues, socket]: tempMap) {
+//      if (socket == 0) continue;
       auto size = queues.fromShaped->size();
       if (size == 0) {
         if (queues.toShaped->markedForDeletion
