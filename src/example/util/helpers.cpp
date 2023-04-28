@@ -9,12 +9,13 @@
 #include <shared_mutex>
 #include "helpers.h"
 
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpIn;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpOut;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicIn;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
 
 namespace helpers {
@@ -75,30 +76,42 @@ namespace helpers {
         if (shaped) {
           std::ofstream shapedEval;
           shapedEval.open("shaped.csv");
-          shapedEval << "quicIn,";
-          for (auto elem: quicIn) {
-            shapedEval << elem.time_since_epoch().count() << ",";
+          for (unsigned long i = 0; i < quicIn.size(); i++) {
+            shapedEval << "quicIn " << i << ",";
+            for (auto elem: quicIn[i]) {
+              shapedEval << elem.time_since_epoch().count() << ",";
+            }
+            shapedEval << "\n";
           }
           shapedEval << "\n";
-          shapedEval << "quicOut,";
-          for (auto elem: quicOut) {
-            shapedEval << elem.time_since_epoch().count() << ",";
+          for (unsigned long i = 0; i < quicOut.size(); i++) {
+            shapedEval << "quicOut " << i << ",";
+            for (auto elem: quicOut[i]) {
+              shapedEval << elem.time_since_epoch().count() << ",";
+            }
+            shapedEval << "\n";
           }
           shapedEval << std::endl;
           shapedEval.close();
         } else {
           std::ofstream unshapedEval;
           unshapedEval.open("unshaped.csv");
-          unshapedEval << "tcpIn,";
 //          std::cout << "Sizes: " << tcpIn.size() << " " << tcpOut.size() <<
 //                    std::endl;
-          for (auto elem: tcpIn) {
-            unshapedEval << elem.time_since_epoch().count() << ",";
+          for (unsigned long i = 0; i < tcpIn.size(); i++) {
+            unshapedEval << "tcpIn " << i << ",";
+            for (auto elem: tcpIn[i]) {
+              unshapedEval << elem.time_since_epoch().count() << ",";
+            }
+            unshapedEval << "\n";
           }
           unshapedEval << "\n";
-          unshapedEval << "tcpOut,";
-          for (auto elem: tcpOut) {
-            unshapedEval << elem.time_since_epoch().count() << ",";
+          for (unsigned long i = 0; i < tcpOut.size(); i++) {
+            unshapedEval << "tcpOut " << i << ",";
+            for (auto elem: tcpOut[i]) {
+              unshapedEval << elem.time_since_epoch().count() << ",";
+            }
+            unshapedEval << "\n";
           }
           unshapedEval << std::endl;
           unshapedEval.close();
