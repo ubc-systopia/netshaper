@@ -134,7 +134,7 @@ void UnshapedSender::handleQueueSignal(int signum) {
         auto unshapedSender = new TCP::Sender{
             queues.fromShaped->addrPair.serverAddress,
             std::stoi(queues.fromShaped->addrPair.serverPort),
-            onResponseFunc, logLevel};
+            onResponseFunc, WARNING};
         log(DEBUG, "Starting a new sender paired to queues {" +
                    std::to_string(queues.fromShaped->ID) + "," +
                    std::to_string(queues.toShaped->ID) + "}");

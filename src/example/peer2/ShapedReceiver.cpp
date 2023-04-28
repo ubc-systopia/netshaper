@@ -51,7 +51,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
   // Add additional stream for dummy data
   shapedReceiver =
       new QUIC::Receiver{serverCert, serverKey, bindPort,
-                         receivedShapedDataFunc, logLevel,
+                         receivedShapedDataFunc, WARNING,
                          maxStreamsPerPeer + 2, idleTimeout};
   shapedReceiver->startListening();
 
@@ -297,8 +297,6 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
 
 void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
                                         uint8_t *buffer, size_t length) {
-  uint64_t streamID;
-  stream->GetID(&streamID);
   // Check if this is first byte from the other middlebox
   if (stream == controlStream || controlStream == nullptr) {
     handleControlMessages(stream, buffer, length);
@@ -306,10 +304,14 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
   }
 
   // Not a control stream... Check for other types
-  if (streamID == dummyStreamID) {
-    // Dummy Data
-    if (dummyStream == nullptr) dummyStream = stream;
-    return;
+  if (dummyStream == nullptr) {
+    uint64_t streamID;
+    stream->GetID(&streamID);
+    if (streamID == dummyStreamID) {
+      // Dummy Data
+      if (dummyStream == nullptr) dummyStream = stream;
+      return;
+    }
   }
 
   // This is a data stream

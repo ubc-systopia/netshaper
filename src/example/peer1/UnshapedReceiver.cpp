@@ -34,7 +34,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
   };
 
   unshapedReceiver = new TCP::Receiver{std::move(bindAddr), bindPort,
-                                       tcpReceiveFunc, logLevel};
+                                       tcpReceiveFunc, WARNING};
   unshapedReceiver->startListening();
 
   std::thread responseLoop([=, this]() {
@@ -167,6 +167,9 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
                                             std::string &clientAddress,
                                             uint8_t *buffer, size_t length, enum
                                                 connectionStatus connStatus) {
+  mapLock.lock();
+  auto queues = (*socketToQueues)[fromSocket];
+  mapLock.unlock();
 
   switch (connStatus) {
     case SYN: {
@@ -174,19 +177,21 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
         log(ERROR, "More clients than configured for!");
         return false;
       }
+      mapLock.lock();
+      queues = (*socketToQueues)[fromSocket];
+      mapLock.unlock();
       {
-        auto &queues = (*socketToQueues)[fromSocket];
         log(DEBUG, "Received SYN from socket " + std::to_string(fromSocket)
                    + " (client: " + clientAddress + ") mapped to {" +
                    std::to_string(queues.fromShaped->ID) + "," +
                    std::to_string(queues.toShaped->ID) + "}");
       }
-      signalShapedProcess((*socketToQueues)[fromSocket].toShaped->ID, SYN);
+      signalShapedProcess(queues.toShaped->ID, SYN);
       return true;
     }
     case ONGOING: {
 //      log(DEBUG, "Received Data on socket: " + std::to_string(fromSocket));
-      auto toShaped = (*socketToQueues)[fromSocket].toShaped;
+      auto toShaped = queues.toShaped;
       while (toShaped->push(buffer, length) == -1) {
         log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
                      +" mapped to socket " + std::to_string(fromSocket) +
@@ -200,13 +205,12 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
       return true;
     }
     case FIN: {
-      auto &queues = (*socketToQueues)[fromSocket];
       log(DEBUG, "Received FIN from socket " + std::to_string(fromSocket)
                  + " (client: " + clientAddress + ") mapped to {" +
                  std::to_string(queues.fromShaped->ID) + "," +
                  std::to_string(queues.toShaped->ID) + "}");
       queues.toShaped->markedForDeletion = true;
-      signalShapedProcess((*socketToQueues)[fromSocket].toShaped->ID, FIN);
+      signalShapedProcess(queues.toShaped->ID, FIN);
       return true;
     }
 

@@ -50,7 +50,7 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
   // shapedSender and in middlebox 2 we have shapedReceiver
   shapedSender = new QUIC::Sender{peer2IP, peer2Port, onResponseFunc,
                                   true,
-                                  logLevel,
+                                  WARNING,
                                   idleTimeout};
 
   // We map a pair of queues over the shared memory region to every stream
@@ -143,6 +143,7 @@ void ShapedSender::handleQueueSignal(int signum) {
                            reinterpret_cast<uint8_t *>(message),
                            sizeof(*message));
       } else if (queueInfo.connStatus == FIN) {
+        log(DEBUG, "Got a FIN signal " + std::to_string(queueInfo.queueID));
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
@@ -183,7 +184,6 @@ inline void ShapedSender::initialiseSHM() {
 void ShapedSender::sendData(size_t dataSize) {
   // TODO: Add prioritisation
   for (const auto &[queues, stream]: *queuesToStream) {
-    if (dataSize == 0) break;
     auto toShaped = queues.toShaped;
 
     auto queueSize = toShaped->size();
@@ -209,13 +209,12 @@ void ShapedSender::sendData(size_t dataSize) {
       }
       continue;
     }
+    if (dataSize == 0) break;
     auto sizeToSend = std::min(dataSize, queueSize);
     auto buffer = reinterpret_cast<uint8_t *>(malloc(sizeToSend));
     queues.toShaped->pop(buffer, sizeToSend);
     quicOut.push_back(std::chrono::steady_clock::now());
     shapedSender->send(stream, buffer, sizeToSend);
-    QUIC_UINT62 streamID;
-    stream->GetID(&streamID);
     dataSize -= sizeToSend;
   }
 }
@@ -252,13 +251,11 @@ void ShapedSender::handleControlMessages(uint8_t *buffer, size_t length) {
 
 void
 ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
-  uint64_t streamID;
-  stream->GetID(&streamID);
-  if (streamID == controlStreamID) {
+  if (stream == controlStream) {
     handleControlMessages(buffer, length);
     return;
   }
-  if (streamID == dummyStreamID) {
+  if (stream == dummyStream) {
     // Dummy received. Do nothing
     return;
   }
@@ -267,11 +264,15 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
   // All other streams that are not dummy or control
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
   if (fromShaped == nullptr) {
+    uint64_t streamID;
+    stream->GetID(&streamID);
     log(ERROR, "Received data on unmapped stream " +
                std::to_string(streamID));
     return;
   }
   while (fromShaped->push(buffer, length) == -1) {
+    uint64_t streamID;
+    stream->GetID(&streamID);
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
                  +" mapped to stream " + std::to_string(streamID) +
                  " is full, waiting for it to be empty!");
