@@ -9,6 +9,7 @@
 #include <thread>
 #include <chrono>
 #include <queue>
+#include <shared_mutex>
 #include "../../modules/tcp_wrapper/Receiver.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../../modules/Common.h"
@@ -40,7 +41,7 @@ private:
 
   std::mutex readLock;
   std::mutex writeLock;
-  std::mutex mapLock;
+  std::shared_mutex mapLock;
 
   TCP::Receiver *unshapedReceiver;
 
@@ -58,8 +59,8 @@ private:
  * @param clientAddress The address:port of the new client
  * @return true if queue was assigned successfully
  */
-  inline bool assignQueue(int clientSocket, std::string &clientAddress,
-                          std::string serverAddress = "127.0.0.1:5555");
+  inline QueuePair assignQueue(int clientSocket, std::string &clientAddress,
+                               std::string serverAddress = "127.0.0.1:5555");
 
   inline void eraseMapping(int socket);
 

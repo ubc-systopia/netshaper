@@ -13,6 +13,7 @@
 #include <cstdarg>
 #include <unistd.h>
 #include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 
 namespace helpers {
@@ -119,7 +120,7 @@ namespace helpers {
                   std::unordered_map<QueuePair, MsQuicStream *,
                       QueuePairHash> *queuesToStream,
                   NoiseGenerator *noiseGenerator,
-                  __useconds_t decisionInterval, std::mutex &mapLock);
+                  __useconds_t decisionInterval, std::shared_mutex &mapLock);
 
   /**
    * @brief Loop which sends Shaped Data at sendingInterval
@@ -141,6 +142,7 @@ namespace helpers {
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
                       __useconds_t sendingInterval,
-                      __useconds_t decisionInterval, std::mutex &mapLock);
+                      __useconds_t decisionInterval,
+                      std::shared_mutex &mapLock);
 }
 #endif //MINESVPN_HELPERS_H

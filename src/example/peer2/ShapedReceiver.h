@@ -10,6 +10,7 @@
 #include <chrono>
 #include <thread>
 #include <queue>
+#include <shared_mutex>
 #include "../../modules/quic_wrapper/Receiver.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
@@ -35,7 +36,7 @@ private:
 
   std::mutex writeLock;
   std::mutex readLock;
-  std::mutex mapLock;
+  std::shared_mutex mapLock;
 
   // Map that stores streamIDs for which client information is received (but
   // the stream has not yet begun).

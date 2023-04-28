@@ -51,10 +51,10 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 //    nextCheck += std::chrono::microseconds(interval);
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
 //    std::this_thread::sleep_until(nextCheck);
-    mapLock.lock();
-    auto tempMap = *queuesToSocket;
-    mapLock.unlock();
-    for (const auto &[queues, socket]: tempMap) {
+    mapLock.lock_shared();
+//    auto tempMap = *queuesToSocket;
+//    mapLock.unlock();
+    for (const auto &[queues, socket]: *queuesToSocket) {
 //      if (socket == 0) continue;
       auto size = queues.fromShaped->size();
       if (size == 0) {
@@ -80,13 +80,14 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
         if (sentBytes > 0 && (size_t) sentBytes == size) free(buffer);
       }
     }
+    mapLock.unlock_shared();
   }
 }
 
-inline bool
+inline QueuePair
 UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
                               std::string serverAddress) {
-  if (unassignedQueues->empty()) return false;
+  if (unassignedQueues->empty()) return {nullptr, nullptr};
   mapLock.lock();
   auto queues = unassignedQueues->front();
   unassignedQueues->pop();
@@ -98,6 +99,7 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
   // No socket attached to this queue pair
   (*socketToQueues)[clientSocket] = queues;
   (*queuesToSocket)[queues] = clientSocket;
+  mapLock.unlock();
   // Set client of queue to the new client
   auto address = clientAddress.substr(0, clientAddress.find(':'));
   auto port = clientAddress.substr(address.size() + 1);
@@ -118,8 +120,7 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
   std::strcpy(queues.fromShaped->addrPair.serverPort, port.c_str());
   std::strcpy(queues.toShaped->addrPair.serverAddress, address.c_str());
   std::strcpy(queues.toShaped->addrPair.serverPort, port.c_str());
-  mapLock.unlock();
-  return true;
+  return queues;
 }
 
 inline void UnshapedReceiver::eraseMapping(int socket) {
@@ -167,19 +168,17 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
                                             std::string &clientAddress,
                                             uint8_t *buffer, size_t length, enum
                                                 connectionStatus connStatus) {
-  mapLock.lock();
-  auto queues = (*socketToQueues)[fromSocket];
-  mapLock.unlock();
 
   switch (connStatus) {
     case SYN: {
-      if (!assignQueue(fromSocket, clientAddress, serverAddr)) {
+      auto queues = assignQueue(fromSocket, clientAddress, serverAddr);
+      if (queues.toShaped == nullptr) {
         log(ERROR, "More clients than configured for!");
         return false;
       }
-      mapLock.lock();
-      queues = (*socketToQueues)[fromSocket];
-      mapLock.unlock();
+//      mapLock.lock_shared();
+//      queues = (*socketToQueues)[fromSocket];
+//      mapLock.unlock_shared();
       {
         log(DEBUG, "Received SYN from socket " + std::to_string(fromSocket)
                    + " (client: " + clientAddress + ") mapped to {" +
@@ -190,6 +189,9 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
       return true;
     }
     case ONGOING: {
+      mapLock.lock_shared();
+      auto queues = (*socketToQueues)[fromSocket];
+      mapLock.unlock_shared();
 //      log(DEBUG, "Received Data on socket: " + std::to_string(fromSocket));
       auto toShaped = queues.toShaped;
       while (toShaped->push(buffer, length) == -1) {
@@ -205,6 +207,9 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
       return true;
     }
     case FIN: {
+      mapLock.lock_shared();
+      auto queues = (*socketToQueues)[fromSocket];
+      mapLock.unlock_shared();
       log(DEBUG, "Received FIN from socket " + std::to_string(fromSocket)
                  + " (client: " + clientAddress + ") mapped to {" +
                  std::to_string(queues.fromShaped->ID) + "," +

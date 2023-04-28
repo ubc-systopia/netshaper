@@ -316,7 +316,7 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
 
   // This is a data stream
   quicIn.push_back(std::chrono::steady_clock::now());
-  mapLock.lock();
+  mapLock.lock_shared();
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
     if (!assignQueues(stream)) {
       log(ERROR, "More streams from peer than allowed!");
@@ -325,7 +325,7 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
   }
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
-  mapLock.unlock();
+  mapLock.unlock_shared();
   while (fromShaped->push(buffer, length) == -1) {
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
                  " is full, waiting for it to be empty");
@@ -349,10 +349,10 @@ void ShapedReceiver::sendDummy(size_t dummySize) {
 size_t ShapedReceiver::sendData(size_t dataSize) {
   auto origSize = dataSize;
 
-  mapLock.lock();
-  auto tempMap = *queuesToStream;
-  mapLock.unlock();
-  for (const auto &[queues, stream]: tempMap) {
+  mapLock.lock_shared();
+//  auto tempMap = *queuesToStream;
+//  mapLock.unlock();
+  for (const auto &[queues, stream]: *queuesToStream) {
 //    if (stream == nullptr) continue;
     auto queueSize = queues.toShaped->size();
     // No data in this queue, check for FINs and erase mappings
@@ -401,6 +401,7 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
       dataSize -= SizeToSendFromQueue;
     }
   }
+  mapLock.unlock_shared();
   // We expect the data size to be zero if we have sent all the data
   return origSize - dataSize;
 }

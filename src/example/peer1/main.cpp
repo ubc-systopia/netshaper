@@ -145,7 +145,7 @@ int main() {
 
   if (fork() == 0) {
     // Child process - Unshaped Receiver
-    std::vector<int> cpus{2, 3, 4, 10, 11, 12};
+    std::vector<int> cpus{0, 1, 2, 3};
     setCPUAffinity(cpus);
     // This process should get a SIGHUP when it's parent (the shaped
     // sender) dies
@@ -159,7 +159,7 @@ int main() {
     waitForSignal(false);
   } else {
     // Parent Process - Shaped Sender
-    std::vector<int> cpus{5, 6, 7, 13, 14, 15};
+    std::vector<int> cpus{4, 5, 6, 7};
     setCPUAffinity(cpus);
     sleep(2); // Wait for unshapedReceiver to initialise
     MsQuic = new MsQuicApi{};

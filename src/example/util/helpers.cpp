@@ -6,6 +6,7 @@
 #include <functional>
 #include <sstream>
 #include <fstream>
+#include <shared_mutex>
 #include "helpers.h"
 
 extern std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn;
@@ -72,33 +73,35 @@ namespace helpers {
         std::cout << "\nExiting with signal " << sig << std::endl;
 
         if (shaped) {
-          std::ofstream unshapedEval;
-          unshapedEval.open("shaped.csv");
-          unshapedEval << "quicIn,";
-          for (auto elem: quicIn) {
-            unshapedEval << elem.time_since_epoch().count() << ",";
-          }
-          unshapedEval << "\n";
-          unshapedEval << "quicOut,";
-          for (auto elem: quicOut) {
-            unshapedEval << elem.time_since_epoch().count() << ",";
-          }
-          unshapedEval << std::endl;
-          unshapedEval.close();
-        } else {
           std::ofstream shapedEval;
-          shapedEval.open("unshaped.csv");
-          shapedEval << "tcpIn,";
-          for (auto elem: tcpIn) {
+          shapedEval.open("shaped.csv");
+          shapedEval << "quicIn,";
+          for (auto elem: quicIn) {
             shapedEval << elem.time_since_epoch().count() << ",";
           }
           shapedEval << "\n";
-          shapedEval << "tcpOut,";
-          for (auto elem: tcpOut) {
+          shapedEval << "quicOut,";
+          for (auto elem: quicOut) {
             shapedEval << elem.time_since_epoch().count() << ",";
           }
           shapedEval << std::endl;
           shapedEval.close();
+        } else {
+          std::ofstream unshapedEval;
+          unshapedEval.open("unshaped.csv");
+          unshapedEval << "tcpIn,";
+//          std::cout << "Sizes: " << tcpIn.size() << " " << tcpOut.size() <<
+//                    std::endl;
+          for (auto elem: tcpIn) {
+            unshapedEval << elem.time_since_epoch().count() << ",";
+          }
+          unshapedEval << "\n";
+          unshapedEval << "tcpOut,";
+          for (auto elem: tcpOut) {
+            unshapedEval << elem.time_since_epoch().count() << ",";
+          }
+          unshapedEval << std::endl;
+          unshapedEval.close();
         }
 
         exit(0);
@@ -135,7 +138,7 @@ namespace helpers {
                   std::unordered_map<QueuePair, MsQuicStream *,
                       QueuePairHash> *queuesToStream,
                   NoiseGenerator *noiseGenerator,
-                  __useconds_t decisionInterval, std::mutex &mapLock) {
+                  __useconds_t decisionInterval, std::shared_mutex &mapLock) {
 //    auto nextCheck = std::chrono::steady_clock::now();
 //    while (true) {
 //      nextCheck = std::chrono::steady_clock::now() +
@@ -158,7 +161,8 @@ namespace helpers {
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
                       __useconds_t sendingInterval,
-                      __useconds_t decisionInterval, std::mutex &mapLock) {
+                      __useconds_t decisionInterval, std::shared_mutex
+                      &mapLock) {
 //    auto nextCheck = std::chrono::steady_clock::now();
     while (true) {
 //      nextCheck = std::chrono::steady_clock::now() +
@@ -166,9 +170,9 @@ namespace helpers {
 ////      auto divisor = decisionInterval / sendingInterval;
 //      auto credit = sendingCredit->load(std::memory_order_acquire);
 ////      std::cout << "Loaded credit: " << credit << std::endl;
-      mapLock.lock();
+      mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
-      mapLock.unlock();
+      mapLock.unlock_shared();
 //      if (credit == 0) {
 //        // Don't send anything
 //        continue;
