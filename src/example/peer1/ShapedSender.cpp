@@ -5,12 +5,13 @@
 #include <iomanip>
 #include "ShapedSender.h"
 
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpIn;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpOut;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicIn;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
 
 ShapedSender::ShapedSender(std::string &appName, int maxClients,
@@ -165,13 +166,16 @@ inline void ShapedSender::initialiseSHM() {
   shmAddr += sizeof(class SignalInfo);
   for (int i = 0; i < maxClients * 2; i += 2) {
     auto queue1 =
-        (LamportQueue *) (shmAddr + (i * sizeof(class LamportQueue)));
+        (LamportQueue * )(shmAddr + (i * sizeof(class LamportQueue)));
     auto queue2 =
         (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
     auto stream = shapedSender->startStream();
 
     QUIC_UINT62 streamID;
     stream->GetID(&streamID);
+    std::cout << "Mapping stream " + std::to_string(streamID) +
+                 " to queues {" + std::to_string(queue1->ID) + "," +
+                 std::to_string(queue2->ID) + "}";
     log(DEBUG, "Mapping stream " + std::to_string(streamID) +
                " to queues {" + std::to_string(queue1->ID) + "," +
                std::to_string(queue2->ID) + "}");
@@ -213,7 +217,8 @@ void ShapedSender::sendData(size_t dataSize) {
     auto sizeToSend = std::min(dataSize, queueSize);
     auto buffer = reinterpret_cast<uint8_t *>(malloc(sizeToSend));
     queues.toShaped->pop(buffer, sizeToSend);
-    quicOut.push_back(std::chrono::steady_clock::now());
+    quicOut[queues.fromShaped->ID / 2]
+        .push_back(std::chrono::steady_clock::now());
     shapedSender->send(stream, buffer, sizeToSend);
     dataSize -= sizeToSend;
   }
@@ -259,10 +264,10 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
     // Dummy received. Do nothing
     return;
   }
-  quicIn.push_back(std::chrono::steady_clock::now());
 
   // All other streams that are not dummy or control
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
+  quicIn[fromShaped->ID / 2].push_back(std::chrono::steady_clock::now());
   if (fromShaped == nullptr) {
     uint64_t streamID;
     stream->GetID(&streamID);

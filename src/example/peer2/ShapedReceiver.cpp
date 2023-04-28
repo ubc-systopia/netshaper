@@ -6,12 +6,13 @@
 #include <utility>
 #include <iomanip>
 
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpIn;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpOut;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicIn;
-extern std::vector<std::chrono::time_point<std::chrono::steady_clock>>
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
 
 ShapedReceiver::ShapedReceiver(std::string appName,
@@ -192,6 +193,9 @@ inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
 
   QUIC_UINT62 streamID;
   stream->GetID(&streamID);
+  std::cout << "Assigning stream " + std::to_string(streamID) + " to queues {" +
+               std::to_string(queues.fromShaped->ID) + "," +
+               std::to_string(queues.toShaped->ID) + "}";
   log(DEBUG,
       "Assigning stream " + std::to_string(streamID) + " to queues {" +
       std::to_string(queues.fromShaped->ID) + "," +
@@ -315,7 +319,6 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
   }
 
   // This is a data stream
-  quicIn.push_back(std::chrono::steady_clock::now());
   mapLock.lock_shared();
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
     if (!assignQueues(stream)) {
@@ -326,6 +329,7 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
   mapLock.unlock_shared();
+  quicIn[fromShaped->ID / 2].push_back(std::chrono::steady_clock::now());
   while (fromShaped->push(buffer, length) == -1) {
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
                  " is full, waiting for it to be empty");
@@ -391,7 +395,8 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
 
     queues.toShaped->pop(buffer, SizeToSendFromQueue);
 
-    quicOut.push_back(std::chrono::steady_clock::now());
+    quicOut[queues.fromShaped->ID / 2].push_back(
+        std::chrono::steady_clock::now());
     if (!sendResponse(stream, buffer, SizeToSendFromQueue)) {
       uint64_t streamID;
       stream->GetID(&streamID);

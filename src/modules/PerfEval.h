@@ -7,9 +7,13 @@
 #ifndef MINESVPN_PERFEVAL_H
 #define MINESVPN_PERFEVAL_H
 
-std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpIn{};
-std::vector<std::chrono::time_point<std::chrono::steady_clock>> quicIn{};
-std::vector<std::chrono::time_point<std::chrono::steady_clock>> tcpOut{};
-std::vector<std::chrono::time_point<std::chrono::steady_clock>> quicOut{};
+std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpIn(128);
+std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    quicIn(128);
+std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpOut(128);
+std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    quicOut(128);
 
 #endif //MINESVPN_PERFEVAL_H

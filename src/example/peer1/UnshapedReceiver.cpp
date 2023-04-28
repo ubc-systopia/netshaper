@@ -179,6 +179,9 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
 //      mapLock.lock_shared();
 //      queues = (*socketToQueues)[fromSocket];
 //      mapLock.unlock_shared();
+      std::cout << "Socket " << fromSocket << " mapped to queues " <<
+                queues.toShaped->ID << " " << queues.fromShaped->ID
+                << std::endl;
       {
         log(DEBUG, "Received SYN from socket " + std::to_string(fromSocket)
                    + " (client: " + clientAddress + ") mapped to {" +

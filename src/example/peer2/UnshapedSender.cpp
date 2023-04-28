@@ -140,6 +140,10 @@ void UnshapedSender::handleQueueSignal(int signum) {
                    std::to_string(queues.toShaped->ID) + "}");
         (*queuesToSender)[queues] = unshapedSender;
         (*senderToQueues)[unshapedSender] = queues;
+        std::cout << "Socket " << unshapedSender->remoteSocket
+                  << " mapped to queues " <<
+                  queues.toShaped->ID << " " << queues.fromShaped->ID
+                  << std::endl;
       } else if (queueInfo.connStatus == FIN) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
