@@ -102,6 +102,7 @@ def mean_form_dict(data):
 
 def neighboring_analysis(config:configlib, df):
     df = data_filter_deterministic(config, df)
+    print(df.shape)
     # Get the distance between queue states for average of videos
     # df_mean = df.groupby('label').mean()
     # print(df_mean.shape)
@@ -140,8 +141,11 @@ def neighboring_analysis(config:configlib, df):
     # print("average queue distance (in KB)", np.mean(dists)/1e3) 
 
 
-
-
+    df_average = df.sum(axis=1).mean()
+    
+    print(df_average/1e6)
+    
+ 
 
 
 
@@ -175,15 +179,16 @@ def neighboring_analysis(config:configlib, df):
 
     # plt.figure()
     # plt.hist(dists_queues/1e3, bins=100, density=True)
-    # plt.xlabel("Distance between two queue states (in KB)")
-    # plt.savefig("results/queue_mutual_distance_1e6.pdf")
+    # # plt.xlabel("Distance between two queue states (in KB)")
+    # # plt.savefig("results/queue_mutual_distance_1e6.pdf")
+
     print("average queue distance (in KB)", (mean_form_dict(queue_distances))/1e3) 
     print("median queue distance (in KB)", percentile_from_dict(queue_distances, 0.5)/1e3) 
     print("25th percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.25)/1e3)
     print("75th percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.75)/1e3)
     print("85 percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.85)/1e3)
     print("90th percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.9)/1e3)
-    # plot the box plot of queue distances 
+    # # plot the box plot of queue distances 
     # plt.figure()
     # plt.boxplot(dists_queues/1e3)
     # plt.savefig("results/queue_mutual_distance_boxplot_1e6.pdf")

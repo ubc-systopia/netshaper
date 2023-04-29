@@ -58,19 +58,19 @@ def noise_multiplier_vs_privacy(config: configlib.Config, filtered_data):
                         'unshaped_BandB_recall': [],
                         'num_of_unique_traces': []
                         }
-
+    print("Calculating the baseline privacy")
     unshaped_TCN_accuracy, unshaped_TCN_precision, unshaped_TCN_recall = attack_accuracy(config, TCN_attack, filtered_data)
 
-    unshaped_BandB_accuracy, unshaped_BandB_precision, unshaped_BandB_recall = attack_accuracy(config, BandB_attack, filtered_data)
+    # unshaped_BandB_accuracy, unshaped_BandB_precision, unshaped_BandB_recall = attack_accuracy(config, BandB_attack, filtered_data)
     
     baseline_results['unshaped_TCN_accuracy'].append(unshaped_TCN_accuracy)
     baseline_results['unshaped_TCN_precision'].append(unshaped_TCN_precision)
     baseline_results['unshaped_TCN_recall'].append(unshaped_TCN_recall)
-    
+    print("Baseline privacy calculated")
             
-    baseline_results['unshaped_BandB_accuracy'].append(unshaped_BandB_accuracy)
-    baseline_results['unshaped_BandB_precision'].append(unshaped_BandB_precision)
-    baseline_results['unshaped_BandB_recall'].append(unshaped_BandB_recall)
+    # baseline_results['unshaped_BandB_accuracy'].append(unshaped_BandB_accuracy)
+    # baseline_results['unshaped_BandB_precision'].append(unshaped_BandB_precision)
+    # baseline_results['unshaped_BandB_recall'].append(unshaped_BandB_recall)
 
     
     results = {'noise_multiplier': [],
@@ -112,16 +112,16 @@ def noise_multiplier_vs_privacy(config: configlib.Config, filtered_data):
             # Calculating the empirical privacy of the DP transport
             shaped_TCN_accuracy, shaped_TCN_precision, shaped_TCN_recall = attack_accuracy(config, TCN_attack, DP_data)
             
-            shaped_BandB_accuracy, shaped_BandB_precision, shaped_BandB_recall = attack_accuracy(config, BandB_attack, DP_data)
+            # shaped_BandB_accuracy, shaped_BandB_precision, shaped_BandB_recall = attack_accuracy(config, BandB_attack, DP_data)
             
              
             # FPA Shaping
             original_data, FPA_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, "DP_static", config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier)
             
-            # Calculating the empirical privacy of the FPA transport
-            shaped_TCN_accuracy_fpa , shaped_TCN_precision_fpa, shaped_TCN_recall_fpa = attack_accuracy(config, TCN_attack, FPA_data)
+            # # Calculating the empirical privacy of the FPA transport
+            # shaped_TCN_accuracy_fpa , shaped_TCN_precision_fpa, shaped_TCN_recall_fpa = attack_accuracy(config, TCN_attack, FPA_data)
             
-            shaped_BandB_accuracy_fpa, shaped_BandB_precision_fpa, shaped_BandB_recall_fpa = attack_accuracy(config, BandB_attack, FPA_data)
+            # shaped_BandB_accuracy_fpa, shaped_BandB_precision_fpa, shaped_BandB_recall_fpa = attack_accuracy(config, BandB_attack, FPA_data)
             
             
             
@@ -129,17 +129,17 @@ def noise_multiplier_vs_privacy(config: configlib.Config, filtered_data):
             results['shaped_TCN_precision'].append(shaped_TCN_precision) 
             results['shaped_TCN_recall'].append(shaped_TCN_recall)
 
-            results['shaped_BandB_accuracy'].append(shaped_BandB_accuracy)
-            results['shaped_BandB_precision'].append(shaped_BandB_precision)
-            results['shaped_BandB_recall'].append(shaped_BandB_recall)
+            # results['shaped_BandB_accuracy'].append(shaped_BandB_accuracy)
+            # results['shaped_BandB_precision'].append(shaped_BandB_precision)
+            # results['shaped_BandB_recall'].append(shaped_BandB_recall)
             
-            results['shaped_TCN_accuracy_fpa'].append(shaped_TCN_accuracy_fpa)
-            results['shaped_TCN_precision_fpa'].append(shaped_TCN_precision_fpa)
-            results['shaped_TCN_recall_fpa'].append(shaped_TCN_recall_fpa)
+            # results['shaped_TCN_accuracy_fpa'].append(shaped_TCN_accuracy_fpa)
+            # results['shaped_TCN_precision_fpa'].append(shaped_TCN_precision_fpa)
+            # results['shaped_TCN_recall_fpa'].append(shaped_TCN_recall_fpa)
 
-            results['shaped_BandB_accuracy_fpa'].append(shaped_BandB_accuracy_fpa)
-            results['shaped_BandB_precision_fpa'].append(shaped_BandB_precision_fpa)
-            results['shaped_BandB_recall_fpa'].append(shaped_BandB_recall_fpa) 
+            # results['shaped_BandB_accuracy_fpa'].append(shaped_BandB_accuracy_fpa)
+            # results['shaped_BandB_precision_fpa'].append(shaped_BandB_precision_fpa)
+            # results['shaped_BandB_recall_fpa'].append(shaped_BandB_recall_fpa) 
 
             pbar.update(1)
     
