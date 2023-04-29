@@ -8,10 +8,6 @@ from src.transport import DP_transport, NonDP_transport
 from src.utils.overhead_utils import norm_overhead, wasserstein_overhead, get_fpa_failure_rate
 from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
 
-def test_overhead_function(original_df, remapped_df):
-    overhead_df = remapped_df.sum(axis=1) - original_df.sum(axis=1)
-    return overhead_df.mean()/original_df.sum(axis=1).mean()
-
 
 def noise_multiplier_vs_overhead(config: configlib.Config, filtered_data):
     
@@ -30,16 +26,25 @@ def noise_multiplier_vs_overhead(config: configlib.Config, filtered_data):
 
     # Baseline overheads 
     baseline_results = {'average_aggregated_overhead_constant_rate': [],
-                        'average_norm_distance_constant_rate': [], 'average_wasserstein_distance_constant_rate': []}
+                        'average_norm_distance_constant_rate': [], 'average_wasserstein_distance_constant_rate': [],
+                        'average_aggregated_overhead_pacer': [],
+                        'average_norm_distance_pacer': [], 'average_wasserstein_distance_pacer': []}
+
+
     
     # Baseline: Constant Rate
-    original_data, shaped_data_constant_rate = NonDP_transport(filtered_data, config.app_time_resolution_us, config.data_time_resolution_us, method="constant-rate") 
+    filtered_data_pruned = filtered_data.drop(columns=['video_name'])
+    original_data, shaped_data_constant_rate = NonDP_transport(filtered_data_pruned, config.app_time_resolution_us, config.data_time_resolution_us, method="constant-rate") 
     _, average_aggregated_overhead_constant_rate, _, _, average_norm_distance_constant_rate, _ = norm_overhead(original_data, shaped_data_constant_rate)
     baseline_results['average_aggregated_overhead_constant_rate'].append(average_aggregated_overhead_constant_rate)
     baseline_results['average_norm_distance_constant_rate'].append(average_norm_distance_constant_rate)
     baseline_results['average_wasserstein_distance_constant_rate'].append(wasserstein_overhead(original_data, shaped_data_constant_rate))
     
     
+    # Baseline: Pacer
+    original_data, shaped_data_pacer = NonDP_transport(filtered_data, config.app_time_resolution_us, config.data_time_resolution_us, method="pacer")
+    baseline_results['average_aggregated_overhead_pacer'].append(shaped_data_pacer.sum(axis=1).sum()/original_data.sum(axis=1).sum() - 1)
+    # baseline_results['average_wasserstein_distance_pacer'].append(wasserstein_overhead(original_data, shaped_data_pacer)) 
     
     # Shaping Overheads  
     results = {'aggregated_privacy_loss': [],
@@ -59,7 +64,8 @@ def noise_multiplier_vs_overhead(config: configlib.Config, filtered_data):
     with tqdm(total=len(noise_multipliers) ) as pbar:
         for noise_multiplier in noise_multipliers:
             # Calculate the noise multiplier based on the privacy loss
-            original_data, DP_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier) 
+            original_data, DP_data, dummy_data = DP_transport(filtered_data_pruned, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier, min_DP_size=config.min_dp_decision, max_DP_size=config.max_dp_decision) 
+
             # Calculating the total privacy loss
             aggregated_eps, best_alpha = calculate_privacy_loss(num_of_queries, alphas, noise_multiplier, config.delta)
             per_query_eps, best_alpha = calculate_privacy_loss(1, alphas, noise_multiplier, config.delta)
@@ -85,7 +91,7 @@ def noise_multiplier_vs_overhead(config: configlib.Config, filtered_data):
 
             # Calculating the overhead of the FPA transport
             
-            original_data, FPA_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, "DP_static", config.DP_mechanism, config.sensitivity_fpa, DP_step, config.data_time_resolution_us,global_epsilon=aggregated_eps)
+            original_data, FPA_data, dummy_data = DP_transport(filtered_data_pruned, config.app_time_resolution_us, "DP_static", config.DP_mechanism, config.sensitivity_fpa, DP_step, config.data_time_resolution_us,global_epsilon=aggregated_eps)
             # print("Original data shape: ", original_data.shape)
             # print("FPA data shape: ", FPA_data.head) 
             _, average_aggregated_overhead_fpa, _, _, average_norm_distance_fpa, _ = norm_overhead(original_data, FPA_data)
