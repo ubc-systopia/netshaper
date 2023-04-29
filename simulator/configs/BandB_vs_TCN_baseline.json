@@ -5,12 +5,12 @@
   "setup" : "realistic",
   "comparison_mode": "baseline",
   "results_dir" : "/home/ubuntu/results/",
-  "min_classes_num" : 4,
-  "max_classes_num" : 100,
-  "classes_num_num" : 20,
-  "attack_num_of_repeats" : 5,
-  "attack_epoch_num": 10,
-  "attack_batch_size" : 32,
+  "min_classes_num" : 10,
+  "max_classes_num" : 40,
+  "classes_num_num" : 4,
+  "attack_num_of_repeats" : 2,
+  "attack_epoch_num": 1000,
+  "attack_batch_size" : 128,
   "filtering_type" : "deterministic",
 
 
@@ -19,7 +19,7 @@
   "privacy_window_size_s" : 300,
 
   "data_source" : "memory",
-  "load_data_dir" : "/home/ubuntu/csvs_cache/",
+  "load_data_dir" : "/home/ubuntu/csvs_cache",
   "num_of_traces_per_stream" : 100,
   "num_of_unique_streams" : 100,
   "max_num_of_unique_streams" : 100,
