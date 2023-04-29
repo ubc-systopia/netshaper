@@ -5,7 +5,7 @@ import os
 import warnings
 warnings.filterwarnings("ignore")
 
-from src.data_utils.data_loader import data_loader_experimental, data_loader_realistic, data_saver, experiment_result_saver, analysis_result_saver, get_data_filter_function
+from src.data_utils.data_loader import data_loader_experimental, data_loader_realistic, data_saver, experiment_result_saver, analysis_result_saver, get_data_filter_function, prune_data
 
 from experiments.utils import get_experiment_function
 from analysis.utils import get_analysis_function
@@ -27,7 +27,9 @@ def main():
         if config.save_data_dir is not None:
             data_saver(data, config.save_data_dir, config.data_time_resolution_us, config.max_num_of_unique_streams)
 
+        
         # Filtering the data
+        data = prune_data(config, data)
         if config.filtering_type is not None:
             data_filter_fn = get_data_filter_function(config)
             filtered_data = data_filter_fn(config, data)
