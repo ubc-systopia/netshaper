@@ -44,7 +44,6 @@ def data_loader_realistic(data_time_resolution_us, data_dir = None, load_from = 
         print("Please specify the data source you want to load from. ('memory' or 'raw_data')")
         df = None
     return df
-
 def data_saver(df, data_dir, data_time_resolution_us, num_classes):
     ensure_dir(data_dir)
     data_path = os.path.join(data_dir, 'data_trace_w_' + str(int(data_time_resolution_us)) + '_c_'+ str(int(num_classes)) + '.p')
@@ -141,3 +140,11 @@ def get_data_filter_function(config):
         return data_filter_stochastic
     else:
         raise NotImplementedError("Filtering type not implemented")
+    
+    
+def prune_data(config: configlib.Config, df):
+   if (config.experiment == "noise_multiplier_vs_overhead" or config.experiment == "number_of_traces_vs_overhead"):
+       return df
+   else:
+       tmp_df = df.drop(columns = ['video_name'])
+       return tmp_df 

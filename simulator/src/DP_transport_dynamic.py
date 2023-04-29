@@ -6,8 +6,8 @@ from src.utils.DP_utils import *
 from src.modules.Queue import Queue
 
 
-def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, sensitivity, noise_multiplier = 1, verbose=False):
-  DP_max_queue_size = 1e8
+def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, sensitivity, noise_multiplier, min_DP_size, max_DP_size, verbose=False, ):
+  DP_max_queue_size = 1e12
   DP_min_queue_size = 0
   DP_queues = []
   for i in range(app.get_num_of_streams()):
@@ -39,7 +39,7 @@ def DP_transport_dynamic(app, DP_step_, DP_mechanism_, epsilon_per_sample_, sens
 
     # DP Pull
     if(i%DP_step == 0):
-      push_values, dummy_values = queues_pull_DP(DP_queues, epsilon_per_update, sensitivity, DP_mechanism_, noise_multiplier)
+      push_values, dummy_values = queues_pull_DP(DP_queues, epsilon_per_update, sensitivity, DP_mechanism_, noise_multiplier, min_DP_size, max_DP_size)
     
     network_data.append(push_values)
     dummy_data.append(dummy_values)
