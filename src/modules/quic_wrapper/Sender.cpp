@@ -48,8 +48,10 @@ namespace QUIC {
         break;
 
       case QUIC_STREAM_EVENT_PEER_ACCEPTED:
+#ifdef DEBUGGING
         ss << "Stream accepted by peer";
         sender->log(DEBUG, ss.str());
+#endif
         break;
 
       case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
@@ -62,22 +64,29 @@ namespace QUIC {
 
       case QUIC_STREAM_EVENT_RECEIVE: {
         auto bufferCount = event->RECEIVE.BufferCount;
+#ifdef DEBUGGING
         ss << "Received data from peer: ";
+#endif
         for (uint32_t i = 0; i < bufferCount; i++) {
           sender->onResponse(stream, event->RECEIVE.Buffers[i].Buffer,
                              event->RECEIVE.Buffers[i].Length);
-
+#ifdef DEBUGGING
           auto length = event->RECEIVE.Buffers[i].Length;
           ss << " \n\t Length: " << length;
         }
         sender->log(DEBUG, ss.str());
+#else
+        }
+#endif
       }
         break;
 
       case QUIC_STREAM_EVENT_SEND_COMPLETE:
 //      free(event->SEND_COMPLETE.ClientContext);
+#ifdef DEBUGGING
         ss << "Finished a call to streamSend";
         sender->log(DEBUG, ss.str());
+#endif
         break;
 
       case QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE:
@@ -88,8 +97,10 @@ namespace QUIC {
         break;
 
       case QUIC_STREAM_EVENT_START_COMPLETE:
+#ifdef DEBUGGING
         ss << "started";
         sender->log(DEBUG, ss.str());
+#endif
         break;
 
       default:
@@ -104,7 +115,9 @@ namespace QUIC {
                                         QUIC_CONNECTION_EVENT *event) {
 
     auto *sender = (Sender *) context;
+#ifdef DEBUGGING
     MsQuicStream *stream;
+#endif
     std::stringstream ss;
     const void *connectionPtr = static_cast<const void *>(connection);
     ss << "[Connection] " << connectionPtr << " ";
@@ -112,35 +125,42 @@ namespace QUIC {
     switch (event->Type) {
       case QUIC_CONNECTION_EVENT_CONNECTED:
         // The handshake has completed for the connection.
+#ifdef DEBUGGING
         ss << "Connected";
         sender->log(DEBUG, ss.str());
+#endif
         sender->connected = true;
         break;
 
       case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
+#ifdef DEBUGGING
         stream = new MsQuicStream(event->PEER_STREAM_STARTED.Stream,
                                   CleanUpAutoDelete,
                                   streamCallbackHandler);
         {
           const void *streamPtr = static_cast<const void *>(stream);
-
           ss << "Stream " << streamPtr << " started";
           sender->log(DEBUG, ss.str());
         }
+#endif
         break;
 
       case QUIC_CONNECTION_EVENT_RESUMED:
+#ifdef DEBUGGING
         ss << "resumed";
         sender->log(DEBUG, ss.str());
+#endif
         break;
 
       case QUIC_CONNECTION_EVENT_RESUMPTION_TICKET_RECEIVED:
+#ifdef DEBUGGING
         ss << "Received the following resumption ticket: ";
         for (uint32_t i = 0; i < event->RESUMPTION_TICKET_RECEIVED
             .ResumptionTicketLength; i++) {
           ss << event->RESUMPTION_TICKET_RECEIVED.ResumptionTicket[i];
         }
         sender->log(DEBUG, ss.str());
+#endif
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
@@ -163,11 +183,10 @@ namespace QUIC {
         //
         if (event->SHUTDOWN_INITIATED_BY_TRANSPORT.Status ==
             QUIC_STATUS_CONNECTION_IDLE) {
-
+#ifdef DEBUGGING
           ss << "shutting down on idle";
           sender->log(DEBUG, ss.str());
-
-
+#endif
         } else {
           ss << "shut down by underlying transport layer";
           sender->log(WARNING, ss.str());
@@ -198,7 +217,9 @@ namespace QUIC {
                                             credConfig);
     delete settings;
     if (configuration->IsValid()) {
+#ifdef DEBUGGING
       log(DEBUG, "Configuration loaded successfully!");
+#endif
       return true;
     }
     log(ERROR, "Error loading configuration");
@@ -259,22 +280,25 @@ namespace QUIC {
     SendBuffer->Buffer = data;
     SendBuffer->Length = length;
 
-    uint64_t streamID;
-    stream->GetID(&streamID);
-    std::stringstream ss;
-    ss << "[Stream " << streamID << "] ";
-    ss << " sentLength=" << length;
-    log(DEBUG, ss.str());
-
     if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, this))) {
+      uint64_t streamID;
+      stream->GetID(&streamID);
+      std::stringstream ss;
+      ss << "[Stream " << streamID << "] ";
       ss << " could not send data";
       log(ERROR, ss.str());
       free(SendBuffer);
       return false;
     }
+#ifdef DEBUGGING
 
+    uint64_t streamID;
+    stream->GetID(&streamID);
+    std::stringstream ss;
+    ss << "[Stream " << streamID << "] ";
     ss << " Data sent successfully";
     log(DEBUG, ss.str());
+#endif
     return true;
   }
 }

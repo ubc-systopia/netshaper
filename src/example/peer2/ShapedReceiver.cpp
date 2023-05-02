@@ -6,6 +6,7 @@
 #include <utility>
 #include <iomanip>
 
+#ifdef RECORD_STATS
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
@@ -14,6 +15,7 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
+#endif
 
 ShapedReceiver::ShapedReceiver(std::string appName,
                                const std::string &serverCert,
@@ -195,11 +197,13 @@ inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
   stream->GetID(&streamID);
   std::cout << "Assigning stream " + std::to_string(streamID) + " to queues {" +
                std::to_string(queues.fromShaped->ID) + "," +
-               std::to_string(queues.toShaped->ID) + "}";
+               std::to_string(queues.toShaped->ID) + "}" << std::endl;
+#ifdef DEBUGGING
   log(DEBUG,
       "Assigning stream " + std::to_string(streamID) + " to queues {" +
       std::to_string(queues.fromShaped->ID) + "," +
       std::to_string(queues.toShaped->ID) + "}");
+#endif
   //TODO: Check assumption that unshaped sender closed the connection
   // before this queue was re-assigned
   queues.fromShaped->markedForDeletion = false;
@@ -228,10 +232,12 @@ inline void ShapedReceiver::eraseMapping(MsQuicStream *stream) {
     log(ERROR, "Requested map clearing before all data was sent!");
     return;
   }
+#ifdef DEBUGGING
   log(DEBUG, "Clearing the mapping for the stream " +
              std::to_string(streamID) + " mapped to queues {" +
              std::to_string(queues.fromShaped->ID) + "," +
              std::to_string(queues.toShaped->ID) + "}");
+#endif
   (*streamToQueues).erase(stream);
   (*queuesToStream).erase(queues);
   unassignedQueues->push(queues);
@@ -252,8 +258,9 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
         reinterpret_cast<ControlMessage *>(buffer + (i * ctrlMsgSize));
     switch (ctrlMsg->streamType) {
       case Dummy:
+#ifdef DEBUGGING
         log(DEBUG, "Dummy stream is at " + std::to_string(ctrlMsg->streamID));
-
+#endif
         dummyStreamID = ctrlMsg->streamID;
         break;
       case Data: {
@@ -262,8 +269,10 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
         QueuePair queues = {nullptr, nullptr};
         switch (ctrlMsg->connStatus) {
           case SYN:
+#ifdef DEBUGGING
             log(DEBUG, "Received SYN on stream " +
                        std::to_string(ctrlMsg->streamID));
+#endif
             if (dataStream != nullptr) {
               queues = (*streamToQueues)[dataStream];
               copyClientInfo(queues, ctrlMsg);
@@ -276,11 +285,13 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
           case FIN:
             queues = (*streamToQueues)[dataStream];
             if (queues.fromShaped != nullptr) {
+#ifdef DEBUGGING
               log(DEBUG, "Received FIN from stream " +
                          std::to_string(ctrlMsg->streamID) +
                          " mapped to queues {" +
                          std::to_string(queues.fromShaped->ID) + "," +
                          std::to_string(queues.toShaped->ID) + "}");
+#endif
               queues.fromShaped->markedForDeletion = true;
               signalUnshapedProcess(queues.fromShaped->ID, FIN);
             }
@@ -329,7 +340,9 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
   mapLock.unlock_shared();
+#ifdef RECORD_STATS
   quicIn[fromShaped->ID / 2].push_back(std::chrono::steady_clock::now());
+#endif
   while (fromShaped->push(buffer, length) == -1) {
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
                  " is full, waiting for it to be empty");
@@ -367,11 +380,13 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
             reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
                 ControlMessage)));
         stream->GetID(&message->streamID);
+#ifdef DEBUGGING
         log(DEBUG,
             "Sending FIN on stream " + std::to_string(message->streamID)
             + " mapped to queues {" +
             std::to_string(queues.fromShaped->ID) + "," +
             std::to_string(queues.toShaped->ID) + "}");
+#endif
         message->streamType = Data;
         message->connStatus = FIN;
         sendResponse(controlStream,
@@ -394,9 +409,10 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
         reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue + 1));
 
     queues.toShaped->pop(buffer, SizeToSendFromQueue);
-
+#ifdef RECORD_STATS
     quicOut[queues.fromShaped->ID / 2].push_back(
         std::chrono::steady_clock::now());
+#endif
     if (!sendResponse(stream, buffer, SizeToSendFromQueue)) {
       uint64_t streamID;
       stream->GetID(&streamID);

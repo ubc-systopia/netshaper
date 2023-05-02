@@ -5,6 +5,7 @@
 #include <iomanip>
 #include "ShapedSender.h"
 
+#ifdef RECORD_STATS
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
@@ -13,6 +14,7 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
+#endif
 
 ShapedSender::ShapedSender(std::string &appName, int maxClients,
                            double noiseMultiplier, double sensitivity,
@@ -126,10 +128,12 @@ void ShapedSender::handleQueueSignal(int signum) {
             reinterpret_cast<struct ControlMessage *>(malloc(
                 sizeof(struct ControlMessage)));
         (*queuesToStream)[queues]->GetID(&message->streamID);
+#ifdef DEBUGGING
         log(DEBUG,
             "Sending SYN on stream " + std::to_string(message->streamID) +
             " mapped to queues {" + std::to_string(queues.fromShaped->ID) +
             "," + std::to_string(queues.toShaped->ID) + "}");
+#endif
         message->streamType = Data;
         message->connStatus = SYN;
         std::strcpy(message->addrPair.clientAddress,
@@ -144,7 +148,9 @@ void ShapedSender::handleQueueSignal(int signum) {
                            reinterpret_cast<uint8_t *>(message),
                            sizeof(*message));
       } else if (queueInfo.connStatus == FIN) {
+#ifdef DEBUGGING
         log(DEBUG, "Got a FIN signal " + std::to_string(queueInfo.queueID));
+#endif
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
@@ -173,12 +179,11 @@ inline void ShapedSender::initialiseSHM() {
 
     QUIC_UINT62 streamID;
     stream->GetID(&streamID);
-    std::cout << "Mapping stream " + std::to_string(streamID) +
-                 " to queues {" + std::to_string(queue1->ID) + "," +
-                 std::to_string(queue2->ID) + "}";
+#ifdef DEBUGGING
     log(DEBUG, "Mapping stream " + std::to_string(streamID) +
                " to queues {" + std::to_string(queue1->ID) + "," +
                std::to_string(queue2->ID) + "}");
+#endif
     // Data streams
     (*queuesToStream)[{queue1, queue2}] = stream;
     (*streamToQueues)[stream] = {queue1, queue2};
@@ -198,12 +203,14 @@ void ShapedSender::sendData(size_t dataSize) {
             reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
                 ControlMessage)));
         stream->GetID(&message->streamID);
+#ifdef DEBUGGING
         log(DEBUG,
             "Sending FIN on stream " + std::to_string(message->streamID) +
             " mapped to queues " +
             std::to_string(queues.fromShaped->ID) + "," +
             std::to_string(queues.toShaped->ID) + "}"
         );
+#endif
         message->streamType = Data;
         message->connStatus = FIN;
         shapedSender->send(controlStream,
@@ -217,8 +224,10 @@ void ShapedSender::sendData(size_t dataSize) {
     auto sizeToSend = std::min(dataSize, queueSize);
     auto buffer = reinterpret_cast<uint8_t *>(malloc(sizeToSend));
     queues.toShaped->pop(buffer, sizeToSend);
+#ifdef RECORD_STATS
     quicOut[queues.fromShaped->ID / 2]
         .push_back(std::chrono::steady_clock::now());
+#endif
     shapedSender->send(stream, buffer, sizeToSend);
     dataSize -= sizeToSend;
   }
@@ -246,9 +255,11 @@ void ShapedSender::handleControlMessages(uint8_t *buffer, size_t length) {
         auto &queues = (*streamToQueues)[dataStream];
         queues.fromShaped->markedForDeletion = true;
         signalUnshapedProcess(queues.fromShaped->ID, FIN);
+#ifdef DEBUGGING
         log(DEBUG, "Received FIN from stream " +
                    std::to_string(ctrlMsg->streamID) + ", marking (fromShaped)"
                    + std::to_string(queues.fromShaped->ID) + " for deletion");
+#endif
       }
     }
   }
@@ -267,7 +278,9 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
 
   // All other streams that are not dummy or control
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
+#ifdef RECORD_STATS
   quicIn[fromShaped->ID / 2].push_back(std::chrono::steady_clock::now());
+#endif
   if (fromShaped == nullptr) {
     uint64_t streamID;
     stream->GetID(&streamID);
@@ -299,7 +312,9 @@ inline void ShapedSender::startControlStream() {
   shapedSender->send(controlStream,
                      reinterpret_cast<uint8_t *>(message),
                      sizeof(*message));
+#ifdef DEBUGGING
   log(DEBUG, "Control stream is at " + std::to_string(message->streamID));
+#endif
 }
 
 inline void ShapedSender::startDummyStream() {
@@ -314,8 +329,10 @@ inline void ShapedSender::startDummyStream() {
   shapedSender->send(controlStream,
                      reinterpret_cast<uint8_t *>(message),
                      sizeof(*message));
+#ifdef DEBUGGING
   log(DEBUG, "Dummy stream is at " +
              std::to_string(message->streamID));
+#endif
 
 }
 

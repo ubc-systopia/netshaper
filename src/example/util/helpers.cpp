@@ -9,6 +9,7 @@
 #include <shared_mutex>
 #include "helpers.h"
 
+#ifdef RECORD_STATS
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
@@ -17,6 +18,8 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
+extern std::vector<std::vector<uint64_t>>  tcpSend;
+#endif
 
 namespace helpers {
   bool SignalInfo::dequeue(Direction direction, SignalInfo::queueInfo &info) {
@@ -72,7 +75,7 @@ namespace helpers {
     else {
       if (sigismember(&set, sig)) {
         std::cout << "\nExiting with signal " << sig << std::endl;
-
+#ifdef RECORD_STATS
         if (shaped) {
           std::ofstream shapedEval;
           shapedEval.open("shaped.csv");
@@ -94,6 +97,20 @@ namespace helpers {
           shapedEval << std::endl;
           shapedEval.close();
         } else {
+          std::ofstream tcpSendLatencies;
+          tcpSendLatencies.open("tcpSend.csv");
+          for (unsigned long i = 0; i < tcpSend.size(); i++) {
+            if (!tcpSend[i].empty()) {
+              tcpSendLatencies << "Client " << i << ",";
+              for (auto elem : tcpSend[i]) {
+                tcpSendLatencies << elem << ",";
+              }
+              tcpSendLatencies << "\n";
+            }
+          }
+          tcpSendLatencies << std::endl;
+          tcpSendLatencies.close();
+
           std::ofstream unshapedEval;
           unshapedEval.open("unshaped.csv");
 //          std::cout << "Sizes: " << tcpIn.size() << " " << tcpOut.size() <<
@@ -116,7 +133,7 @@ namespace helpers {
           unshapedEval << std::endl;
           unshapedEval.close();
         }
-
+#endif
         exit(0);
       }
     }
@@ -147,24 +164,30 @@ namespace helpers {
     return shmAddr;
   }
 
+#ifdef SHAPING
+  [[noreturn]]
+#endif
+
   void DPCreditor(std::atomic<size_t> *sendingCredit,
                   std::unordered_map<QueuePair, MsQuicStream *,
                       QueuePairHash> *queuesToStream,
                   NoiseGenerator *noiseGenerator,
                   __useconds_t decisionInterval, std::shared_mutex &mapLock) {
-//    auto nextCheck = std::chrono::steady_clock::now();
-//    while (true) {
-//      nextCheck = std::chrono::steady_clock::now() +
-//                  std::chrono::microseconds(decisionInterval);
-//      mapLock.lock();
-//      auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
-//      mapLock.unlock;
-//      auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
-//      size_t credit = sendingCredit->load(std::memory_order_acquire);
-//      credit += DPDecision;
-//      sendingCredit->store(credit, std::memory_order_release);
-//      std::this_thread::sleep_until(nextCheck);
-//    }
+#ifdef SHAPING
+    auto nextCheck = std::chrono::steady_clock::now();
+    while (true) {
+      nextCheck = std::chrono::steady_clock::now() +
+                  std::chrono::microseconds(decisionInterval);
+      mapLock.lock();
+      auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
+      mapLock.unlock();
+      auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
+      size_t credit = sendingCredit->load(std::memory_order_acquire);
+      credit += DPDecision;
+      sendingCredit->store(credit, std::memory_order_release);
+      std::this_thread::sleep_until(nextCheck);
+    }
+#endif
   }
 
   [[noreturn]]
@@ -176,32 +199,43 @@ namespace helpers {
                       __useconds_t sendingInterval,
                       __useconds_t decisionInterval, std::shared_mutex
                       &mapLock) {
-//    auto nextCheck = std::chrono::steady_clock::now();
+#ifdef PACING
+    auto nextCheck = std::chrono::steady_clock::now();
+#endif
     while (true) {
-//      nextCheck = std::chrono::steady_clock::now() +
-//                  std::chrono::microseconds(sendingInterval);
-////      auto divisor = decisionInterval / sendingInterval;
-//      auto credit = sendingCredit->load(std::memory_order_acquire);
+#ifdef PACING
+      nextCheck = std::chrono::steady_clock::now() +
+                  std::chrono::microseconds(sendingInterval);
+#endif
+#ifdef SHAPING
+      auto divisor = decisionInterval / sendingInterval;
+      auto credit = sendingCredit->load(std::memory_order_acquire);
 ////      std::cout << "Loaded credit: " << credit << std::endl;
+#endif
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
-//      if (credit == 0) {
-//        // Don't send anything
-//        continue;
-//      } else {
-      // Get dummy and data size
+#ifdef SHAPING
+      if (credit == 0) {
+        // Don't send anything
+        continue;
+      } else {
+//       Get dummy and data size
 //        auto maxBytesToSend = credit;
-//        auto maxBytesToSend = credit / divisor;
-//        size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
-//        size_t dummySize = maxBytesToSend - dataSize;
-//        if (dummySize > 0) sendDummy(dummySize);
-//        sendData(dataSize);
+        auto maxBytesToSend = credit / divisor;
+        size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
+        size_t dummySize = maxBytesToSend - dataSize;
+        if (dummySize > 0) sendDummy(dummySize);
+        sendData(dataSize);
+        credit -= (dataSize + dummySize);
+      }
+      sendingCredit->store(credit, std::memory_order_release);
+#else
       sendData(aggregatedSize);
-//        credit -= (dataSize + dummySize);
-//      }
-//      sendingCredit->store(credit, std::memory_order_release);
-//      std::this_thread::sleep_until(nextCheck);
+#endif
+#ifdef PACING
+      std::this_thread::sleep_until(nextCheck);
+#endif
     }
   }
 }

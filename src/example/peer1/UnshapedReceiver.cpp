@@ -46,14 +46,16 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 }
 
 [[noreturn]] void UnshapedReceiver::receivedResponse(__useconds_t interval) {
-//  auto nextCheck = std::chrono::steady_clock::now();
+#ifdef PACING
+  auto nextCheck = std::chrono::steady_clock::now();
   while (true) {
-//    nextCheck += std::chrono::microseconds(interval);
+    nextCheck += std::chrono::microseconds(interval);
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
-//    std::this_thread::sleep_until(nextCheck);
+    std::this_thread::sleep_until(nextCheck);
+#else
+  while (true) {
+#endif
     mapLock.lock_shared();
-//    auto tempMap = *queuesToSocket;
-//    mapLock.unlock();
     for (const auto &[queues, socket]: *queuesToSocket) {
 //      if (socket == 0) continue;
       auto size = queues.fromShaped->size();
@@ -61,11 +63,13 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
         if (queues.toShaped->markedForDeletion
             && queues.fromShaped->markedForDeletion) {
           if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
+#ifdef DEBUGGING
             log(DEBUG,
                 "Sending FIN to socket " + std::to_string(socket) +
                 " mapped to queues {" +
                 std::to_string(queues.fromShaped->ID) + "," +
                 std::to_string(queues.toShaped->ID) + "}");
+#endif
             TCP::Receiver::sendFIN(socket);
             (*pendingSignal).erase(queues.fromShaped->ID);
           }
@@ -91,11 +95,12 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
   mapLock.lock();
   auto queues = unassignedQueues->front();
   unassignedQueues->pop();
-
+#ifdef DEBUGGING
   log(DEBUG, "Assigning socket " +
              std::to_string(clientSocket) + " (client: " + clientAddress
              + ") to queues {" + std::to_string(queues.fromShaped->ID) +
              "," + std::to_string(queues.toShaped->ID) + "}");
+#endif
   // No socket attached to this queue pair
   (*socketToQueues)[clientSocket] = queues;
   (*queuesToSocket)[queues] = clientSocket;
@@ -132,9 +137,11 @@ inline void UnshapedReceiver::eraseMapping(int socket) {
                "deletion");
     return;
   }
+#ifdef DEBUGGING
   log(DEBUG, "Erase Mapping of socket " + std::to_string(socket)
              + " mapped to queues {" + std::to_string(queues.fromShaped->ID) +
              "," + std::to_string(queues.toShaped->ID) + "}");
+#endif
   close(socket);
   (*socketToQueues).erase(socket);
   (*queuesToSocket).erase(queues);
@@ -179,15 +186,14 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
 //      mapLock.lock_shared();
 //      queues = (*socketToQueues)[fromSocket];
 //      mapLock.unlock_shared();
-      std::cout << "Socket " << fromSocket << " mapped to queues " <<
-                queues.toShaped->ID << " " << queues.fromShaped->ID
-                << std::endl;
+#ifdef DEBUGGING
       {
         log(DEBUG, "Received SYN from socket " + std::to_string(fromSocket)
                    + " (client: " + clientAddress + ") mapped to {" +
                    std::to_string(queues.fromShaped->ID) + "," +
                    std::to_string(queues.toShaped->ID) + "}");
       }
+#endif
       signalShapedProcess(queues.toShaped->ID, SYN);
       return true;
     }
@@ -195,7 +201,6 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
       mapLock.lock_shared();
       auto queues = (*socketToQueues)[fromSocket];
       mapLock.unlock_shared();
-//      log(DEBUG, "Received Data on socket: " + std::to_string(fromSocket));
       auto toShaped = queues.toShaped;
       while (toShaped->push(buffer, length) == -1) {
         log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
@@ -213,10 +218,12 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
       mapLock.lock_shared();
       auto queues = (*socketToQueues)[fromSocket];
       mapLock.unlock_shared();
+#ifdef DEBUGGING
       log(DEBUG, "Received FIN from socket " + std::to_string(fromSocket)
                  + " (client: " + clientAddress + ") mapped to {" +
                  std::to_string(queues.fromShaped->ID) + "," +
                  std::to_string(queues.toShaped->ID) + "}");
+#endif
       queues.toShaped->markedForDeletion = true;
       signalShapedProcess(queues.toShaped->ID, FIN);
       return true;

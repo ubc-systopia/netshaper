@@ -116,6 +116,10 @@ namespace helpers {
    * @param noiseGenerator The configured noise generator instance
    * @param decisionInterval The interval with which this loop will run
    */
+#ifdef SHAPING
+  [[noreturn]]
+#endif
+
   void DPCreditor(std::atomic<size_t> *sendingCredit,
                   std::unordered_map<QueuePair, MsQuicStream *,
                       QueuePairHash> *queuesToStream,
