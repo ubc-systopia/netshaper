@@ -115,9 +115,7 @@ namespace QUIC {
                                         QUIC_CONNECTION_EVENT *event) {
 
     auto *sender = (Sender *) context;
-#ifdef DEBUGGING
     MsQuicStream *stream;
-#endif
     std::stringstream ss;
     const void *connectionPtr = static_cast<const void *>(connection);
     ss << "[Connection] " << connectionPtr << " ";
@@ -133,10 +131,10 @@ namespace QUIC {
         break;
 
       case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
-#ifdef DEBUGGING
         stream = new MsQuicStream(event->PEER_STREAM_STARTED.Stream,
                                   CleanUpAutoDelete,
                                   streamCallbackHandler);
+#ifdef DEBUGGING
         {
           const void *streamPtr = static_cast<const void *>(stream);
           ss << "Stream " << streamPtr << " started";
