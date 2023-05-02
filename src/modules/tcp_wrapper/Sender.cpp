@@ -58,14 +58,17 @@ namespace TCP {
 
     std::thread receive(&Sender::startReceiving, this);
     receive.detach();
-
+#ifdef DEBUGGING
     log(DEBUG, "Sender initialised");
+#endif
   }
 
   Sender::~Sender() {
     close(remoteSocket);
+#ifdef DEBUGGING
     log(DEBUG, "Sender at socket: " + std::to_string(remoteSocket)
                + " destructed");
+#endif
   }
 
   int Sender::connectToRemote() {
@@ -98,11 +101,12 @@ namespace TCP {
     if (res != nullptr) {
       freeaddrinfo(res);
     }
-
+#ifdef DEBUGGING
     std::stringstream ss;
     ss << "Connected to remote address " << remoteHost << ":" << remotePort <<
        " at socket " << remoteSocket;
     log(DEBUG, ss.str());
+#endif
     return 0;
   }
 
@@ -115,9 +119,11 @@ namespace TCP {
 #ifdef RECORD_STATS
       tcpIn[remoteSocket].push_back(std::chrono::steady_clock::now());
 #endif
+#ifdef DEBUGGING
       std::stringstream ss;
       ss << "Received data on socket: " << remoteSocket;
       log(DEBUG, ss.str());
+#endif
       onReceive(this, buffer, bytesReceived, ONGOING);
     }
 
@@ -130,9 +136,11 @@ namespace TCP {
   }
 
   ssize_t Sender::sendData(uint8_t *buffer, size_t length) {
+#ifdef DEBUGGING
     std::stringstream ss;
     ss << "Sending data to socket: " << remoteSocket;
     log(DEBUG, ss.str());
+#endif
 #ifdef RECORD_STATS
     tcpOut[remoteSocket].push_back(std::chrono::steady_clock::now());
     auto start = std::chrono::steady_clock::now();

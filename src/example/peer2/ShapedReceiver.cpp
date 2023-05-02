@@ -195,9 +195,6 @@ inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
 
   QUIC_UINT62 streamID;
   stream->GetID(&streamID);
-  std::cout << "Assigning stream " + std::to_string(streamID) + " to queues {" +
-               std::to_string(queues.fromShaped->ID) + "," +
-               std::to_string(queues.toShaped->ID) + "}" << std::endl;
 #ifdef DEBUGGING
   log(DEBUG,
       "Assigning stream " + std::to_string(streamID) + " to queues {" +
@@ -349,8 +346,10 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
 
     // Sleep for some time. For performance reasons, this is the same as
     // the interval with the unshaped components checks queues for data.
+#ifdef PACING
     std::this_thread::sleep_for(
         std::chrono::microseconds(unshapedSenderLoopInterval));
+#endif
   }
 }
 

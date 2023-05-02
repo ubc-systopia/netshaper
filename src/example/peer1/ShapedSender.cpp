@@ -294,8 +294,10 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
                  +" mapped to stream " + std::to_string(streamID) +
                  " is full, waiting for it to be empty!");
+#ifdef PACING
     std::this_thread::sleep_for(
         std::chrono::microseconds(unshapedResponseLoopInterval));
+#endif
   }
 
 }
