@@ -59,21 +59,28 @@ namespace QUIC {
 
       case QUIC_STREAM_EVENT_RECEIVE: {
         auto bufferCount = event->RECEIVE.BufferCount;
+#ifdef DEBUGGING
         ss << "Received data from peer: ";
+#endif
         for (uint32_t i = 0; i < bufferCount; i++) {
           receiver->onReceive(stream, event->RECEIVE.Buffers[i].Buffer,
                               event->RECEIVE.Buffers[i].Length);
-
+#ifdef DEBUGGING
           auto length = event->RECEIVE.Buffers[i].Length;
           ss << " \n\t Length: " << length;
         }
         receiver->log(DEBUG, ss.str());
+#else
+        }
+#endif
       }
         break;
 
       case QUIC_STREAM_EVENT_SEND_COMPLETE:
+#ifdef DEBUGGING
         ss << "Finished a call to streamSend";
         receiver->log(DEBUG, ss.str());
+#endif
         break;
 
       case QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE:
@@ -93,7 +100,9 @@ namespace QUIC {
                                           QUIC_CONNECTION_EVENT *event) {
     auto *receiver = (Receiver *) context;
 
+#ifdef DEBUGGING
     MsQuicStream *stream;
+#endif
     std::stringstream ss;
     const void *connectionPtr = static_cast<const void *>(connection);
     ss << "[Connection] " << connectionPtr << " ";
@@ -101,31 +110,35 @@ namespace QUIC {
     switch (event->Type) {
       case QUIC_CONNECTION_EVENT_CONNECTED:
         // The handshake has completed for the connection.
+#ifdef DEBUGGING
         ss << "Connected";
         receiver->log(DEBUG, ss.str());
+#endif
         connection->SendResumptionTicket();
         break;
 
       case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
+#ifdef DEBUGGING
         stream = new MsQuicStream(event->PEER_STREAM_STARTED.Stream,
                                   CleanUpAutoDelete,
                                   streamCallbackHandler, context);
         {
           const void *streamPtr = static_cast<const void *>(stream);
-
           ss << "Stream " << streamPtr << " started";
           receiver->log(DEBUG, ss.str());
         }
+#endif
         break;
 
       case QUIC_CONNECTION_EVENT_RESUMED:
+#ifdef DEBUGGING
         ss << "resumed";
         receiver->log(DEBUG, ss.str());
+#endif
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
         connection->Close();
-
         ss << "closed successfully";
         receiver->log(WARNING, ss.str());
         break;
@@ -143,11 +156,10 @@ namespace QUIC {
         //
         if (event->SHUTDOWN_INITIATED_BY_TRANSPORT.Status ==
             QUIC_STATUS_CONNECTION_IDLE) {
-
+#ifdef DEBUGGING
           ss << "shutting down on idle";
           receiver->log(DEBUG, ss.str());
-
-
+#endif
         } else {
           ss << "shut down by underlying transport layer";
           receiver->log(WARNING, ss.str());
@@ -185,7 +197,9 @@ namespace QUIC {
                                             credConfig);
     delete settings;
     if (configuration->IsValid()) {
+#ifdef DEBUGGING
       log(DEBUG, "Configuration loaded successfully!");
+#endif
       return true;
     }
     log(ERROR, "Error loading configuration. Are you sure the correct server "
@@ -206,7 +220,9 @@ namespace QUIC {
                                       idleTimeoutMs(idleTimeoutMs),
                                       logLevel(level) {
     onReceive = std::move(onReceiveFunc);
+#ifdef DEBUGGING
     log(DEBUG, "Loading Configuration...");
+#endif
     bool success = loadConfiguration(certFile, keyFile);
     if (!success) {
       exit(1);
@@ -216,9 +232,13 @@ namespace QUIC {
     {
       std::stringstream ss;
       ss << (alpn.operator const QUIC_BUFFER *())[0].Buffer;
+#ifdef DEBUGGING
       log(DEBUG, "ALPN: " + ss.str());
     }
     log(DEBUG, "Port: " + std::to_string(port));
+#else
+    }
+#endif
   }
 
   void Receiver::startListening() {
@@ -233,12 +253,16 @@ namespace QUIC {
     listener = new MsQuicAutoAcceptListener(reg, *configuration,
                                             this->connectionHandler, this);
     listener->Start(alpn, &addr->SockAddr);
+#ifdef DEBUGGING
     log(DEBUG, "Started listening");
+#endif
   }
 
   void Receiver::stopListening() {
     delete listener;
     listener = nullptr;
+#ifdef DEBUGGING
     log(DEBUG, "Stopped listening");
+#endif
   }
 }

@@ -6,6 +6,17 @@
 #include <utility>
 #include <iomanip>
 
+#ifdef RECORD_STATS
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpIn;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpOut;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    quicIn;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    quicOut;
+#endif
+
 ShapedReceiver::ShapedReceiver(std::string appName,
                                const std::string &serverCert,
                                const std::string &serverKey,
@@ -26,12 +37,11 @@ ShapedReceiver::ShapedReceiver(std::string appName,
   queuesToStream =
       new std::unordered_map<QueuePair,
           MsQuicStream *, QueuePairHash>(maxStreamsPerPeer);
-
   streamToQueues =
       new std::unordered_map<MsQuicStream *, QueuePair>(maxStreamsPerPeer);
-
   pendingSignal =
       new std::unordered_map<uint64_t, connectionStatus>(maxStreamsPerPeer);
+  unassignedQueues = new std::queue<QueuePair>{};
 
   initialiseSHM(maxPeers * maxStreamsPerPeer);
 
@@ -45,7 +55,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
   // Add additional stream for dummy data
   shapedReceiver =
       new QUIC::Receiver{serverCert, serverKey, bindPort,
-                         receivedShapedDataFunc, logLevel,
+                         receivedShapedDataFunc, WARNING,
                          maxStreamsPerPeer + 2, idleTimeout};
   shapedReceiver->startListening();
 
@@ -54,7 +64,7 @@ ShapedReceiver::ShapedReceiver(std::string appName,
 
   std::thread dpCreditorThread(helpers::DPCreditor, &sendingCredit,
                                queuesToStream, noiseGenerator,
-                               DPCreditorLoopInterval);
+                               DPCreditorLoopInterval, std::ref(mapLock));
   dpCreditorThread.detach();
 
 //  auto sendShapedData = std::bind(&ShapedReceiver::sendShapedData, this,
@@ -70,7 +80,8 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                            sendData
                                (std::forward<decltype(PH1)>(PH1));
                          },
-                         senderLoopInterval, DPCreditorLoopInterval, strategy);
+                         senderLoopInterval, DPCreditorLoopInterval, strategy,
+                         std::ref(mapLock));
   sendShaped.detach();
 }
 
@@ -94,7 +105,8 @@ inline void ShapedReceiver::initialiseSHM(int numStreams) {
         (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
 
     // Data streams
-    (*queuesToStream)[{queue1, queue2}] = nullptr;
+//    (*queuesToStream)[{queue1, queue2}] = nullptr;
+    unassignedQueues->push({queue1, queue2});
   }
 }
 
@@ -175,43 +187,45 @@ void ShapedReceiver::copyClientInfo(QueuePair queues,
 }
 
 inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
-  // Find an unused QueuePair and map it
-  return std::ranges::any_of(*queuesToStream, [&](auto &iterator) {
-    // iterator.first is QueuePair, iterator.second is sender
-    QueuePair queues = iterator.first;
-    if (iterator.second == nullptr && queues.fromShaped->size() == 0) {
-      // No sender attached to this queue pair
-      (*streamToQueues)[stream] = iterator.first;
-      (*queuesToStream)[iterator.first] = stream;
+  if (unassignedQueues->empty()) return false;
+//  mapLock.lock();
+  auto queues = unassignedQueues->front();
+  unassignedQueues->pop();
+  (*streamToQueues)[stream] = queues;
+  (*queuesToStream)[queues] = stream;
 
-      QUIC_UINT62 streamID;
-      stream->GetID(&streamID);
-      log(DEBUG,
-          "Assigning stream " + std::to_string(streamID) + " to queues {" +
-          std::to_string(queues.fromShaped->ID) + "," +
-          std::to_string(queues.toShaped->ID) + "}");
-      //TODO: Check assumption that unshaped sender closed the connection
-      // before this queue was re-assigned
-      queues.fromShaped->markedForDeletion = false;
-      queues.toShaped->markedForDeletion = false;
-      queues.toShaped->clear();
-      queues.fromShaped->clear();
+  QUIC_UINT62 streamID;
+  stream->GetID(&streamID);
+  std::cout << "Assigning stream " + std::to_string(streamID) + " to queues {" +
+               std::to_string(queues.fromShaped->ID) + "," +
+               std::to_string(queues.toShaped->ID) + "}" << std::endl;
+#ifdef DEBUGGING
+  log(DEBUG,
+      "Assigning stream " + std::to_string(streamID) + " to queues {" +
+      std::to_string(queues.fromShaped->ID) + "," +
+      std::to_string(queues.toShaped->ID) + "}");
+#endif
+  //TODO: Check assumption that unshaped sender closed the connection
+  // before this queue was re-assigned
+  queues.fromShaped->markedForDeletion = false;
+  queues.toShaped->markedForDeletion = false;
+  queues.toShaped->clear();
+  queues.fromShaped->clear();
 
-      if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
-        copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
-        signalUnshapedProcess((*streamToQueues)[stream].fromShaped->ID,
-                              SYN);
+  if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
+    copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
+    signalUnshapedProcess((*streamToQueues)[stream].fromShaped->ID,
+                          SYN);
 
-        streamIDtoCtrlMsg.erase(streamID);
+    streamIDtoCtrlMsg.erase(streamID);
 
-      }
-      return true;
-    }
-    return false;
-  });
+  }
+//  mapLock.unlock();
+  return true;
 }
 
 inline void ShapedReceiver::eraseMapping(MsQuicStream *stream) {
+  mapLock.lock();
   uint64_t streamID;
   stream->GetID(&streamID);
   auto queues = (*streamToQueues)[stream];
@@ -219,12 +233,16 @@ inline void ShapedReceiver::eraseMapping(MsQuicStream *stream) {
     log(ERROR, "Requested map clearing before all data was sent!");
     return;
   }
+#ifdef DEBUGGING
   log(DEBUG, "Clearing the mapping for the stream " +
              std::to_string(streamID) + " mapped to queues {" +
              std::to_string(queues.fromShaped->ID) + "," +
              std::to_string(queues.toShaped->ID) + "}");
+#endif
   (*streamToQueues).erase(stream);
-  (*queuesToStream)[queues] = nullptr;
+  (*queuesToStream).erase(queues);
+  unassignedQueues->push(queues);
+  mapLock.unlock();
 }
 
 void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
@@ -241,17 +259,21 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
         reinterpret_cast<ControlMessage *>(buffer + (i * ctrlMsgSize));
     switch (ctrlMsg->streamType) {
       case Dummy:
+#ifdef DEBUGGING
         log(DEBUG, "Dummy stream is at " + std::to_string(ctrlMsg->streamID));
-
+#endif
         dummyStreamID = ctrlMsg->streamID;
         break;
       case Data: {
+        mapLock.lock();
         auto dataStream = findStreamByID(ctrlMsg->streamID);
         QueuePair queues = {nullptr, nullptr};
         switch (ctrlMsg->connStatus) {
           case SYN:
+#ifdef DEBUGGING
             log(DEBUG, "Received SYN on stream " +
                        std::to_string(ctrlMsg->streamID));
+#endif
             if (dataStream != nullptr) {
               queues = (*streamToQueues)[dataStream];
               copyClientInfo(queues, ctrlMsg);
@@ -264,11 +286,13 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
           case FIN:
             queues = (*streamToQueues)[dataStream];
             if (queues.fromShaped != nullptr) {
+#ifdef DEBUGGING
               log(DEBUG, "Received FIN from stream " +
                          std::to_string(ctrlMsg->streamID) +
                          " mapped to queues {" +
                          std::to_string(queues.fromShaped->ID) + "," +
                          std::to_string(queues.toShaped->ID) + "}");
+#endif
               queues.fromShaped->markedForDeletion = true;
               signalUnshapedProcess(queues.fromShaped->ID, FIN);
             }
@@ -276,6 +300,7 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
           default:
             break;
         }
+        mapLock.unlock();
       }
         break;
       case Control:
@@ -288,8 +313,6 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
 
 void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
                                         uint8_t *buffer, size_t length) {
-  uint64_t streamID;
-  stream->GetID(&streamID);
   // Check if this is first byte from the other middlebox
   if (stream == controlStream || controlStream == nullptr) {
     handleControlMessages(stream, buffer, length);
@@ -297,13 +320,18 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
   }
 
   // Not a control stream... Check for other types
-  if (streamID == dummyStreamID) {
-    // Dummy Data
-    if (dummyStream == nullptr) dummyStream = stream;
-    return;
+  if (dummyStream == nullptr) {
+    uint64_t streamID;
+    stream->GetID(&streamID);
+    if (streamID == dummyStreamID) {
+      // Dummy Data
+      if (dummyStream == nullptr) dummyStream = stream;
+      return;
+    }
   }
 
   // This is a data stream
+  mapLock.lock_shared();
   if ((*streamToQueues)[stream].fromShaped == nullptr) {
     if (!assignQueues(stream)) {
       log(ERROR, "More streams from peer than allowed!");
@@ -312,6 +340,10 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
   }
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
+  mapLock.unlock_shared();
+#ifdef RECORD_STATS
+  quicIn[fromShaped->ID / 2].push_back(std::chrono::steady_clock::now());
+#endif
   while (fromShaped->push(buffer, length) == -1) {
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
                  " is full, waiting for it to be empty");
@@ -335,11 +367,11 @@ void ShapedReceiver::sendDummy(size_t dummySize) {
 size_t ShapedReceiver::sendData(size_t dataSize) {
   auto origSize = dataSize;
 
+  mapLock.lock_shared();
+//  auto tempMap = *queuesToStream;
+//  mapLock.unlock();
   for (const auto &[queues, stream]: *queuesToStream) {
-    // We have sent enough
-    if (dataSize == 0) break;
-    if (stream == nullptr) continue;
-
+//    if (stream == nullptr) continue;
     auto queueSize = queues.toShaped->size();
     // No data in this queue, check for FINs and erase mappings
     if (queueSize == 0) {
@@ -349,11 +381,13 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
             reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
                 ControlMessage)));
         stream->GetID(&message->streamID);
+#ifdef DEBUGGING
         log(DEBUG,
             "Sending FIN on stream " + std::to_string(message->streamID)
             + " mapped to queues {" +
             std::to_string(queues.fromShaped->ID) + "," +
             std::to_string(queues.toShaped->ID) + "}");
+#endif
         message->streamType = Data;
         message->connStatus = FIN;
         sendResponse(controlStream,
@@ -369,12 +403,17 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
       continue;
     }
 
+    // We have sent enough
+    if (dataSize == 0) break;
     auto SizeToSendFromQueue = std::min(queueSize, dataSize);
     auto buffer =
         reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue + 1));
 
     queues.toShaped->pop(buffer, SizeToSendFromQueue);
-
+#ifdef RECORD_STATS
+    quicOut[queues.fromShaped->ID / 2].push_back(
+        std::chrono::steady_clock::now());
+#endif
     if (!sendResponse(stream, buffer, SizeToSendFromQueue)) {
       uint64_t streamID;
       stream->GetID(&streamID);
@@ -384,6 +423,7 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
       dataSize -= SizeToSendFromQueue;
     }
   }
+  mapLock.unlock_shared();
   // We expect the data size to be zero if we have sent all the data
   return origSize - dataSize;
 }

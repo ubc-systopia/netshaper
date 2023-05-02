@@ -32,6 +32,11 @@ message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 
 find_package(nlohmann_json REQUIRED)
 
+#add_compile_definitions(DEBUGGING)
+#add_compile_definitions(RECORD_STATS)
+#add_compile_definitions(PACING)
+#add_compile_definitions(SHAPING)
+
 include_directories(msquic/src/inc)
 
 add_subdirectory(src/modules/quic_wrapper)

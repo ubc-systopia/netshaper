@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <queue>
+#include <shared_mutex>
 #include "../../modules/quic_wrapper/Receiver.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
@@ -28,11 +30,13 @@ private:
   std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash>
       *queuesToStream;
   std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
+  std::queue<QueuePair> *unassignedQueues;
 
   class SignalInfo *sigInfo;
 
   std::mutex writeLock;
   std::mutex readLock;
+  std::shared_mutex mapLock;
 
   // Map that stores streamIDs for which client information is received (but
   // the stream has not yet begun).

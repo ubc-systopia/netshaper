@@ -12,6 +12,18 @@
 #include <cstring>
 #include <iomanip>
 
+#ifdef RECORD_STATS
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpIn;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    tcpOut;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    quicIn;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    quicOut;
+extern std::vector<std::vector<uint64_t>>  tcpSend;
+#endif
+
 namespace TCP {
   Receiver::Receiver(std::string bindAddr, int localPort,
                      std::function<bool(int fromSocket,
@@ -32,13 +44,16 @@ namespace TCP {
 
     // Initialise localSocket to -1 (invalid value)
     this->localSocket = -1;
-
+#ifdef DEBUGGING
     log(DEBUG, "Receiver initialised");
+#endif
   }
 
   Receiver::~Receiver() {
     close(localSocket);
+#ifdef DEBUGGING
     log(DEBUG, "Receiver destructed");
+#endif
     exit(0);
   }
 
@@ -60,8 +75,10 @@ namespace TCP {
         throw std::runtime_error("Could not start listening on given address "
                                  "and port");
       default:
+#ifdef DEBUGGING
         log(DEBUG, "Started listening on " + bindAddr + ":"
                    + std::to_string(localPort));
+#endif
         std::thread loop(&Receiver::serverLoop, this);
         loop.detach();
     }
@@ -116,8 +133,9 @@ namespace TCP {
     if (res != nullptr) {
       freeaddrinfo(res);
     }
-
+#ifdef DEBUGGING
     log(DEBUG, "Receiver running on socket " + std::to_string(serverSocket));
+#endif
     return serverSocket;
 
   }
@@ -149,8 +167,9 @@ namespace TCP {
   [[noreturn]] void Receiver::serverLoop() {
     struct sockaddr_storage clientAddress{};
     socklen_t addrLen = sizeof(clientAddress);
-
+#ifdef DEBUGGING
     log(DEBUG, "Starting Receiver loop");
+#endif
     while (true) {
       int clientSocket =
           accept(localSocket, (struct sockaddr *) &clientAddress,
@@ -170,8 +189,10 @@ namespace TCP {
   }
 
   void Receiver::handleClient(int clientSocket, std::string clientAddress) {
+#ifdef DEBUGGING
     log(DEBUG, "Client at " + clientAddress + " connected on socket " +
                std::to_string(clientSocket));
+#endif
     if (!onReceive(clientSocket, clientAddress, nullptr, 0, SYN)) {
       // No queues for this client. Don't receive data from it
       close(clientSocket);
@@ -187,7 +208,12 @@ namespace TCP {
 
     // Read from fromSocket and send to toSocket
     while ((bytesReceived = recv(socket, buffer, BUF_SIZE, 0)) > 0) {
+#ifdef RECORD_STATS
+      tcpIn[socket].push_back(std::chrono::steady_clock::now());
+#endif
+#ifdef DEBUGGING
       log(DEBUG, "Data received on socket " + std::to_string(socket));
+#endif
       onReceive(socket, clientAddress, buffer, bytesReceived, ONGOING);
     }
 
@@ -196,14 +222,27 @@ namespace TCP {
                                                 "error " + strerror(errno));
     }
     // Stop other processes from using these sockets
+#ifdef DEBUGGING
     log(DEBUG, "Shutting down read on socket " + std::to_string(socket));
+#endif
     shutdown(socket, SHUT_RD);
     onReceive(socket, clientAddress, nullptr, 0, FIN);
   }
 
   ssize_t Receiver::sendData(int toSocket, uint8_t *buffer, size_t length) {
+#ifdef DEBUGGING
     log(DEBUG, "Sending data on socket " + std::to_string(toSocket));
-    return send(toSocket, buffer, length, 0);
+#endif
+#ifdef RECORD_STATS
+    tcpOut[toSocket].push_back(std::chrono::steady_clock::now());
+    auto start = std::chrono::steady_clock::now();
+    auto bytesSent = send(toSocket, buffer, length, 0);
+    auto end = std::chrono::steady_clock::now();
+    tcpSend[toSocket].push_back((end - start).count());
+#else
+    auto bytesSent = send(toSocket, buffer, length, 0);
+#endif
+    return bytesSent;
   }
 
   int Receiver::checkIPVersion(const std::string &address) {

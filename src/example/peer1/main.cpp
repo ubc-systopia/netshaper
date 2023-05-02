@@ -7,6 +7,8 @@
 #include "ShapedSender.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <sched.h>
+#include "../../modules/PerfEval.h"
 
 using json = nlohmann::json;
 
@@ -43,6 +45,19 @@ void handleQueueSignal(int signum) {
       std::cerr << "Peer1: Neither pointers present! " << getpid() << std::endl;
     else
       std::cerr << "Peer1: Huh? " << getpid() << std::endl;
+    exit(1);
+  }
+}
+
+void setCPUAffinity(std::vector<int> &cpus) {
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  for (int i: cpus) {
+    CPU_SET(i, &mask);
+  }
+  int result = sched_setaffinity(0, sizeof(mask), &mask);
+  if (result == -1) {
+    std::cout << "Could not set CPU affinity" << std::endl;
     exit(1);
   }
 }
@@ -138,7 +153,8 @@ int main() {
 
   if (fork() == 0) {
     // Child process - Unshaped Receiver
-
+    std::vector<int> cpus{0, 1, 2, 3};
+    setCPUAffinity(cpus);
     // This process should get a SIGHUP when it's parent (the shaped
     // sender) dies
     prctl(PR_SET_PDEATHSIG, SIGHUP);
@@ -147,8 +163,12 @@ int main() {
                                             checkResponseLoopInterval,
                                             senderLoopInterval,
                                             logLevel, serverAddr};
+    // Wait for signal to exit
+    waitForSignal(false);
   } else {
     // Parent Process - Shaped Sender
+    std::vector<int> cpus{4, 5, 6, 7};
+    setCPUAffinity(cpus);
     sleep(2); // Wait for unshapedReceiver to initialise
     MsQuic = new MsQuicApi{};
     shapedSender = new ShapedSender{appName, maxClients, noiseMultiplier,
@@ -160,8 +180,7 @@ int main() {
                                     logLevel, strategy};
     sleep(2);
     std::cout << "Peer is ready!" << std::endl;
+    // Wait for signal to exit
+    waitForSignal(true);
   }
-
-  // Wait for signal to exit
-  waitForSignal();
 }

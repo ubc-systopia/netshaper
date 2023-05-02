@@ -72,9 +72,11 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
       log(WARNING, "No queues mapped to the sender!");
       return;
     }
+#ifdef DEBUGGING
     log(DEBUG, "Received FIN from sender connected to queues {" +
                std::to_string(queues.fromShaped->ID) + "," +
                std::to_string(queues.toShaped->ID) + "}");
+#endif
     queues.toShaped->markedForDeletion = true;
 //    if (queues.fromShaped->markedForDeletion
 //        && queues.fromShaped->size() == 0) {
@@ -86,9 +88,11 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
 
 inline void UnshapedSender::eraseMapping(TCP::Sender *sender) {
   auto queues = (*senderToQueues)[sender];
+#ifdef DEBUGGING
   log(DEBUG, "Clearing the mapping for the queues {" +
              std::to_string(queues.fromShaped->ID) + "," +
              std::to_string(queues.toShaped->ID) + "}");
+#endif
   // Clear mappings
   (*senderToQueues).erase(sender);
   delete sender;
@@ -121,9 +125,10 @@ void UnshapedSender::handleQueueSignal(int signum) {
     while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
       auto queues = findQueuesByID(queueInfo.queueID);
       if (queueInfo.connStatus == SYN) {
+#ifdef DEBUGGING
         log(DEBUG, "Received SYN on queue (fromShaped) " +
                    std::to_string(queues.fromShaped->ID));
-
+#endif
         auto onResponseFunc = [this](auto &&PH1, auto &&PH2,
                                      auto &&PH3, auto &&PH4) {
           onResponse(std::forward<decltype(PH1)>(PH1),
@@ -134,12 +139,18 @@ void UnshapedSender::handleQueueSignal(int signum) {
         auto unshapedSender = new TCP::Sender{
             queues.fromShaped->addrPair.serverAddress,
             std::stoi(queues.fromShaped->addrPair.serverPort),
-            onResponseFunc, logLevel};
+            onResponseFunc, WARNING};
+#ifdef DEBUGGING
         log(DEBUG, "Starting a new sender paired to queues {" +
                    std::to_string(queues.fromShaped->ID) + "," +
                    std::to_string(queues.toShaped->ID) + "}");
+#endif
         (*queuesToSender)[queues] = unshapedSender;
         (*senderToQueues)[unshapedSender] = queues;
+        std::cout << "Socket " << unshapedSender->remoteSocket
+                  << " mapped to queues " <<
+                  queues.toShaped->ID << " " << queues.fromShaped->ID
+                  << std::endl;
       } else if (queueInfo.connStatus == FIN) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
@@ -148,20 +159,25 @@ void UnshapedSender::handleQueueSignal(int signum) {
 }
 
 [[noreturn]] void UnshapedSender::checkQueuesForData(__useconds_t interval) {
+#ifdef PACING
   auto nextCheck = std::chrono::steady_clock::now();
 
   while (true) {
     nextCheck += std::chrono::microseconds(interval);
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
     std::this_thread::sleep_until(nextCheck);
-
+#else
+  while (true) {
+#endif
     for (const auto &[queues, sender]: *queuesToSender) {
       if (sender == nullptr) continue;
       auto size = queues.fromShaped->size();
       if (size == 0) {
         if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
+#ifdef DEBUGGING
           log(DEBUG, "Sending FIN to sender connected to (fromShaped)" +
                      std::to_string(queues.fromShaped->ID));
+#endif
           sender->sendFIN();
           (*pendingSignal).erase(queues.fromShaped->ID);
         }

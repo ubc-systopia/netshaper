@@ -5,6 +5,9 @@
 #ifndef MINESVPN_COMMON_H
 #define MINESVPN_COMMON_H
 
+#include <chrono>
+#include <vector>
+
 enum logLevels {
   ERROR, WARNING, DEBUG
 };

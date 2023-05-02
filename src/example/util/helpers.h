@@ -13,6 +13,7 @@
 #include <cstdarg>
 #include <unistd.h>
 #include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 
 namespace helpers {
@@ -77,7 +78,7 @@ namespace helpers {
 /**
  * @brief Waits for signal and then processes it
  */
-  void waitForSignal();
+  void waitForSignal(bool shaped);
 
   /**
    * @brief Initialise Shared Memory in the given process
@@ -115,11 +116,15 @@ namespace helpers {
    * @param noiseGenerator The configured noise generator instance
    * @param decisionInterval The interval with which this loop will run
    */
-  [[noreturn]] void DPCreditor(std::atomic<size_t> *sendingCredit,
-                               std::unordered_map<QueuePair, MsQuicStream *,
-                                   QueuePairHash> *queuesToStream,
-                               NoiseGenerator *noiseGenerator,
-                               __useconds_t decisionInterval);
+#ifdef SHAPING
+  [[noreturn]]
+#endif
+
+  void DPCreditor(std::atomic<size_t> *sendingCredit,
+                  std::unordered_map<QueuePair, MsQuicStream *,
+                      QueuePairHash> *queuesToStream,
+                  NoiseGenerator *noiseGenerator,
+                  __useconds_t decisionInterval, std::shared_mutex &mapLock);
 
   /**
    * @brief Loop which sends Shaped Data at sendingInterval
@@ -141,6 +146,7 @@ namespace helpers {
                       const std::function<void(size_t)> &sendDummy,
                       const std::function<void(size_t)> &sendData,
                       __useconds_t sendingInterval,
-                      __useconds_t decisionInterval, sendingStrategy strategy);
+                      __useconds_t decisionInterval, sendingStrategy strategy,
+                      std::shared_mutex &mapLock);
 }
 #endif //MINESVPN_HELPERS_H

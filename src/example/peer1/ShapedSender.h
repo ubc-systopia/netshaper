@@ -12,6 +12,8 @@
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../../modules/shaper/NoiseGenerator.h"
+#include <shared_mutex>
+
 
 using namespace helpers;
 
@@ -39,6 +41,7 @@ private:
 
   std::mutex readLock;
   std::mutex writeLock;
+  std::shared_mutex mapLock;
 
   MsQuicStream *dummyStream;
   MsQuicStream *controlStream;
