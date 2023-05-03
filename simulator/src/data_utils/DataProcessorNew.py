@@ -2,20 +2,20 @@ import pandas as pd
 import os
 import math
 from tqdm import tqdm
-
+from threading import Thread
 
 class DataProcessorNew():
     def __init__(self, dir, num_of_classes, iter_num):
         self.directory = dir
         self.num_of_classes = num_of_classes
         self.iter_num = iter_num 
-    
+        self.ds_list = [None] * (self.num_of_classes * self.iter_num) 
+        self.all_data_without_noise = 0
+        self.all_data_with_noise = 0
     
     def get_video_names(self):
         first_iter_dir = os.path.join(self.directory, '1')
         video_names = os.listdir(first_iter_dir)
-        ## PATCH: REMOVING THE VIDEO WITH NAME yt-QYGXcuVLNeg-frag'
-        # video_names.remove('yt-QYGXcuVLNeg-frag')
         return video_names
     
     def map_video_names_to_labels(self, video_names):
@@ -113,7 +113,48 @@ class DataProcessorNew():
         data = {'window time': burst_time_per_window, 'window size': burst_size_per_window}
         windowed_df = pd.DataFrame(data=data)
         return windowed_df   
-     
+    
+   
+    def process_data(self, ds, key, time_resolution_us, index):
+        df = self.get_dataframe(ds)
+        
+        windowed_df = self.burst_in_window_pattern_simple(df, time_resolution_us).drop(columns=['window time'])
+        sample = (windowed_df.T).reset_index()
+        sample['label'] = int(key)
+        self.ds_list[index] = sample
+  
+
+
+
+    # def aggregated_dataframe(self, time_resolution_us):
+    #     print(time_resolution_us)
+    #     ds_name_dict = self.get_label_filename_mapping()
+    #     keys = list(ds_name_dict.keys())
+    #     aggregated_df = pd.DataFrame()
+    #     ds_num = len(keys)*len(ds_name_dict[keys[0]])
+    #     with tqdm(total=ds_num, desc="Processing Data: ") as pbar:
+    #         threads = []
+    #         index = 0
+    #         for key in keys:
+    #             for ds in ds_name_dict[key]:
+    #                 thread = Thread(target=self.process_data, args=(ds, key, time_resolution_us, index))
+    #                 threads.append(thread)
+    #                 thread.start()
+    #                 index += 1
+    #         for thread in threads:
+    #             thread.join()
+    #             pbar.update(1)
+    #     aggregated_df = pd.concat(self.ds_list, ignore_index=True) 
+    #     aggregated_df.drop(columns=['index'], inplace=True)
+    #     aggregated_df.fillna(0, inplace=True)
+    #     ## Move the label column to the end
+    #     column_to_move = aggregated_df.pop('label')
+    #     aggregated_df.insert(len(aggregated_df.columns), 'label', column_to_move)
+    #     return aggregated_df.astype(int)
+            
+    def aggregated_size (self, df): 
+        self.all_data_size += df['pkt_size'].sum()
+        
     def aggregated_dataframe(self, time_resolution_us):
         print(time_resolution_us)
         ds_name_dict = self.get_label_filename_mapping()

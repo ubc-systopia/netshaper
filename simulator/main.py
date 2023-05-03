@@ -9,7 +9,7 @@ from src.data_utils.data_loader import data_loader_experimental, data_loader_rea
 
 from experiments.utils import get_experiment_function
 from analysis.utils import get_analysis_function
-from src.data_utils.testbed_data_processor import aggregated_data_list   
+from src.data_utils.testbed_data_processor import get_data_aggregator_function   
      
 def main():
     # load the config file
@@ -41,8 +41,8 @@ def main():
         # Saving the results
         experiment_result_saver(config, results, baseline_results)
     elif config.run_type == "analysis":
-        #TODO: implement analysis
-        data_list = aggregated_data_list(config)
+        data_aggregator_function = get_data_aggregator_function(config)
+        data_list = data_aggregator_function(config)
         analysis_fn = get_analysis_function(config)
         results = analysis_fn(config, data_list)
         analysis_result_saver(config, results)
