@@ -143,7 +143,7 @@ def get_data_filter_function(config):
     
     
 def prune_data(config: configlib.Config, df):
-   if (config.experiment == "noise_multiplier_vs_overhead" or config.experiment == "number_of_traces_vs_overhead"):
+   if (config.experiment == "noise_multiplier_vs_overhead_video" or config.experiment == "number_of_traces_vs_overhead_video"):
        return df
    else:
        tmp_df = df.drop(columns = ['video_name'])
