@@ -106,7 +106,7 @@ def get_all_assigned_epsilons(wPrivacy_modules):
 #   return private_df
 
 def get_noise_multiplier(total_loss, num_of_queries, alphas, delta):
-  threshold = 0.01
+  threshold = 0.0001
   tmp_ans = 0
   min_ans = 0
   max_ans = 1000
