@@ -25,14 +25,15 @@ def noise_multiplier_vs_overhead_web(config: configlib.Config, filtered_data):
     noise_multipliers = config.noise_multipliers    
 
     # Baseline overheads 
-    baseline_results = {'average_aggregated_overhead_constant_rate': []}
+    baseline_results = {'average_aggregated_overhead_constant_rate': [],
+                        'std_aggregated_overhead_constant_rate': []}
 
     
     # Baseline: Constant Rate
     original_data, shaped_data_constant_rate = NonDP_transport(filtered_data, config.app_time_resolution_us, config.data_time_resolution_us, method="constant-rate") 
-    _, average_aggregated_overhead_constant_rate, _, _, average_norm_distance_constant_rate, _ = norm_overhead(original_data, shaped_data_constant_rate)
+    average_aggregated_overhead_constant_rate, std_aggregated_overhead_std = norm_overhead(original_data, shaped_data_constant_rate)
     baseline_results['average_aggregated_overhead_constant_rate'].append(average_aggregated_overhead_constant_rate)
-    
+    baseline_results['std_aggregated_overhead_constant_rate'].append(std_aggregated_overhead_std)
     
     
     # Shaping Overheads  
@@ -41,6 +42,7 @@ def noise_multiplier_vs_overhead_web(config: configlib.Config, filtered_data):
                "dp_decision_interval_us":[],
                'noise_multiplier': [],
                'average_aggregated_overhead': [],
+               'std_aggregated_overhead': [],
                'alpha': [],
                } 
               
@@ -63,10 +65,11 @@ def noise_multiplier_vs_overhead_web(config: configlib.Config, filtered_data):
             results['dp_decision_interval_us'].append(config.data_time_resolution_us)
             
             # Calculating the overhead of the DP transport
-            _, average_aggregated_overhead, _, _, average_norm_distance, _ = norm_overhead(original_data, DP_data)
+            average_aggregated_overhead, std_aggregated_overhead = norm_overhead(original_data, DP_data)
             
             
             results['average_aggregated_overhead'].append(average_aggregated_overhead)
+            results['std_aggregated_overhead'].append(std_aggregated_overhead)
             
 
             

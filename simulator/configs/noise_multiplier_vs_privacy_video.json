@@ -1,6 +1,6 @@
 { 
   "run_type": "experiment",
-  "experiment" : "noise_multiplier_vs_privacy",
+  "experiment" : "noise_multiplier_vs_privacy_video",
   "setup" : "realistic",
   "num_of_unique_streams" : 40,
   "num_of_traces_per_stream" : 100,
