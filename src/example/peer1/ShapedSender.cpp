@@ -7,10 +7,6 @@
 
 #ifdef RECORD_STATS
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    tcpIn;
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    tcpOut;
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
@@ -53,7 +49,7 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
   // shapedSender and in middlebox 2 we have shapedReceiver
   shapedSender = new QUIC::Sender{peer2IP, peer2Port, onResponseFunc,
                                   true,
-                                  WARNING,
+                                  logLevel,
                                   idleTimeout};
 
   // We map a pair of queues over the shared memory region to every stream
@@ -294,8 +290,10 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
                  +" mapped to stream " + std::to_string(streamID) +
                  " is full, waiting for it to be empty!");
+#ifdef SHAPING
     std::this_thread::sleep_for(
         std::chrono::microseconds(unshapedResponseLoopInterval));
+#endif
   }
 
 }

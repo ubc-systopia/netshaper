@@ -55,7 +55,6 @@ namespace QUIC {
         break;
 
       case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
-        // TODO Finish Sending
         //Send a FIN
         stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
         ss << "shut down as peer sent a shutdown signal";
@@ -127,7 +126,8 @@ namespace QUIC {
         ss << "Connected";
         sender->log(DEBUG, ss.str());
 #endif
-        sender->connected = true;
+        sender->isConnected = true;
+        sender->connected.notify_all();
         break;
 
       case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
@@ -251,7 +251,8 @@ namespace QUIC {
   }
 
   MsQuicStream *Sender::startStream() {
-    while (!connected);  // TODO: Improve this with wait and conditional
+    std::unique_lock<std::mutex> lock(connectionLock);
+    connected.wait(lock, [this]() { return isConnected; });
     MsQuicStream *stream;
     stream = new MsQuicStream{*connection, QUIC_STREAM_OPEN_FLAG_NONE,
                               autoCleanup ? CleanUpAutoDelete : CleanUpManual,

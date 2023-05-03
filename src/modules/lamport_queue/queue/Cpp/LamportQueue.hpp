@@ -60,6 +60,7 @@ public:
   addressPair addrPair;
   uint64_t ID;
   bool markedForDeletion = false;
+  bool sentFIN = false;
 
 private:
   std::atomic<size_t> front;

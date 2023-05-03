@@ -23,6 +23,9 @@ NLOHMANN_JSON_SERIALIZE_ENUM(sendingStrategy, {
   { UNIFORM, "UNIFORM" },
 })
 
+std::vector<int> unshapedCores{8, 9, 10, 11};
+std::vector<int> shapedCores{12, 13, 14, 15};
+
 UnshapedSender *unshapedSender = nullptr;
 ShapedReceiver *shapedReceiver = nullptr;
 // Load the API table. Necessary before any calls to MsQuic
@@ -139,8 +142,7 @@ int main() {
 
   if (fork() == 0) {
     // Child process - Unshaped Sender
-    std::vector<int> cpus{8, 9, 10, 11};
-    setCPUAffinity(cpus);
+    setCPUAffinity(unshapedCores);
     // This process should get a SIGHUP when it's parent (the shaped
     // receiver) dies
     prctl(PR_SET_PDEATHSIG, SIGHUP);
@@ -152,8 +154,7 @@ int main() {
     waitForSignal(false);
   } else {
     // Parent Process - Shaped Receiver
-    std::vector<int> cpus{12, 13, 14, 15};
-    setCPUAffinity(cpus);
+    setCPUAffinity(shapedCores);
     sleep(2); // Wait for unshapedSender to initialise
     MsQuic = new MsQuicApi{};
     shapedReceiver = new ShapedReceiver{appName, serverCert, serverKey,

@@ -17,11 +17,7 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     tcpIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpOut;
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicIn;
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicOut;
-extern std::vector<std::vector<uint64_t>>  tcpSend;
+extern std::vector<std::vector<uint64_t>> tcpSend;
 #endif
 
 namespace TCP {

@@ -49,8 +49,6 @@ namespace QUIC {
         break;
 
       case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
-        // TODO Finish Sending
-
         //Send a FIN
         stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
         ss << "shut down as peer sent a shutdown signal";

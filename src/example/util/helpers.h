@@ -78,7 +78,7 @@ namespace helpers {
 /**
  * @brief Waits for signal and then processes it
  */
-  void waitForSignal(bool shaped);
+  void waitForSignal(bool isShapedProcess);
 
   /**
    * @brief Initialise Shared Memory in the given process
@@ -119,7 +119,6 @@ namespace helpers {
 #ifdef SHAPING
   [[noreturn]]
 #endif
-
   void DPCreditor(std::atomic<size_t> *sendingCredit,
                   std::unordered_map<QueuePair, MsQuicStream *,
                       QueuePairHash> *queuesToStream,

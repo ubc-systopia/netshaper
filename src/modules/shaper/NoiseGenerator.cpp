@@ -32,8 +32,6 @@ double NoiseGenerator::gaussian(double mu, double sigma) {
 double NoiseGenerator::gaussianDP() const {
   double mu = 0;
   double sigma = sensitivity * noiseMultiplier;
-  //      sensitivity * sqrt(2 * log(1.25 / delta)) / epsilon;
-  // TODO: Choose a better value
   return gaussian(mu, sigma);
 }
 

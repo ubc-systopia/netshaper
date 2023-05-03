@@ -34,7 +34,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
   };
 
   unshapedReceiver = new TCP::Receiver{std::move(bindAddr), bindPort,
-                                       tcpReceiveFunc, WARNING};
+                                       tcpReceiveFunc, logLevel};
   unshapedReceiver->startListening();
 
   std::thread responseLoop([=, this]() {
@@ -46,7 +46,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 }
 
 [[noreturn]] void UnshapedReceiver::receivedResponse(__useconds_t interval) {
-#ifdef PACING
+#ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
   while (true) {
     nextCheck += std::chrono::microseconds(interval);
@@ -56,23 +56,27 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
   while (true) {
 #endif
     mapLock.lock_shared();
-    for (const auto &[queues, socket]: *queuesToSocket) {
+    auto tempMap = *queuesToSocket;
+    mapLock.unlock_shared();
+    for (const auto &[queues, socket]: tempMap) {
 //      if (socket == 0) continue;
       auto size = queues.fromShaped->size();
       if (size == 0) {
-        if (queues.toShaped->markedForDeletion
-            && queues.fromShaped->markedForDeletion) {
-          if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
+        if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
 #ifdef DEBUGGING
-            log(DEBUG,
+          log(DEBUG,
                 "Sending FIN to socket " + std::to_string(socket) +
                 " mapped to queues {" +
                 std::to_string(queues.fromShaped->ID) + "," +
                 std::to_string(queues.toShaped->ID) + "}");
 #endif
-            TCP::Receiver::sendFIN(socket);
-            (*pendingSignal).erase(queues.fromShaped->ID);
-          }
+          TCP::Receiver::sendFIN(socket);
+          (*pendingSignal).erase(queues.fromShaped->ID);
+          queues.fromShaped->sentFIN = true;
+        }
+        if (queues.toShaped->markedForDeletion
+            && queues.fromShaped->markedForDeletion
+            && queues.fromShaped->sentFIN) {
           eraseMapping(socket);
         }
       }
@@ -84,7 +88,6 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
         if (sentBytes > 0 && (size_t) sentBytes == size) free(buffer);
       }
     }
-    mapLock.unlock_shared();
   }
 }
 
@@ -110,6 +113,7 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
   auto port = clientAddress.substr(address.size() + 1);
   queues.toShaped->markedForDeletion = false;
   queues.fromShaped->markedForDeletion = false;
+  queues.toShaped->sentFIN = queues.fromShaped->sentFIN = false;
   queues.toShaped->clear();
   queues.fromShaped->clear();
 
@@ -129,7 +133,6 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
 }
 
 inline void UnshapedReceiver::eraseMapping(int socket) {
-  mapLock.lock();
   auto queues = (*socketToQueues)[socket];
   if (!queues.fromShaped->markedForDeletion
       || !queues.toShaped->markedForDeletion) {
@@ -143,6 +146,7 @@ inline void UnshapedReceiver::eraseMapping(int socket) {
              "," + std::to_string(queues.toShaped->ID) + "}");
 #endif
   close(socket);
+  mapLock.lock();
   (*socketToQueues).erase(socket);
   (*queuesToSocket).erase(queues);
   unassignedQueues->push(queues);
@@ -206,11 +210,12 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
         log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
                      +" mapped to socket " + std::to_string(fromSocket) +
                      " is full, waiting for it to be empty!");
-
+#ifdef SHAPING
         // Sleep for some time. For performance reasons, this is the same as
         // the interval with which DP Logic thread runs in Shaped component.
         std::this_thread::sleep_for(
             std::chrono::microseconds(shapedSenderLoopInterval));
+#endif
       }
       return true;
     }

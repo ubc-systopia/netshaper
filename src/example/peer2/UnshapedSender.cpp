@@ -60,11 +60,12 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
     while (toShaped->push(buffer, length) == -1) {
       log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
                    " is full, waiting for it to be empty!");
-
+#ifdef SHAPING
       // Sleep for some time. For performance reasons, this is the same as
       // the interval with which DP Logic thread runs in Shaped component.
       std::this_thread::sleep_for(
           std::chrono::microseconds(shapedReceiverLoopInterval));
+#endif
     }
   } else if (connStatus == FIN) {
     auto &queues = (*senderToQueues)[sender];
@@ -139,7 +140,7 @@ void UnshapedSender::handleQueueSignal(int signum) {
         auto unshapedSender = new TCP::Sender{
             queues.fromShaped->addrPair.serverAddress,
             std::stoi(queues.fromShaped->addrPair.serverPort),
-            onResponseFunc, WARNING};
+            onResponseFunc, logLevel};
 #ifdef DEBUGGING
         log(DEBUG, "Starting a new sender paired to queues {" +
                    std::to_string(queues.fromShaped->ID) + "," +
@@ -147,10 +148,6 @@ void UnshapedSender::handleQueueSignal(int signum) {
 #endif
         (*queuesToSender)[queues] = unshapedSender;
         (*senderToQueues)[unshapedSender] = queues;
-        std::cout << "Socket " << unshapedSender->remoteSocket
-                  << " mapped to queues " <<
-                  queues.toShaped->ID << " " << queues.fromShaped->ID
-                  << std::endl;
       } else if (queueInfo.connStatus == FIN) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
@@ -159,7 +156,7 @@ void UnshapedSender::handleQueueSignal(int signum) {
 }
 
 [[noreturn]] void UnshapedSender::checkQueuesForData(__useconds_t interval) {
-#ifdef PACING
+#ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
 
   while (true) {
@@ -180,17 +177,16 @@ void UnshapedSender::handleQueueSignal(int signum) {
 #endif
           sender->sendFIN();
           (*pendingSignal).erase(queues.fromShaped->ID);
+          queues.fromShaped->sentFIN = true;
         }
-        // TODO: This definitely causes an issue. Find a better time to clear
-        //  mappings
         if (queues.fromShaped->markedForDeletion
-            && queues.toShaped->markedForDeletion) {
+            && queues.toShaped->markedForDeletion
+            && queues.fromShaped->sentFIN) {
           eraseMapping(sender);
         }
       } else {
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         queues.fromShaped->pop(buffer, size);
-//        while (sender == nullptr);
         auto sentBytes = sender->sendData(buffer, size);
         if ((unsigned long) sentBytes == size) {
           free(buffer);

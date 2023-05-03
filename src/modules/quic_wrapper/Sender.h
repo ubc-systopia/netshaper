@@ -13,6 +13,7 @@
 #include <string>
 #include <functional>
 #include "../Common.h"
+#include <condition_variable>
 
 namespace QUIC {
   class Sender {
@@ -56,7 +57,9 @@ namespace QUIC {
     inline static const std::string appName = "minesVPN";
     enum logLevels logLevel;
     const uint64_t idleTimeoutMs;
-    bool connected = false;
+    std::mutex connectionLock;
+    std::condition_variable connected;
+    bool isConnected = false;
 
     // MsQuic is a shared library. Hence, register this application with it.
     // The name has to be unique per application on a single machine

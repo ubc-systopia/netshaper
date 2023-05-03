@@ -52,7 +52,6 @@ private:
  */
   [[noreturn]] void receivedResponse(__useconds_t interval);
 
-// TODO: Replace hard-coded value of serverAddress
   /**
  * @brief assign a new queue for a new client
  * @param clientSocket The socket number of the new client

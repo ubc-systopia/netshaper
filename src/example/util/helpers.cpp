@@ -18,7 +18,7 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
-extern std::vector<std::vector<uint64_t>>  tcpSend;
+extern std::vector<std::vector<uint64_t>> tcpSend;
 #endif
 
 namespace helpers {
@@ -58,7 +58,77 @@ namespace helpers {
 
   }
 
-  void waitForSignal(bool shaped) {
+#ifdef RECORD_STATS
+
+  void printStats(bool isShapedProcess) {
+    if (isShapedProcess) {
+      std::ofstream shapedEval;
+      shapedEval.open("shaped.csv");
+      for (unsigned long i = 0; i < quicIn.size(); i++) {
+        if (!quicIn[i].empty()) {
+          shapedEval << "quicIn " << i << ",";
+          for (auto elem: quicIn[i]) {
+            shapedEval << elem.time_since_epoch().count() << ",";
+          }
+          shapedEval << "\n";
+        }
+      }
+      shapedEval << "\n";
+      for (unsigned long i = 0; i < quicOut.size(); i++) {
+        if (!quicOut[i].empty()) {
+          shapedEval << "quicOut " << i << ",";
+          for (auto elem: quicOut[i]) {
+            shapedEval << elem.time_since_epoch().count() << ",";
+          }
+          shapedEval << "\n";
+        }
+      }
+      shapedEval << std::endl;
+      shapedEval.close();
+    } else {
+      std::ofstream tcpSendLatencies;
+      tcpSendLatencies.open("tcpSend.csv");
+      for (unsigned long i = 0; i < tcpSend.size(); i++) {
+        if (!tcpSend[i].empty()) {
+          tcpSendLatencies << "Socket " << i << ",";
+          for (auto elem: tcpSend[i]) {
+            tcpSendLatencies << elem << ",";
+          }
+          tcpSendLatencies << "\n";
+        }
+      }
+      tcpSendLatencies << std::endl;
+      tcpSendLatencies.close();
+
+      std::ofstream unshapedEval;
+      unshapedEval.open("unshaped.csv");
+      for (unsigned long i = 0; i < tcpIn.size(); i++) {
+        if (!tcpIn[i].empty()) {
+          unshapedEval << "tcpIn " << i << ",";
+          for (auto elem: tcpIn[i]) {
+            unshapedEval << elem.time_since_epoch().count() << ",";
+          }
+          unshapedEval << "\n";
+        }
+      }
+      unshapedEval << "\n";
+      for (unsigned long i = 0; i < tcpOut.size(); i++) {
+        if (!tcpOut[i].empty()) {
+          unshapedEval << "tcpOut " << i << ",";
+          for (auto elem: tcpOut[i]) {
+            unshapedEval << elem.time_since_epoch().count() << ",";
+          }
+          unshapedEval << "\n";
+        }
+      }
+      unshapedEval << std::endl;
+      unshapedEval.close();
+    }
+  }
+
+#endif
+
+  void waitForSignal(bool isShapedProcess) {
     signal(SIGPIPE, SIG_IGN);
     sigset_t set;
     int sig;
@@ -76,63 +146,7 @@ namespace helpers {
       if (sigismember(&set, sig)) {
         std::cout << "\nExiting with signal " << sig << std::endl;
 #ifdef RECORD_STATS
-        if (shaped) {
-          std::ofstream shapedEval;
-          shapedEval.open("shaped.csv");
-          for (unsigned long i = 0; i < quicIn.size(); i++) {
-            shapedEval << "quicIn " << i << ",";
-            for (auto elem: quicIn[i]) {
-              shapedEval << elem.time_since_epoch().count() << ",";
-            }
-            shapedEval << "\n";
-          }
-          shapedEval << "\n";
-          for (unsigned long i = 0; i < quicOut.size(); i++) {
-            shapedEval << "quicOut " << i << ",";
-            for (auto elem: quicOut[i]) {
-              shapedEval << elem.time_since_epoch().count() << ",";
-            }
-            shapedEval << "\n";
-          }
-          shapedEval << std::endl;
-          shapedEval.close();
-        } else {
-          std::ofstream tcpSendLatencies;
-          tcpSendLatencies.open("tcpSend.csv");
-          for (unsigned long i = 0; i < tcpSend.size(); i++) {
-            if (!tcpSend[i].empty()) {
-              tcpSendLatencies << "Client " << i << ",";
-              for (auto elem : tcpSend[i]) {
-                tcpSendLatencies << elem << ",";
-              }
-              tcpSendLatencies << "\n";
-            }
-          }
-          tcpSendLatencies << std::endl;
-          tcpSendLatencies.close();
-
-          std::ofstream unshapedEval;
-          unshapedEval.open("unshaped.csv");
-//          std::cout << "Sizes: " << tcpIn.size() << " " << tcpOut.size() <<
-//                    std::endl;
-          for (unsigned long i = 0; i < tcpIn.size(); i++) {
-            unshapedEval << "tcpIn " << i << ",";
-            for (auto elem: tcpIn[i]) {
-              unshapedEval << elem.time_since_epoch().count() << ",";
-            }
-            unshapedEval << "\n";
-          }
-          unshapedEval << "\n";
-          for (unsigned long i = 0; i < tcpOut.size(); i++) {
-            unshapedEval << "tcpOut " << i << ",";
-            for (auto elem: tcpOut[i]) {
-              unshapedEval << elem.time_since_epoch().count() << ",";
-            }
-            unshapedEval << "\n";
-          }
-          unshapedEval << std::endl;
-          unshapedEval.close();
-        }
+        printStats(isShapedProcess);
 #endif
         exit(0);
       }
@@ -200,20 +214,17 @@ namespace helpers {
                       __useconds_t decisionInterval,
                       sendingStrategy strategy, std::shared_mutex &mapLock) {
 
-#ifdef PACING
+#ifdef SHAPING
     auto nextCheck = std::chrono::steady_clock::now();
 #endif
     while (true) {
-#ifdef PACING
+#ifdef SHAPING
       nextCheck = std::chrono::steady_clock::now() +
                   std::chrono::microseconds(sendingInterval);
-#endif
-#ifdef SHAPING
       unsigned int divisor;
       if (strategy == BURST) divisor = 1; // Strategy is BURST
       if (strategy == UNIFORM) divisor = decisionInterval / sendingInterval;
       auto credit = sendingCredit->load(std::memory_order_acquire);
-//      std::cout << "Loaded credit: " << credit << std::endl;
 #endif
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
@@ -239,11 +250,6 @@ namespace helpers {
       }
 #else
       sendData(aggregatedSize);
-#endif
-#ifdef PACING
-#ifndef SHAPING
-      std::this_thread::sleep_until(nextCheck);
-#endif
 #endif
     }
   }
