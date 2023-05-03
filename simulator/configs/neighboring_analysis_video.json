@@ -1,6 +1,6 @@
 { 
 
-  "experiment" : "neighboring_analysis",
+  "experiment" : "neighboring_analysis_video",
   "run_type" : "experiment",
   "setup" : "realistic",
   "results_dir" : "/home/ubuntu/results/",
@@ -12,9 +12,8 @@
   "middlebox_period_us" : 5e6 ,
   "privacy_window_size_s" : 300,
 
-  "data_source" : "raw_data",
-  "load_data_dir": "/home/ubuntu/csvs/traces_100-100/Video-Bandwidth/Client",
-  "save_data_dir": "/home/ubuntu/csvs_cache/",
+  "data_source" : "memory",
+  "load_data_dir": "/home/ubuntu/csvs_cache/",
   "max_num_of_unique_streams" : 100,
   "max_num_of_traces_per_stream" : 100,
   "data_time_resolution_us" : 5e6

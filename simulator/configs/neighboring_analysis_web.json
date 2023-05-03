@@ -1,0 +1,20 @@
+{ 
+
+  "experiment" : "neighboring_analysis_web",
+  "run_type" : "experiment",
+  "setup" : "realistic",
+  "results_dir" : "/home/ubuntu/results/",
+  "num_of_unique_streams" : 96,
+  "num_of_traces_per_stream" : 100,
+  "filtering_type" : "deterministic",
+
+  "app_time_resolution_us" :  20e3,
+  "middlebox_period_us" : 20e3 ,
+  "privacy_window_size_s" : 300,
+
+  "data_source" : "memory",
+  "load_data_dir": "/home/ubuntu/csvs_web/cache",
+  "max_num_of_unique_streams" : 96,
+  "max_num_of_traces_per_stream" : 100,
+  "data_time_resolution_us" : 20e3
+}
