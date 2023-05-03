@@ -139,10 +139,10 @@ def train_test_and_report_acc(config: configlib.Config, df: pd.DataFrame, verbos
             test_acc = correct / len(test_loader.dataset)
             all_preds = np.concatenate(all_preds)
             all_targets = np.concatenate(all_targets)
-            # precision = precision_score(all_targets, all_preds, average='macro')
-            # recall = recall_score(all_targets, all_preds, average='macro')
-            precision = 0
-            recall = 0            
+            precision = precision_score(all_targets, all_preds, average='macro')
+            recall = recall_score(all_targets, all_preds, average='macro')
+            # precision = 0
+            # recall = 0            
             if verbose:
                 print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
                 test_loss, correct, len(test_loader.dataset),

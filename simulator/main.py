@@ -5,7 +5,7 @@ import os
 import warnings
 warnings.filterwarnings("ignore")
 
-from src.data_utils.data_loader import data_loader_experimental, data_loader_realistic, data_saver, data_filter_stochastic, data_filter_deterministic, experiment_result_saver, analysis_result_saver
+from src.data_utils.data_loader import data_loader_experimental, data_loader_realistic, data_saver, experiment_result_saver, analysis_result_saver, get_data_filter_function, prune_data
 
 from experiments.utils import get_experiment_function
 from analysis.utils import get_analysis_function
@@ -23,12 +23,21 @@ def main():
             data = data_loader_experimental(config.data_time_resolution_us, config.load_data_dir, config.data_source, config.max_num_of_unique_streams)
         else:
             raise ValueError("Please specify the setup you want to run. ('realistic' or 'experimental')")
-
+        
         if config.save_data_dir is not None:
             data_saver(data, config.save_data_dir, config.data_time_resolution_us, config.max_num_of_unique_streams)
+
+        
+        # Filtering the data
+        data = prune_data(config, data)
+        if config.filtering_type is not None:
+            data_filter_fn = get_data_filter_function(config)
+            filtered_data = data_filter_fn(config, data)
+        else:
+            filtered_data = data
         # Running the experiment 
         experiment_fn = get_experiment_function(config)
-        baseline_results, results = experiment_fn(config, data)
+        baseline_results, results = experiment_fn(config, filtered_data)
         # Saving the results
         experiment_result_saver(config, results, baseline_results)
     elif config.run_type == "analysis":

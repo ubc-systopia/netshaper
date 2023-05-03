@@ -1,0 +1,29 @@
+{ 
+  "run_type": "experiment",
+  "experiment" : "noise_multiplier_vs_privacy_video",
+  "setup" : "realistic",
+  "num_of_unique_streams" : 40,
+  "num_of_traces_per_stream" : 100,
+  "filtering_type" : "deterministic",
+
+  "attack_epoch_num": 100,
+  "attack_batch_size": 64,
+  "attack_num_of_repeats": 3,
+
+  "transport_type" : "DP_dynamic",
+  "DP_mechanism" : "Gaussian_rdp",
+  "noise_multipliers" : [0.2],
+  "delta" : 1e-6,
+  "sensitivity" : 1e6,
+  "sensitivity_fpa": 80e6, 
+  "app_time_resolution_us" : 1e6,
+  "middlebox_period_us" : 1e6 ,
+  "privacy_window_size_s" : 5,
+
+  "data_source" : "memory",
+  "load_data_dir" : "/home/ubuntu/csvs_cache/",
+  "results_dir" : "/home/ubuntu/results/",  
+  "max_num_of_unique_streams" : 100,
+  "max_num_of_traces_per_stream" : 100,
+  "data_time_resolution_us" : 1e6
+}

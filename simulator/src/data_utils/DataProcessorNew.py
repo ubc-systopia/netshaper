@@ -88,7 +88,8 @@ class DataProcessorNew():
         pkt_time_column_indx = df.columns.get_loc('pkt_time')
         pkt_size_column_indx = df.columns.get_loc('pkt_size')
 
-        
+        # Sort the dataframe based on packet time
+        df = df.sort_values(by=['pkt_time'])      
 
         stream_start_time = df.iloc[0, pkt_time_column_indx]
         stream_end_time = df.iloc[-1, pkt_time_column_indx]
@@ -97,7 +98,10 @@ class DataProcessorNew():
         burst_size_per_window = [0] * window_num
         burst_time_per_window = [(elem + 1/2) * window_size for elem in range(window_num)]
         for i in range(len(df)): 
-            burst_size_per_window[math.floor((df.iloc[i, pkt_time_column_indx] - stream_start_time)/window_size)] += df.iloc[i, pkt_size_column_indx]
+            # print(math.floor((df.iloc[i, pkt_time_column_indx] - stream_start_time)/window_size))
+            # print("current packet time: ", df.iloc[i, pkt_time_column_indx]) 
+            # print("start time: ", stream_start_time)
+            burst_size_per_window[math.floor((df.iloc[i, pkt_time_column_indx] - stream_start_time - 1)/window_size)] += df.iloc[i, pkt_size_column_indx]
         
         data = {'window time': burst_time_per_window, 'window size': burst_size_per_window}
         windowed_df = pd.DataFrame(data=data)
@@ -156,6 +160,7 @@ class DataProcessorNew():
                     windowed_df = self.burst_in_window_pattern_simple(df, time_resolution_us).drop(columns=['window time'])
                     sample = (windowed_df.T).reset_index()
                     sample['label'] = int(key)
+                    sample['video_name'] = os.path.basename(ds)
                     if flag:
                         aggregated_df = sample
                         flag = False   
@@ -166,8 +171,18 @@ class DataProcessorNew():
         aggregated_df.fillna(0, inplace=True)
         ## Move the label column to the end
         column_to_move = aggregated_df.pop('label')
+        # Remove columns from the end of the dataframe that only contain zeros
+        drop_indices = []
+        for i in range(len(aggregated_df.columns)-1, 0, -1):
+            if aggregated_df.iloc[:,i].sum() == 0:
+                    drop_indices.append(i)
+            else:
+                break
+        aggregated_df.drop(aggregated_df.columns[drop_indices], axis=1, inplace=True)
         aggregated_df.insert(len(aggregated_df.columns), 'label', column_to_move)
-        return aggregated_df.astype(int)
+        column_to_move = aggregated_df.pop('video_name')
+        aggregated_df.insert(len(aggregated_df.columns), 'video_name', column_to_move)
+        return aggregated_df
 
 
 

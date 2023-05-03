@@ -29,7 +29,8 @@ def gaussian_mechanism_rdp(value, l2_sensitivity, noise_multiplier ):
   DP_value = value + np.random.normal(mu, sigma, 1)[0]
   return DP_value
 
-def queues_pull_DP(queues_list, epsilon, sensitivity, DP_mechanism, noise_multiplier=1, min_DP_size = 0, max_DP_size = 10e6):
+def queues_pull_DP(queues_list, epsilon, sensitivity, DP_mechanism, noise_multiplier, min_DP_size, max_DP_size):
+  
   DP_data_sizes = []
   dummy_sizes = []
   for i in range(len(queues_list)):
@@ -105,7 +106,7 @@ def get_all_assigned_epsilons(wPrivacy_modules):
 #   return private_df
 
 def get_noise_multiplier(total_loss, num_of_queries, alphas, delta):
-  threshold = 0.01
+  threshold = 0.0001
   tmp_ans = 0
   min_ans = 0
   max_ans = 1000

@@ -1,0 +1,29 @@
+{ 
+  "run_type": "experiment",
+  "experiment" : "number_of_traces_vs_overhead_web",
+  "setup" : "realistic",
+  "num_of_unique_streams" : 96,
+  "num_of_traces_per_stream" : 100,
+  "filtering_type" : "deterministic",
+
+  "transport_type" : "DP_dynamic",
+  "DP_mechanism" : "Gaussian_rdp",
+  "min_video_num": 1,
+  "max_video_num": 1000,
+  "num_of_video_nums": 990,
+  "privacy_losses": [1, 2, 4, 8, 16], 
+  "delta" : 1e-6,
+  "sensitivity" : 150e3,
+  "sensitivity_fpa": 80e6, 
+  "min_dp_decision": 0,
+  "app_time_resolution_us" : 2e4,
+  "middlebox_period_us" : 2e4,
+  "privacy_window_size_s" : 1,
+
+  "data_source" : "memory",
+  "load_data_dir": "/home/ubuntu/csvs_web/cache",
+  "results_dir" : "/home/ubuntu/results/",  
+  "max_num_of_unique_streams" : 96,
+  "max_num_of_traces_per_stream" : 100,
+  "data_time_resolution_us" : 2e4
+}

@@ -44,7 +44,6 @@ def data_loader_realistic(data_time_resolution_us, data_dir = None, load_from = 
         print("Please specify the data source you want to load from. ('memory' or 'raw_data')")
         df = None
     return df
-
 def data_saver(df, data_dir, data_time_resolution_us, num_classes):
     ensure_dir(data_dir)
     data_path = os.path.join(data_dir, 'data_trace_w_' + str(int(data_time_resolution_us)) + '_c_'+ str(int(num_classes)) + '.p')
@@ -80,13 +79,13 @@ def data_filter_deterministic(config: configlib.Config, df):
     num_of_traces_per_stream = config.num_of_traces_per_stream
     max_num_of_traces_per_stream = config.max_num_of_traces_per_stream
 
-    print(type(num_of_unique_streams))
-    print(type(df['label'][0])) 
+    # print(type(num_of_unique_streams))
+    # print(type(df['label'][0])) 
     # Filter the dataframe based on the random labels
     filtered_df = df[df['label'] < num_of_unique_streams] 
     
     # From every unique label, select a num_of_traces_per_stream number of traces
-    print(num_of_traces_per_stream)
+    # print(num_of_traces_per_stream)
     filtered_df = filtered_df.groupby('label').apply(lambda x: x.sample(n=num_of_traces_per_stream, replace=False)) 
     
     # map the labels to the new labels
@@ -133,3 +132,19 @@ def ensure_dir(file_path):
     directory = os.path.dirname(file_path)
     if not os.path.exists(directory):
         os.makedirs(directory)
+        
+def get_data_filter_function(config):
+    if config.filtering_type == 'deterministic':
+        return data_filter_deterministic
+    if config.filtering_type == 'stochastic':
+        return data_filter_stochastic
+    else:
+        raise NotImplementedError("Filtering type not implemented")
+    
+    
+def prune_data(config: configlib.Config, df):
+   if (config.experiment == "noise_multiplier_vs_overhead_video" or config.experiment == "number_of_traces_vs_overhead_video"):
+       return df
+   else:
+       tmp_df = df.drop(columns = ['video_name'])
+       return tmp_df 
