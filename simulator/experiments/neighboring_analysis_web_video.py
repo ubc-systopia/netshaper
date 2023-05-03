@@ -97,63 +97,42 @@ def mean_form_dict(data):
         total_count += value
 
     # Calculate the mean
+    
     mean = total_sum / total_count
     return mean
 
+
+def max_from_dict(data):
+    return max(data.keys())
+
+def min_from_dict(data):
+    return min(data.keys())
+
+def cdf_from_dict(data):
+    """
+    Calculate the CDF from a dictionary that maps values to their frequency.
+    """
+    sorted_items = sorted(data.items())
+    print(sorted_items[0])
+    total_count = sum(data.values())
+    cumulative_count = 0
+    cdf = []
+    for value, count in sorted_items:
+        cumulative_count += count
+        cdf.append((value, cumulative_count / total_count))
+
+    return cdf
+
+
 def neighboring_analysis(config:configlib, df):
     df = data_filter_deterministic(config, df)
-    print(df.shape)
-    # Get the distance between queue states for average of videos
-    # df_mean = df.groupby('label').mean()
-    # print(df_mean.shape)
-    # arr_mean = convert_df_to_array(df_mean)
-    # # m, v, k = queue_mutual_distance_stats(arr_mean)
-    # # sigma = np.sqrt(v / (k - 1))
-    # # print("m: ", m)
-    # print("sigma: ", sigma)
-
-    # print("shape of dataframe", df.shape)
-    # arr = np.reshape(convert_df_to_array(df), (-1)) 
-    # print("max queue size", np.max(arr)/1e3)
-    # print("min queue size", np.min(arr)/1e3)
-
-    # index = np.where(arr <10e3)
-    # print(index)
-    # y = np.delete(arr, index) 
-    # print()
-    # print(np.min(y))
-    # queue_values = np.reshape(y, (-1)) 
-
-    # plt.figure()
-    # plt.hist(queue_values/1e3, bins=100, density=True) 
-    # plt.xlabel("Queue Size (in KB)")
-    # plt.savefig("results/queue_size_5e5.pdf")
-
-    # Get the distribution of distances between queue states for average of videos
-    # dists = np.array(queue_mutual_distance_aligned(arr_mean)) 
-    # # Plot the histogram of the distances as a distribution
-
-    # print(np.min(dists))
-    # plt.figure()
-    # plt.hist(dists/1e3, bins=100, density=True)
-    # plt.xlabel("Distance between two queue states (in KB)")
-    # plt.savefig("results/queue_mutual_distance_5e5.pdf")
-    # print("average queue distance (in KB)", np.mean(dists)/1e3) 
-
-
-    df_average = df.sum(axis=1).mean()
-    
-    print(df_average/1e6)
-    
  
 
 
 
     plt.figure()
-    # For every video, get all distances from all other videos 
+    # For every trace, get all distances from all other videos 
     arr_all = convert_df_to_array(df)
-    print(arr_all.shape)
-    print("max queue size", max_queue_size(arr_all))
     dists_traces = []
     with tqdm(total=arr_all.shape[0], desc="Calculating Trace and Queue Distances: ") as pbar:
         for i in range(arr_all.shape[0]):
@@ -163,33 +142,49 @@ def neighboring_analysis(config:configlib, df):
             get_distance_from_all_queues_aligned(tmp_arr, arr_all[i])
             pbar.update(1)
     dists_traces = np.reshape(np.array(dists_traces), (-1))
-    # Get the distribution of distances between videos for all videos
-    plt.hist(dists_traces/1e6, bins=100, density=True)
-    print("average video distance (in MB)", np.mean(dists_traces)/1e6)
-    print("median video distance (in MB)", np.median(dists_traces)/1e6)
-    print("25th percentile video distance (in MB)", np.percentile(dists_traces, 25)/1e6)
-    print("75th percentile video distance (in MB)", np.percentile(dists_traces, 75)/1e6)
-    print("max video distance (in MB)", np.max(dists_traces)/1e6)
-    print("95th percentile video distance (in MB)", np.percentile(dists_traces, 95)/1e6)
-    plt.xlabel("Distance between two video trace (in MB)")
-    plt.savefig("results/video_mutual_distance_1e6.pdf")
+    results = {}
+    
+    dists_traces_MB = dists_traces/1e6
+    results['trace_distance_min'] = np.min(dists_traces_MB)
+    results['trace_distance_max'] = np.max(dists_traces_MB)
+    results['trace_distance_25th'] = np.percentile(dists_traces_MB, 25)
+    results['trace_distance_50th'] = np.percentile(dists_traces_MB, 50)
+    results['trace_distance_75th'] = np.percentile(dists_traces_MB, 75)
+    results['trace_distance_mean'] = np.mean(dists_traces_MB) 
+    results['DP_interval_us'] =  config.data_time_resolution_us  
+    counts, bin_edges = np.histogram(dists_traces_MB, bins=len(dists_traces_MB), density=True)
+    results['traces_bin_edges'] = bin_edges.tolist()
+    results['trace_distance_cdf'] = np.cumsum(counts)
+
+    
+    print("average trace distance (in MB)", np.mean(dists_traces)/1e6)
+    print("median trace distance (in MB)", np.median(dists_traces)/1e6)
+    print("25th percentile trace distance (in MB)", np.percentile(dists_traces, 25)/1e6)
+    print("75th percentile trace distance (in MB)", np.percentile(dists_traces, 75)/1e6)
+    print("85th percentile trace distance (in MB)", np.percentile(dists_traces, 85)/1e6)
+    print("90th percentile trace distance (in MB)", np.percentile(dists_traces, 90)/1e6)
+    print("95th percentile trace distance (in MB)", np.percentile(dists_traces, 95)/1e6)
     
     
 
-
-    # plt.figure()
-    # plt.hist(dists_queues/1e3, bins=100, density=True)
-    # # plt.xlabel("Distance between two queue states (in KB)")
-    # # plt.savefig("results/queue_mutual_distance_1e6.pdf")
+    results['queue_distance_min'] = min_from_dict(queue_distances)
+    results['queue_distance_max'] = max_from_dict(queue_distances)
+    results['queue_distance_25th'] = percentile_from_dict(queue_distances, 0.25)
+    results['queue_distance_50th'] = percentile_from_dict(queue_distances, 0.5)
+    results['queue_distance_75th'] = percentile_from_dict(queue_distances, 0.75)
+    results['queue_distance_cdf'] = cdf_from_dict(queue_distances)
+    results['queue_distance_mean'] = mean_form_dict(queue_distances)
 
     print("average queue distance (in KB)", (mean_form_dict(queue_distances))/1e3) 
     print("median queue distance (in KB)", percentile_from_dict(queue_distances, 0.5)/1e3) 
     print("25th percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.25)/1e3)
     print("75th percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.75)/1e3)
-    print("85 percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.85)/1e3)
+    print("85th percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.85)/1e3)
     print("90th percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.9)/1e3)
+    print("95th percentile queue distance (in KB)", percentile_from_dict(queue_distances, 0.95)/1e3)
+    print("max queue distance (in KB)", max_from_dict(queue_distances)/1e3)
     # # plot the box plot of queue distances 
     # plt.figure()
     # plt.boxplot(dists_queues/1e3)
     # plt.savefig("results/queue_mutual_distance_boxplot_1e6.pdf")
-    # return {}, {}
+    return {}, results
