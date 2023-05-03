@@ -2,8 +2,8 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_QUIC_RECEIVER_H
-#define MINESVPN_QUIC_RECEIVER_H
+#ifndef MINESVPN_QUIC_SERVER_H
+#define MINESVPN_QUIC_SERVER_H
 
 #ifndef UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(X) (void)(X)
@@ -15,7 +15,7 @@
 #include "../Common.h"
 
 namespace QUIC {
-  class Receiver {
+  class Server {
   public:
     /**
      * @brief Default constructor
@@ -30,23 +30,22 @@ namespace QUIC {
      * @param [opt] idleTimeoutMs The time after which the connection will be
      * closed
      */
-    Receiver(const std::string &certFile, const std::string &keyFile,
-             int port = 4567, std::function<void(MsQuicStream *stream,
-                                                 uint8_t *buffer,
-                                                 size_t length)> onReceiveFunc
+    Server(const std::string &certFile, const std::string &keyFile,
+           int port = 4567, std::function<void(MsQuicStream *stream,
+                                               uint8_t *buffer,
+                                               size_t length)> onReceiveFunc
     = [](auto &&...) {},
-             logLevels _logLevel = DEBUG, int maxPeerStreams = 1,
-             uint64_t idleTimeoutMs = 1000);
+           logLevels _logLevel = DEBUG, int maxPeerStreams = 1,
+           uint64_t idleTimeoutMs = 1000);
 
     /**
-     * @brief Start Listening on this receiver
+     * @brief Start Listening on this server
      */
     void startListening();
 
     /**
-     * @brief Stop Listening on this receiver. You can start again by
-     * calling
-     * startListening() anytime on the Receiver object
+     * @brief Stop Listening on this server. You can start again by
+     * calling startListening() anytime on the Server object
      */
     void stopListening();
 
@@ -99,7 +98,7 @@ namespace QUIC {
      * @brief Callback handler for all QUIC Events on the address we are
      * listening at
      * @param connection The connection which triggered the event
-     * @param context The Receiver class that opened this connection
+     * @param context The Server class that opened this connection
      * @param event The event that occurred
      * @return QUIC_STATUS (SUCCESS/FAIL)
      */
@@ -110,7 +109,7 @@ namespace QUIC {
     /**
      * @brief Callback handler for all QUIC Events on the given stream
      * @param stream The stream on which the event occurred
-     * @param context The Receiver class that opened this connection
+     * @param context The Server class that opened this connection
      * @param event The event that occurred
      * @return QUIC_STATUS (SUCCESS/FAIL)
      */
@@ -128,6 +127,7 @@ namespace QUIC {
 
     /**
      * @brief The function that is called on each buffer that is received
+     * @param stream The stream on which data was received
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
@@ -136,4 +136,4 @@ namespace QUIC {
   };
 }
 
-#endif //MINESVPN_QUIC_RECEIVER_H
+#endif //MINESVPN_QUIC_SERVER_H

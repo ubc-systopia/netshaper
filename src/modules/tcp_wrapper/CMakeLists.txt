@@ -1,4 +1,4 @@
-add_library(TCPWrapper STATIC Sender.cpp Receiver.cpp)
+add_library(TCPWrapper STATIC Client.cpp Server.cpp)
 
 # Build example
 #add_executable(exampleTCPWrapper example.cpp)

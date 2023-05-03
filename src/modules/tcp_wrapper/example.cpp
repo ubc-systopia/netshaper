@@ -2,31 +2,31 @@
 // Created by Rut Vora
 //
 
-#include "Sender.h"
-#include "Receiver.h"
-#include <string.h>
+#include "Client.h"
+#include "Server.h"
+#include <cstring>
 
-TCP::Receiver *receiver;
-TCP::Sender *sender;
+TCP::Server *server;
+TCP::Client *client;
 
 int clientSocket;
 
-bool receiverCallback(int fromSocket, std::string &clientAddress,
-                      uint8_t *buffer, size_t length, enum
-                          connectionStatus connStatus) {
+bool serverCallback(int fromSocket, std::string &clientAddress,
+                    uint8_t *buffer, size_t length, enum
+                        connectionStatus connStatus) {
   (void) (clientAddress);
   clientSocket = fromSocket;
   if (connStatus != ONGOING) return true;
-  std::cout << "Receiver callback..." << std::endl;
-  return sender->sendData(buffer, length) > 0;
+  std::cout << "Server callback..." << std::endl;
+  return client->sendData(buffer, length) > 0;
 }
 
-ssize_t senderCallback(TCP::Sender *receivedResponseFrom,
+ssize_t clientCallback(TCP::Client *receivedResponseFrom,
                        uint8_t *buffer, size_t length,
                        connectionStatus connStatus) {
   (void) (connStatus);
   (void) (receivedResponseFrom);
-  return receiver->sendData(clientSocket, buffer, length);
+  return server->sendData(clientSocket, buffer, length);
 }
 
 int main() {
@@ -42,10 +42,10 @@ int main() {
   std::cin >> remotePort;
 
 
-  receiver = new TCP::Receiver{"", 8000, receiverCallback};
-  sender = new TCP::Sender{remoteHost, remotePort, senderCallback};
+  server = new TCP::Server{"", 8000, serverCallback};
+  client = new TCP::Client{remoteHost, remotePort, clientCallback};
 
-  receiver->startListening();
+  server->startListening();
 
   std::string str;
   std::cin >> str;

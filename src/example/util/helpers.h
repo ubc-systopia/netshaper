@@ -17,6 +17,9 @@
 #include <unordered_map>
 
 namespace helpers {
+  /**
+   * @brief Stores the queue pair (toShaped and fromShaped)
+   */
   struct QueuePair {
     LamportQueue *fromShaped;
     LamportQueue *toShaped;
@@ -34,6 +37,10 @@ namespace helpers {
     }
   };
 
+  /**
+   * @brief Class that stores signal information (which queue has a new
+   * client or which queue's client disconnected
+   */
   class SignalInfo {
   private:
     LamportQueue signalQueueToShaped{UINT64_MAX};
@@ -51,15 +58,36 @@ namespace helpers {
       enum connectionStatus connStatus;
     };
 
+    /**
+     * @brief Dequeue the signal (SYN or FIN) from given direction (to or
+     * from shaped)
+     * @param direction The direction of the signal
+     * @param info The signal and the queue associated with it
+     * @return
+     */
     bool dequeue(Direction direction, SignalInfo::queueInfo &info);
 
+    /**
+     * @brief Enqueue the signal (SYN or FIN) in given direction (to or from
+     * shaped)
+     * @param direction The direction of the signal
+     * @param info The signal and the queue associated with it
+     * @return
+     */
     ssize_t enqueue(Direction direction, queueInfo &info);
   };
 
 
+  /**
+   * @brief Types of stream we support
+   */
   enum StreamType {
     Control, Dummy, Data
   };
+
+  /**
+   * @brief The control message sent from one peer to the other peer
+   */
   struct ControlMessage {
     uint64_t streamID{QUIC_UINT62_MAX};
     enum StreamType streamType{};
@@ -77,6 +105,9 @@ namespace helpers {
 
 /**
  * @brief Waits for signal and then processes it
+ * @param isShapedProcess Used to identify whether the process is the shaped
+ * or the unshaped process (only used when compiled with RECORD_STATS) to
+ * print/save the relevant statistics
  */
   void waitForSignal(bool isShapedProcess);
 
@@ -94,7 +125,7 @@ namespace helpers {
 
   /**
    * @brief Get the total data available to be sent out. We currently assume
-   * only one receiver
+   * only one end server
    * @param queuesToStream The unordered map to iterate over
    * @return The aggregated size of all queues
    */
@@ -115,6 +146,8 @@ namespace helpers {
    * aggregated size of
    * @param noiseGenerator The configured noise generator instance
    * @param decisionInterval The interval with which this loop will run
+   * @param mapLock The mapLock shared mutex used for locking the
+   * queuesToStream map
    */
 #ifdef SHAPING
   [[noreturn]]
@@ -137,6 +170,10 @@ namespace helpers {
    * @param sendingInterval The interval with which this loop should iterate
    * @param decisionInterval The interval at which the DP credit is updated.
    * This should be a multiple of decisionInterval
+   * @param strategy The sending strategy (when decisionInterval >= 2 *
+   * sendingInterval). Can be "BURST" or "UNIFORM"
+   * @param mapLock The mapLock shared mutex used for locking the
+   * queuesToStream map
    */
   [[noreturn]]
   void sendShapedData(std::atomic<size_t> *sendingCredit,

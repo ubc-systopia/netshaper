@@ -3,8 +3,8 @@
 //
 
 #include <sys/prctl.h>
-#include "UnshapedReceiver.h"
-#include "ShapedSender.h"
+#include "UnshapedServer.h"
+#include "ShapedClient.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <sched.h>
@@ -26,25 +26,25 @@ NLOHMANN_JSON_SERIALIZE_ENUM(sendingStrategy, {
 std::vector<int> unshapedCores{0, 1, 2, 3};
 std::vector<int> shapedCores{4, 5, 6, 7};
 
-UnshapedReceiver *unshapedReceiver = nullptr;
-ShapedSender *shapedSender = nullptr;
+UnshapedServer *unshapedServer = nullptr;
+ShapedClient *shapedClient = nullptr;
 // Load the API table. Necessary before any calls to MsQuic
 // It is defined as an extern const in "msquic.hpp"
 // This needs to be here (on the heap)
 const MsQuicApi *MsQuic;
 
 void handleQueueSignal(int signum) {
-//  if (unshapedReceiver != nullptr && shapedSender == nullptr) {
-//    unshapedReceiver->handleQueueSignal(signum);
+//  if (unshapedServer != nullptr && shapedClient == nullptr) {
+//    unshapedServer->handleQueueSignal(signum);
 //  } else
-  if (shapedSender != nullptr && unshapedReceiver == nullptr) {
-    shapedSender->handleQueueSignal(signum);
-  } else if (shapedSender == nullptr && unshapedReceiver != nullptr) {
-    unshapedReceiver->handleQueueSignal(signum);
+  if (shapedClient != nullptr && unshapedServer == nullptr) {
+    shapedClient->handleQueueSignal(signum);
+  } else if (shapedClient == nullptr && unshapedServer != nullptr) {
+    unshapedServer->handleQueueSignal(signum);
   } else {
-    if (unshapedReceiver != nullptr && shapedSender != nullptr)
+    if (unshapedServer != nullptr && shapedClient != nullptr)
       std::cerr << "Peer1: Both pointers present! " << getpid() << std::endl;
-    else if (unshapedReceiver == nullptr && shapedSender == nullptr)
+    else if (unshapedServer == nullptr && shapedClient == nullptr)
       std::cerr << "Peer1: Neither pointers present! " << getpid() << std::endl;
     else
       std::cerr << "Peer1: Huh? " << getpid() << std::endl;
@@ -82,101 +82,94 @@ int main() {
   }
   auto logLevel =
       static_cast<json>(config.value("logLevel", "WARNING")).get<logLevels>();
+  std::string appName = config.value("appName", "minesVPNPeer1");
   auto maxClients =
       static_cast<json>(config.value("maxClients", 40)).get<int>();
 
-  json shapedSenderConfig = config.value("shapedSender", json::parse(R"({})"));
-  json unshapedReceiverConfig = config.value("unshapedReceiver",
-                                             json::parse(R"({})"));
+  json shapedClientConfig = config.value("shapedClient", json::parse(R"({})"));
+  json unshapedServerConfig = config.value("unshapedServer",
+                                           json::parse(R"({})"));
 
-  // Load shapedSenderConfig
-  std::string peer2Addr = shapedSenderConfig.value("peer2Addr", "localhost");
+  // Load shapedClientConfig
+  std::string peer2Addr = shapedClientConfig.value("peer2Addr", "localhost");
   auto peer2Port =
-      static_cast<json>(shapedSenderConfig.value("peer2Port",
+      static_cast<json>(shapedClientConfig.value("peer2Port",
                                                  4567)).get<uint16_t>();
   auto noiseMultiplier =
-      static_cast<json>(shapedSenderConfig.value("noiseMultiplier",
+      static_cast<json>(shapedClientConfig.value("noiseMultiplier",
                                                  38)).get<double>();
   auto sensitivity =
-      static_cast<json>(shapedSenderConfig.value("sensitivity",
+      static_cast<json>(shapedClientConfig.value("sensitivity",
                                                  500000)).get<double>();
   auto maxDecisionSize =
-      static_cast<json>(shapedSenderConfig.value("maxDecisionSize",
+      static_cast<json>(shapedClientConfig.value("maxDecisionSize",
                                                  500000)).get<uint64_t>();
   auto minDecisionSize =
-      static_cast<json>(shapedSenderConfig.value("minDecisionSize",
+      static_cast<json>(shapedClientConfig.value("minDecisionSize",
                                                  0)).get<uint64_t>();
-  std::string appName = shapedSenderConfig.value("appName", "minesVPNPeer1");
+
   auto DPCreditorLoopInterval =
-      static_cast<json>(shapedSenderConfig.value("DPCreditorLoopInterval",
+      static_cast<json>(shapedClientConfig.value("DPCreditorLoopInterval",
                                                  50000)).get<__useconds_t>();
-  auto senderLoopInterval =
-      static_cast<json>(shapedSenderConfig.value("senderLoopInterval",
+  auto sendingLoopInterval =
+      static_cast<json>(shapedClientConfig.value("sendingLoopInterval",
                                                  50000)).get<__useconds_t>();
 
-  if (DPCreditorLoopInterval < senderLoopInterval) {
+  if (DPCreditorLoopInterval < sendingLoopInterval) {
     std::cerr
-        << "DPCreditorLoopInterval should be a multiple of senderLoopInterval"
+        << "DPCreditorLoopInterval should be a multiple of sendingLoopInterval"
         << std::endl;
     exit(1);
   } else {
-    auto division = DPCreditorLoopInterval / senderLoopInterval;
-    if (division * senderLoopInterval != DPCreditorLoopInterval) {
+    auto division = DPCreditorLoopInterval / sendingLoopInterval;
+    if (division * sendingLoopInterval != DPCreditorLoopInterval) {
       std::cerr
-          << "DPCreditorLoopInterval should be a multiple of senderLoopInterval"
+          << "DPCreditorLoopInterval should be a multiple of sendingLoopInterval"
           << std::endl;
       exit(1);
     }
   }
   auto strategy =
-      static_cast<json>(shapedSenderConfig.value("sendingStrategy",
+      static_cast<json>(shapedClientConfig.value("sendingStrategy",
                                                  "BURST")).get<sendingStrategy>();
 
-  // Load unshapedReceiverConfig
-  std::string bindAddr = unshapedReceiverConfig.value("bindAddr", "");
+  // Load unshapedServerConfig
+  std::string bindAddr = unshapedServerConfig.value("bindAddr", "");
   auto bindPort =
-      static_cast<json>(unshapedReceiverConfig.value("bindPort",
-                                                     8000)).get<uint16_t>();
+      static_cast<json>(unshapedServerConfig.value("bindPort",
+                                                   8000)).get<uint16_t>();
   auto checkResponseLoopInterval =
-      static_cast<json>(unshapedReceiverConfig.value(
+      static_cast<json>(unshapedServerConfig.value(
           "checkResponseLoopInterval", 50000)).get<uint16_t>();
 
-  std::string serverAddr = unshapedReceiverConfig.value("serverAddr",
-                                                        "localhost:5555");
-
-//  std::cout << "Enter the maximum number of clients that should be supported:"
-//               " " << std::endl;
-//  std::cin >> maxClients;
-//
-//  std::cout << "Enter peer2's Address" << std::endl;
-//  std::cin >> peer2Addr;
-//
+  std::string serverAddr = unshapedServerConfig.value("serverAddr",
+                                                      "localhost:5555");
 
   std::signal(SIGUSR1, handleQueueSignal);
 
   if (fork() == 0) {
-    // Child process - Unshaped Receiver
+    // Child process - Unshaped Server
     setCPUAffinity(unshapedCores);
     // This process should get a SIGHUP when it's parent (the shaped
-    // sender) dies
+    // client) dies
     prctl(PR_SET_PDEATHSIG, SIGHUP);
-    unshapedReceiver = new UnshapedReceiver{appName, maxClients, bindAddr,
-                                            bindPort,
-                                            checkResponseLoopInterval,
-                                            senderLoopInterval,
-                                            logLevel, serverAddr};
+    unshapedServer = new UnshapedServer{appName, maxClients, bindAddr,
+                                        bindPort,
+                                        checkResponseLoopInterval,
+                                        sendingLoopInterval,
+                                        logLevel, serverAddr};
     // Wait for signal to exit
     waitForSignal(false);
   } else {
-    // Parent Process - Shaped Sender
+    // Parent Process - Shaped Client
     setCPUAffinity(shapedCores);
-    sleep(2); // Wait for unshapedReceiver to initialise
+    sleep(2); // Wait for unshapedServer to initialise
     MsQuic = new MsQuicApi{};
-    shapedSender = new ShapedSender{appName, maxClients, noiseMultiplier,
+    shapedClient = new ShapedClient{appName, maxClients, noiseMultiplier,
                                     sensitivity, maxDecisionSize,
                                     minDecisionSize, peer2Addr, peer2Port,
                                     DPCreditorLoopInterval,
-                                    senderLoopInterval,
+                                    sendingLoopInterval,
                                     checkResponseLoopInterval,
                                     logLevel, strategy};
     sleep(2);

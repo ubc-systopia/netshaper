@@ -2,7 +2,7 @@
 // Created by ubuntu on 12/29/22.
 //
 
-#include "Sender.h"
+#include "Client.h"
 
 #include <utility>
 #include <netdb.h>
@@ -22,8 +22,8 @@ extern std::vector<std::vector<uint64_t>>  tcpSend;
 #endif
 
 namespace TCP {
-  Sender::Sender(const std::string &remoteHost, int remotePort,
-                 std::function<void(TCP::Sender *,
+  Client::Client(const std::string &remoteHost, int remotePort,
+                 std::function<void(TCP::Client *,
                                     uint8_t *buffer, size_t length,
                                     connectionStatus connStatus)>
                  onReceiveFunc, logLevels level)
@@ -52,22 +52,22 @@ namespace TCP {
       }
     }
 
-    std::thread receive(&Sender::startReceiving, this);
+    std::thread receive(&Client::startReceiving, this);
     receive.detach();
 #ifdef DEBUGGING
-    log(DEBUG, "Sender initialised");
+    log(DEBUG, "Client initialised");
 #endif
   }
 
-  Sender::~Sender() {
+  Client::~Client() {
     close(remoteSocket);
 #ifdef DEBUGGING
-    log(DEBUG, "Sender at socket: " + std::to_string(remoteSocket)
+    log(DEBUG, "Client at socket: " + std::to_string(remoteSocket)
                + " destructed");
 #endif
   }
 
-  int Sender::connectToRemote() {
+  int Client::connectToRemote() {
     struct addrinfo hints{}, *res = nullptr;
 
     // getaddrinfo requires the port in the c_string format
@@ -107,7 +107,7 @@ namespace TCP {
     return 0;
   }
 
-  void Sender::startReceiving() {
+  void Client::startReceiving() {
     ssize_t bytesReceived;  // Number of bytes received
     uint8_t buffer[BUF_SIZE];
 
@@ -125,14 +125,14 @@ namespace TCP {
     }
 
     if (bytesReceived < 0) {
-      log(ERROR, "Sender at " + remoteHost + ":" + std::to_string(remotePort) +
+      log(ERROR, "Server at " + remoteHost + ":" + std::to_string(remotePort) +
                  " disconnected abruptly with error " + strerror(errno));
     }
     onReceive(this, nullptr, 0, FIN);
     shutdown(remoteSocket, SHUT_RD);
   }
 
-  ssize_t Sender::sendData(uint8_t *buffer, size_t length) {
+  ssize_t Client::sendData(uint8_t *buffer, size_t length) {
 #ifdef DEBUGGING
     std::stringstream ss;
     ss << "Sending data to socket: " << remoteSocket;
@@ -150,7 +150,7 @@ namespace TCP {
     return bytesSent;
   }
 
-  void Sender::log(logLevels level, const std::string &log) {
+  void Client::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
     auto localTime = std::localtime(&time);
     std::string levelStr;

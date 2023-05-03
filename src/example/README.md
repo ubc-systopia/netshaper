@@ -1,12 +1,12 @@
 # minesVPN Example Implementation
 
 Data flow direction:  
-`Client <--> UnshapedReceiver <--> ShapedSender <--> ShapedReceiver <-->
-UnshapedSender <--> Server`
+`Client <--> UnshapedServer <--> ShapedClient <--> ShapedServer <-->
+UnshapedClient <--> Server`
 
 There are majorly 4 components in minesVPN, divided into 2 pairs:  
-**Pair 1:** `UnshapedReceiver` and `ShapedSender`  
-**Pair 2:** `ShapedReceiver` and `UnshapedSender`
+**Pair 1:** `UnshapedServer` and `ShapedClient`  
+**Pair 2:** `ShapedServer` and `UnshapedClient`
 
 - Each component runs in a separate process
 - Each component in a pair has a shared memory with the other component in
@@ -21,44 +21,44 @@ There are majorly 4 components in minesVPN, divided into 2 pairs:
      There are two data queues per client (one for data moving in each
      direction).
 
-### Unshaped Receiver
+### Unshaped Server
 
-This component is based on the module `TCP Receiver` and acts as a TCP
+This component is based on the module `TCP Server` and acts as a TCP
 Server. It does the following tasks:
 
 - Listen for incoming TCP connections on a given port
 - Assign a new data queue pair to each new client that joins
-- Signal the `ShapedSender` whenever a new client joins, with the
+- Signal the `ShapedClient` whenever a new client joins, with the
   information on the assigned queue.
 - Whenever a connected client sends data, push it to the shared data queue
   in the outwards (toShaped) direction
 - Keep checking the inward (fromShaped) queues and if there's any data on it,
   send it to the respective client
-- Whenever a client disconnects, inform the `ShapedSender` to send a FIN onwards
+- Whenever a client disconnects, inform the `ShapedClient` to send a FIN onwards
 - If both end-hosts have sent a FIN, cleanup the assigned queues to be
   re-used later.
 
-### Shaped Sender
+### Shaped Client
 
-This component is based on the module `QUIC Sender` and acts as a QUIC Client.
+This component is based on the module `QUIC Client` and acts as a QUIC Client.
 It does the following tasks:
 
 - Connect to the other middlebox, establish a control, a dummy and multiple
   data streams (QUIC Streams)
-- Whenever `UnshapedReceiver` informs about a new client joining, send a SYN
+- Whenever `UnshapedServer` informs about a new client joining, send a SYN
   on the control stream
 - Periodically check the queue (toShaped) and make a DP decision, add that to
   `credit`
 - Periodically send data/dummy based on the DP `credit` available
 - If the other middlebox sends some data (e.g. response from the other host),
   push it to the relevant queue (fromShaped)
-- If `UnshapedReceiver` informs about a client termination, send a FIN on
+- If `UnshapedServer` informs about a client termination, send a FIN on
   the control stream
-- If a FIN is received on the control stream, inform `UnshapedReceiver` about it
+- If a FIN is received on the control stream, inform `UnshapedServer` about it
 
-### Shaped Receiver
+### Shaped Server
 
-This component is based on the module `QUIC Receiver` and acts as a QUIC Server.
+This component is based on the module `QUIC Server` and acts as a QUIC Server.
 It does the following tasks:
 
 - Listen for other middlebox connecting to it
@@ -72,13 +72,13 @@ It does the following tasks:
 - Forward FIN from either direction
 - If both directions have sent FINs, cleanup queues to be re-used later
 
-### Unshaped Sender
+### Unshaped Client
 
-This component is based on the module `TCP Sender` and acts as a TCP Client.
+This component is based on the module `TCP Client` and acts as a TCP Client.
 It does the following tasks:
 
 - Create a new connection to a server for each client that it gets
-  information about from the `ShapedReceiver`
+  information about from the `ShapedServer`
 - Periodically read queue (fromShaped) and send data to the server
 - Push data received from the server to the relevant queue (toShaped)
 - Forward FIN in either direction

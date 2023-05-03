@@ -1,7 +1,8 @@
 {
   "logLevel": "DEBUG",
   "maxClients": 40,
-  "shapedSender": {
+  "appName": "minesVPNPeer1",
+  "shapedClient": {
     "peer2Addr": "localhost",
     "peer2Port": 4567,
     "noiseMultiplier": 38,
@@ -9,10 +10,10 @@
     "maxDecisionSize": 500000,
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
-    "senderLoopInterval": 50000,
+    "sendingLoopInterval": 50000,
     "sendingStrategy": "BURST"
   },
-  "unshapedReceiver": {
+  "unshapedServer": {
     "bindAddr": "",
     "bindPort": 8000,
     "checkResponseLoopInterval": 50000,

@@ -2,25 +2,25 @@
 // Created by Rut Vora
 //
 
-#include "UnshapedSender.h"
+#include "UnshapedClient.h"
 
 #include <utility>
 #include <iomanip>
 
-UnshapedSender::UnshapedSender(std::string appName, int maxPeers,
+UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
                                int maxStreamsPerPeer,
                                __useconds_t checkQueuesInterval,
-                               __useconds_t shapedReceiverLoopInterval,
+                               __useconds_t shapedServerLoopInterval,
                                logLevels logLevel) :
     appName(std::move(appName)), logLevel(logLevel),
-    shapedReceiverLoopInterval(shapedReceiverLoopInterval), sigInfo(nullptr) {
-  queuesToSender =
-      new std::unordered_map<QueuePair, TCP::Sender *,
+    shapedServerLoopInterval(shapedServerLoopInterval), sigInfo(nullptr) {
+  queuesToClient =
+      new std::unordered_map<QueuePair, TCP::Client *,
           QueuePairHash>(maxStreamsPerPeer);
   pendingSignal =
       new std::unordered_map<uint64_t, connectionStatus>(maxStreamsPerPeer);
-  senderToQueues =
-      new std::unordered_map<TCP::Sender *, QueuePair>();
+  clientToQueues =
+      new std::unordered_map<TCP::Client *, QueuePair>();
 
   initialiseSHM(maxPeers * maxStreamsPerPeer);
 
@@ -31,7 +31,7 @@ UnshapedSender::UnshapedSender(std::string appName, int maxPeers,
   checkQueuesLoop.detach();
 }
 
-inline void UnshapedSender::initialiseSHM(int numStreams) {
+inline void UnshapedClient::initialiseSHM(int numStreams) {
   auto shmAddr = helpers::initialiseSHM(numStreams, appName);
 
   // The beginning of the SHM contains the signalStruct struct
@@ -46,16 +46,16 @@ inline void UnshapedSender::initialiseSHM(int numStreams) {
     auto queue2 =
         new(shmAddr + ((i + 1) * sizeof(class LamportQueue)))
             LamportQueue(i + 1);
-    (*queuesToSender)[{queue1, queue2}] = nullptr;
+    (*queuesToClient)[{queue1, queue2}] = nullptr;
   }
 }
 
-void UnshapedSender::onResponse(TCP::Sender *sender,
+void UnshapedClient::onResponse(TCP::Client *client,
                                 uint8_t *buffer, size_t length,
                                 connectionStatus connStatus) {
   if (connStatus == ONGOING) {
-    auto toShaped = (*senderToQueues)[sender].toShaped;
-//    log(DEBUG, "Received response on sender connected to (toShaped) " +
+    auto toShaped = (*clientToQueues)[client].toShaped;
+//    log(DEBUG, "Received response on client connected to (toShaped) " +
 //               std::to_string(toShaped->ID));
     while (toShaped->push(buffer, length) == -1) {
       log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
@@ -64,44 +64,44 @@ void UnshapedSender::onResponse(TCP::Sender *sender,
       // Sleep for some time. For performance reasons, this is the same as
       // the interval with which DP Logic thread runs in Shaped component.
       std::this_thread::sleep_for(
-          std::chrono::microseconds(shapedReceiverLoopInterval));
+          std::chrono::microseconds(shapedServerLoopInterval));
 #endif
     }
   } else if (connStatus == FIN) {
-    auto &queues = (*senderToQueues)[sender];
+    auto &queues = (*clientToQueues)[client];
     if (queues.fromShaped == nullptr || queues.toShaped == nullptr) {
-      log(WARNING, "No queues mapped to the sender!");
+      log(WARNING, "No queues mapped to the client!");
       return;
     }
 #ifdef DEBUGGING
-    log(DEBUG, "Received FIN from sender connected to queues {" +
+    log(DEBUG, "Received FIN from client connected to queues {" +
                std::to_string(queues.fromShaped->ID) + "," +
                std::to_string(queues.toShaped->ID) + "}");
 #endif
     queues.toShaped->markedForDeletion = true;
 //    if (queues.fromShaped->markedForDeletion
 //        && queues.fromShaped->size() == 0) {
-//      eraseMapping(sender);
+//      eraseMapping(client);
 //    }
     signalShapedProcess(queues.toShaped->ID, FIN);
   }
 }
 
-inline void UnshapedSender::eraseMapping(TCP::Sender *sender) {
-  auto queues = (*senderToQueues)[sender];
+inline void UnshapedClient::eraseMapping(TCP::Client *client) {
+  auto queues = (*clientToQueues)[client];
 #ifdef DEBUGGING
   log(DEBUG, "Clearing the mapping for the queues {" +
              std::to_string(queues.fromShaped->ID) + "," +
              std::to_string(queues.toShaped->ID) + "}");
 #endif
   // Clear mappings
-  (*senderToQueues).erase(sender);
-  delete sender;
-  (*queuesToSender)[queues] = nullptr;
+  (*clientToQueues).erase(client);
+  delete client;
+  (*queuesToClient)[queues] = nullptr;
 }
 
-QueuePair UnshapedSender::findQueuesByID(uint64_t queueID) {
-  for (const auto &[queues, sender]: *queuesToSender) {
+QueuePair UnshapedClient::findQueuesByID(uint64_t queueID) {
+  for (const auto &[queues, client]: *queuesToClient) {
     if (queues.fromShaped->ID == queueID) {
       return queues;
     }
@@ -109,7 +109,7 @@ QueuePair UnshapedSender::findQueuesByID(uint64_t queueID) {
   return {nullptr, nullptr};
 }
 
-void UnshapedSender::signalShapedProcess(uint64_t queueID,
+void UnshapedClient::signalShapedProcess(uint64_t queueID,
                                          connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
@@ -119,7 +119,7 @@ void UnshapedSender::signalShapedProcess(uint64_t queueID,
   kill(sigInfo->shaped, SIGUSR1);
 }
 
-void UnshapedSender::handleQueueSignal(int signum) {
+void UnshapedClient::handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
     struct SignalInfo::queueInfo queueInfo{};
@@ -137,17 +137,17 @@ void UnshapedSender::handleQueueSignal(int signum) {
                      std::forward<decltype(PH3)>(PH3),
                      std::forward<decltype(PH4)>(PH4));
         };
-        auto unshapedSender = new TCP::Sender{
+        auto unshapedClient = new TCP::Client{
             queues.fromShaped->addrPair.serverAddress,
             std::stoi(queues.fromShaped->addrPair.serverPort),
             onResponseFunc, logLevel};
 #ifdef DEBUGGING
-        log(DEBUG, "Starting a new sender paired to queues {" +
+        log(DEBUG, "Starting a new client paired to queues {" +
                    std::to_string(queues.fromShaped->ID) + "," +
                    std::to_string(queues.toShaped->ID) + "}");
 #endif
-        (*queuesToSender)[queues] = unshapedSender;
-        (*senderToQueues)[unshapedSender] = queues;
+        (*queuesToClient)[queues] = unshapedClient;
+        (*clientToQueues)[unshapedClient] = queues;
       } else if (queueInfo.connStatus == FIN) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
@@ -155,7 +155,7 @@ void UnshapedSender::handleQueueSignal(int signum) {
   }
 }
 
-[[noreturn]] void UnshapedSender::checkQueuesForData(__useconds_t interval) {
+[[noreturn]] void UnshapedClient::checkQueuesForData(__useconds_t interval) {
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
 
@@ -166,28 +166,28 @@ void UnshapedSender::handleQueueSignal(int signum) {
 #else
   while (true) {
 #endif
-    for (const auto &[queues, sender]: *queuesToSender) {
-      if (sender == nullptr) continue;
+    for (const auto &[queues, client]: *queuesToClient) {
+      if (client == nullptr) continue;
       auto size = queues.fromShaped->size();
       if (size == 0) {
         if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
 #ifdef DEBUGGING
-          log(DEBUG, "Sending FIN to sender connected to (fromShaped)" +
+          log(DEBUG, "Sending FIN to client connected to (fromShaped)" +
                      std::to_string(queues.fromShaped->ID));
 #endif
-          sender->sendFIN();
+          client->sendFIN();
           (*pendingSignal).erase(queues.fromShaped->ID);
           queues.fromShaped->sentFIN = true;
         }
         if (queues.fromShaped->markedForDeletion
             && queues.toShaped->markedForDeletion
             && queues.fromShaped->sentFIN) {
-          eraseMapping(sender);
+          eraseMapping(client);
         }
       } else {
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         queues.fromShaped->pop(buffer, size);
-        auto sentBytes = sender->sendData(buffer, size);
+        auto sentBytes = client->sendData(buffer, size);
         if ((unsigned long) sentBytes == size) {
           free(buffer);
         }
@@ -197,7 +197,7 @@ void UnshapedSender::handleQueueSignal(int signum) {
   }
 }
 
-void UnshapedSender::log(logLevels level, const std::string &log) {
+void UnshapedClient::log(logLevels level, const std::string &log) {
   if (logLevel < level) return;
   std::string levelStr;
   switch (level) {

@@ -2,8 +2,8 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_SHAPED_RECEIVER_H
-#define MINESVPN_SHAPED_RECEIVER_H
+#ifndef MINESVPN_SHAPED_SERVER_H
+#define MINESVPN_SHAPED_SERVER_H
 
 #include <sstream>
 #include <algorithm>
@@ -11,20 +11,20 @@
 #include <thread>
 #include <queue>
 #include <shared_mutex>
-#include "../../modules/quic_wrapper/Receiver.h"
+#include "../../modules/quic_wrapper/Server.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../../modules/shaper/NoiseGenerator.h"
 
 using namespace helpers;
 
-class ShapedReceiver {
+class ShapedServer {
 private:
   std::string appName;
   const logLevels logLevel;
-  QUIC::Receiver *shapedReceiver;
+  QUIC::Server *shapedServer;
   std::mutex logWriter;
-  __useconds_t unshapedSenderLoopInterval;
+  __useconds_t unshapedClientLoopInterval;
 
   std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
   std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash>
@@ -48,7 +48,7 @@ private:
   // before the dummy stream begins.
   QUIC_UINT62 dummyStreamID;
 
-  // The credit for sender such that it is the credit is maximum data it can send at any given time.
+  // The maximum bytes that should be sent at this moment
   std::atomic<size_t> sendingCredit;
   NoiseGenerator *noiseGenerator;
 
@@ -97,13 +97,17 @@ private:
  */
   inline bool assignQueues(MsQuicStream *stream);
 
+  /**
+   * @brief Erase mapping once the stream finishes sending
+   * @param stream The stream pointer to erase the mapping of
+   */
   inline void eraseMapping(MsQuicStream *stream);
 
 /**
  * @brief Handle receiving control messages from the other middleBox
  * @param ctrlStream The control stream this message was received on
  * @param buffer The buffer containing the messages
- * @Param length The length of the buffer
+ * @param length The length of the buffer
  */
   void handleControlMessages(MsQuicStream *ctrlStream,
                              uint8_t *buffer, size_t length);
@@ -131,40 +135,58 @@ private:
  */
   size_t sendData(size_t dataSize);
 
+/**
+ * @brief Log the comments passed by various functions
+ * @param level The level of the comment passed by the function
+ * @param log The string containing the actual log
+ */
   void log(logLevels level, const std::string &log);
 
 public:
   /**
-   * @brief Constructor for ShapedReceiver
+   * @brief Constructor for ShapedServer
    * @param appName The name of this application. Used as a key to initialise
    * shared memory with the unshaped process
-   * @param maxStreamsPerPeer The maximum number of TCP flows to support
    * @param serverCert The SSL Certificate of the server (path to file)
    * @param serverKey The SSL key of the server (path to file)
+   * @param maxPeers The maximum number of peers that should connect to this
+   * middlebox (more connections will be rejected)
+   * @param maxStreamsPerPeer The maximum number of TCP flows to support
    * @param bindPort The port to listen to
-   * @param idleTimeout The time (in milliseconds) after which an idle
-   * connection between the middleboxes will be terminated
    * @param noiseMultiplier The privacy budget (lower means more privacy but also
    * more overhead)
    * @param sensitivity The max "distance" between 2 queues that we want to
    * hide
+   * @param maxDecisionSize The maximum decision that the DP Decision
+   * algorithm should generate
+   * @param minDecisionSize The minimum decision that the DP Decision
+   * algorithm should generate
    * @param DPCreditorLoopInterval The interval (in microseconds) with which
    * the DP Creditor will credit the tokens
-   * @param senderLoopInterval The interval (in microseconds) with which the
-   * sender will read the tokens and send the shaped data
+   * @param sendingLoopInterval The interval (in microseconds) with which the
+   * sending loop will read the tokens and send the shaped data
+   * @param unshapedClientLoopInterval The interval (in microseconds) with which
+   * the queues will be read from the unshaped side (used for optimising wait
+   * time when queues are full)
+   * @param logLevel The level of logging you want (NOTE: For DEBUG logs, the
+   * code has to be compiled with the flag DEBUGGING)
+   * @param strategy The sending strategy when the DP decision interval >= 2
+   * * sending interval. Can be UNIFORM or BURST
+   * @param idleTimeout The time (in milliseconds) after which an idle
+   * connection between the middleboxes will be terminated
    */
-  ShapedReceiver(std::string appName,
-                 const std::string &serverCert, const std::string &serverKey,
-                 int maxPeers = 1, int maxStreamsPerPeer = 10,
-                 uint16_t bindPort = 4567,
-                 double noiseMultiplier = 0.01, double sensitivity = 100,
-                 uint64_t maxDecisionSize = 500000,
-                 uint64_t minDecisionSize = 0,
-                 __useconds_t DPCreditorLoopInterval = 50000,
-                 __useconds_t senderLoopInterval = 50000,
-                 __useconds_t unshapedSenderLoopInterval = 50000,
-                 logLevels logLevel = WARNING, sendingStrategy strategy = BURST,
-                 uint64_t idleTimeout = 100000);
+  ShapedServer(std::string appName,
+               const std::string &serverCert, const std::string &serverKey,
+               int maxPeers = 1, int maxStreamsPerPeer = 10,
+               uint16_t bindPort = 4567,
+               double noiseMultiplier = 0.01, double sensitivity = 100,
+               uint64_t maxDecisionSize = 500000,
+               uint64_t minDecisionSize = 0,
+               __useconds_t DPCreditorLoopInterval = 50000,
+               __useconds_t sendingLoopInterval = 50000,
+               __useconds_t unshapedClientLoopInterval = 50000,
+               logLevels logLevel = WARNING, sendingStrategy strategy = BURST,
+               uint64_t idleTimeout = 100000);
 
   /**
  * @brief Handle the queue status change signal sent by the unshaped process
@@ -174,4 +196,4 @@ public:
 };
 
 
-#endif //MINESVPN_SHAPED_RECEIVER_H
+#endif //MINESVPN_SHAPED_SERVER_H

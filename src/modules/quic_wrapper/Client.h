@@ -2,8 +2,8 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_QUIC_SENDER_H
-#define MINESVPN_QUIC_SENDER_H
+#ifndef MINESVPN_QUIC_CLIENT_H
+#define MINESVPN_QUIC_CLIENT_H
 
 #ifndef UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(X) (void)(X)
@@ -16,10 +16,10 @@
 #include <condition_variable>
 
 namespace QUIC {
-  class Sender {
+  class Client {
   public:
     /**
-     * @brief Start a new stream on this sender/connection
+     * @brief Start a new stream on this connection
      * @return The stream pointer
      */
     MsQuicStream *startStream();
@@ -27,24 +27,27 @@ namespace QUIC {
     /**
      * @brief Send data on the given stream
      * @param stream The stream to send the data on
-     * @param buffer The data to be sent
+     * @param data The data to be sent
+     * @param length The length of the data to be sent
      * @return
      */
     bool send(MsQuicStream *stream, uint8_t *data, size_t length);
 
     /**
-     * @brief Default constructor for the sender
-     * @param serverName The server/receiver to connect to
-     * @param port The port of the server/receiver to connect to
+     * @brief Default constructor for the client
+     * @param serverName The server to connect to
+     * @param port The port of the server to connect to
+     * @param onReceiveFunc The function to call when a message is received
+     * on a stream
      * @param noServerValidation Don't validate server certificate if true
      * @param [opt] _logLevel The log level (DEBUG, WARNING, ERROR)
      * @param [opt] _idleTimeoutMs The time after which the connection will be
      * closed
      */
-    Sender(const std::string &serverName, uint16_t port,
+    Client(const std::string &serverName, uint16_t port,
            std::function<void(MsQuicStream *stream,
                               uint8_t *buffer,
-                              size_t length)> onResponseFunc,
+                              size_t length)> onReceiveFunc,
            bool noServerValidation = false, logLevels _logLevel = DEBUG,
            uint64_t _idleTimeoutMs = 1000);
 
@@ -116,12 +119,13 @@ namespace QUIC {
 
     /**
      * @brief The function that is called on each buffer that is received
+     * @param stream The stream on which the data was received
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
     std::function<void(MsQuicStream *stream, uint8_t *buffer, size_t length)>
-        onResponse;
+        onReceive;
   };
 }
 
-#endif //MINESVPN_QUIC_SENDER_H
+#endif //MINESVPN_QUIC_CLIENT_H

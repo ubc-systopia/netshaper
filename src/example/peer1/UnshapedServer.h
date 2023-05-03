@@ -2,28 +2,28 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_UNSHAPED_RECEIVER_H
-#define MINESVPN_UNSHAPED_RECEIVER_H
+#ifndef MINESVPN_UNSHAPED_SERVER_H
+#define MINESVPN_UNSHAPED_SERVER_H
 
 #include <algorithm>
 #include <thread>
 #include <chrono>
 #include <queue>
 #include <shared_mutex>
-#include "../../modules/tcp_wrapper/Receiver.h"
+#include "../../modules/tcp_wrapper/Server.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../../modules/Common.h"
 #include "../util/helpers.h"
 
 using namespace helpers;
 
-class UnshapedReceiver {
+class UnshapedServer {
 private:
   std::string appName;
   const logLevels logLevel;
   std::string serverAddr;
   std::mutex logWriter;
-  __useconds_t shapedSenderLoopInterval;
+  __useconds_t shapedClientLoopInterval;
 
 // We fix the number of streams beforehand to avoid side-channels caused by
 // the additional size of the stream header.
@@ -43,7 +43,7 @@ private:
   std::mutex writeLock;
   std::shared_mutex mapLock;
 
-  TCP::Receiver *unshapedReceiver;
+  TCP::Server *unshapedServer;
 
   /**
  * @brief Read queues periodically and send the responses to the
@@ -56,11 +56,16 @@ private:
  * @brief assign a new queue for a new client
  * @param clientSocket The socket number of the new client
  * @param clientAddress The address:port of the new client
+ * @param serverAddress The address of the server the client wants to connect to
  * @return true if queue was assigned successfully
  */
   inline QueuePair assignQueue(int clientSocket, std::string &clientAddress,
                                std::string serverAddress = "127.0.0.1:5555");
 
+  /**
+   * @brief Erase the mapping of the socket to the queues
+   * @param socket The socket whose mapping has to be erased
+   */
   inline void eraseMapping(int socket);
 
   /**
@@ -71,7 +76,7 @@ private:
   void signalShapedProcess(uint64_t queueID, connectionStatus connStatus);
 
   /**
- * @brief onReceive function for received Data
+ * @brief serverOnReceive function for received Data
  * @param fromSocket The socket on which the data was received
  * @param clientAddress The address of the client from which the data was
  * received
@@ -95,7 +100,7 @@ private:
 
 public:
   /**
-   * @brief Constructor for the Unshaped Sender
+   * @brief Constructor for the Unshaped Server
    * @param appName The name of this application. Used as a key to initialise
    * shared memory with the shaped process
    * @param maxClients The maximum number of TCP flows to support
@@ -103,19 +108,19 @@ public:
    * @param bindPort The port to listen to TCP traffic on
    * @param checkResponseInterval The interval with which to check the queues
    * containing data received from the other middlebox
-   * @param shapedSenderLoopInterval The interval with which the shapedSender
+   * @param shapedClientLoopInterval The interval with which the shapedClient
    * sends the data (used only for efficiently checking when the queue
    * empties out in case it's full)
    * @param logLevel The log level you want to use
    * @param serverAddr The server (on the other side of the 2nd middlebox)
    * you want to connect to
    */
-  UnshapedReceiver(std::string &appName, int maxClients,
-                   std::string bindAddr = "", uint16_t bindPort = 8000,
-                   __useconds_t checkResponseInterval = 100000,
-                   __useconds_t shapedSenderLoopInterval = 50000,
-                   logLevels logLevel = WARNING,
-                   std::string serverAddr = "localhost:5555");
+  UnshapedServer(std::string &appName, int maxClients,
+                 std::string bindAddr = "", uint16_t bindPort = 8000,
+                 __useconds_t checkResponseInterval = 100000,
+                 __useconds_t shapedClientLoopInterval = 50000,
+                 logLevels logLevel = WARNING,
+                 std::string serverAddr = "localhost:5555");
 
   /**
  * @brief Handle the queue status change signal sent by the shaped process
@@ -126,4 +131,4 @@ public:
 };
 
 
-#endif //MINESVPN_UNSHAPED_RECEIVER_H
+#endif //MINESVPN_UNSHAPED_SERVER_H

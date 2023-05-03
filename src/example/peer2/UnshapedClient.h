@@ -2,29 +2,29 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_UNSHAPED_SENDER_H
-#define MINESVPN_UNSHAPED_SENDER_H
+#ifndef MINESVPN_UNSHAPED_CLIENT_H
+#define MINESVPN_UNSHAPED_CLIENT_H
 
 #include <thread>
 #include <algorithm>
-#include "../../modules/tcp_wrapper/Sender.h"
+#include "../../modules/tcp_wrapper/Client.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 
 using namespace helpers;
 
-class UnshapedSender {
+class UnshapedClient {
 private:
   std::string appName;
   const logLevels logLevel;
-  std::unordered_map<QueuePair, TCP::Sender *, QueuePairHash> *queuesToSender;
+  std::unordered_map<QueuePair, TCP::Client *, QueuePairHash> *queuesToClient;
   std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
   std::mutex logWriter;
-  __useconds_t shapedReceiverLoopInterval;
+  __useconds_t shapedServerLoopInterval;
 
-  // Sender to queue_in and queue_out. queue_out contains response received on
+  // Client to queue_in and queue_out. queue_out contains response received on
   // the sending socket
-  std::unordered_map<TCP::Sender *, QueuePair> *senderToQueues;
+  std::unordered_map<TCP::Client *, QueuePair> *clientToQueues;
 
   class SignalInfo *sigInfo;
 
@@ -37,17 +37,20 @@ private:
  */
   inline void initialiseSHM(int numStreams);
 
-// Push received response to queue dedicated to this sender
   /**
  * @brief Handle responses received on the sockets
- * @param sender The UnshapedSender (socket) on which the response was received
+ * @param client The UnshapedClient (socket) on which the response was received
  * @param buffer The buffer where the response is stored
  * @param length The length of the response
  */
-  void onResponse(TCP::Sender *sender,
+  void onResponse(TCP::Client *client,
                   uint8_t *buffer, size_t length, connectionStatus connStatus);
 
-  inline void eraseMapping(TCP::Sender *sender);
+  /**
+   * @brief Erase the mapping of the given client once both sides are done
+   * @param client The client whose mapping has to be erased
+   */
+  inline void eraseMapping(TCP::Client *client);
 
   /**
  * @brief Find a queue pair by the ID of it's "fromShaped" queue
@@ -69,14 +72,33 @@ private:
    */
   void signalShapedProcess(uint64_t queueID, connectionStatus connStatus);
 
+  /**
+   * @brief Log the comments passed by various functions
+   * @param level The level of the comment passed by the function
+   * @param log The string containing the actual log
+   */
   void log(logLevels level, const std::string &log);
 
 public:
 
-  explicit UnshapedSender(std::string appName, int maxPeers = 1,
+  /**
+   * @brief Constructor for the UnshapedClient
+   * @param appName The name of this application. Used as a key to initialise
+   * shared memory with the shaped process
+   * @param maxPeers The max number of peers that will be expected
+   * @param maxStreamsPerPeer The max number of streams permitted to be
+   * received from each peer
+   * @param checkQueuesInterval The interval with which to poll the queues
+   * for data
+   * @param shapedServerLoopInterval The interval with which the shaped
+   * component will send out data (used for optimising wait time when queues
+   * are full)
+   * @param logLevel The level of logs required
+   */
+  explicit UnshapedClient(std::string appName, int maxPeers = 1,
                           int maxStreamsPerPeer = 10,
                           __useconds_t checkQueuesInterval = 50000,
-                          __useconds_t shapedReceiverLoopInterval = 50000,
+                          __useconds_t shapedServerLoopInterval = 50000,
                           logLevels logLevel = WARNING);
 
   /**
@@ -87,4 +109,4 @@ public:
 };
 
 
-#endif //MINESVPN_UNSHAPED_SENDER_H
+#endif //MINESVPN_UNSHAPED_CLIENT_H

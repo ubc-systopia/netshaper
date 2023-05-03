@@ -2,7 +2,7 @@
 // Created by Rut Vora
 //
 
-#include "Sender.h"
+#include "Client.h"
 #include <sstream>
 #include <iostream>
 #include <utility>
@@ -10,7 +10,7 @@
 #include <iomanip>
 
 namespace QUIC {
-  void Sender::log(logLevels level, const std::string &log) {
+  void Client::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
     auto localTime = std::localtime(&time);
     std::string levelStr;
@@ -32,11 +32,11 @@ namespace QUIC {
     }
   }
 
-  QUIC_STATUS Sender::streamCallbackHandler(MsQuicStream *stream,
+  QUIC_STATUS Client::streamCallbackHandler(MsQuicStream *stream,
                                             void *context,
                                             QUIC_STREAM_EVENT *event) {
 
-    auto *sender = (Sender *) context;
+    auto *client = (Client *) context;
     const void *streamPtr = static_cast<const void *>(stream);
     std::stringstream ss;
     ss << "[Stream] " << streamPtr << " ";
@@ -44,13 +44,13 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
         stream->Shutdown(0);
         ss << "shut down as peer aborted";
-        sender->log(WARNING, ss.str());
+        client->log(WARNING, ss.str());
         break;
 
       case QUIC_STREAM_EVENT_PEER_ACCEPTED:
 #ifdef DEBUGGING
         ss << "Stream accepted by peer";
-        sender->log(DEBUG, ss.str());
+        client->log(DEBUG, ss.str());
 #endif
         break;
 
@@ -58,7 +58,7 @@ namespace QUIC {
         //Send a FIN
         stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
         ss << "shut down as peer sent a shutdown signal";
-        sender->log(WARNING, ss.str());
+        client->log(WARNING, ss.str());
         break;
 
       case QUIC_STREAM_EVENT_RECEIVE: {
@@ -67,13 +67,13 @@ namespace QUIC {
         ss << "Received data from peer: ";
 #endif
         for (uint32_t i = 0; i < bufferCount; i++) {
-          sender->onResponse(stream, event->RECEIVE.Buffers[i].Buffer,
-                             event->RECEIVE.Buffers[i].Length);
+          client->onReceive(stream, event->RECEIVE.Buffers[i].Buffer,
+                            event->RECEIVE.Buffers[i].Length);
 #ifdef DEBUGGING
           auto length = event->RECEIVE.Buffers[i].Length;
           ss << " \n\t Length: " << length;
         }
-        sender->log(DEBUG, ss.str());
+        client->log(DEBUG, ss.str());
 #else
         }
 #endif
@@ -84,7 +84,7 @@ namespace QUIC {
 //      free(event->SEND_COMPLETE.ClientContext);
 #ifdef DEBUGGING
         ss << "Finished a call to streamSend";
-        sender->log(DEBUG, ss.str());
+        client->log(DEBUG, ss.str());
 #endif
         break;
 
@@ -92,13 +92,13 @@ namespace QUIC {
         //Automatically handled as cleanUpAutoDelete is set when creating the
         // stream class instance in connectionHandler
         ss << "The stream was shutdown and cleaned up successfully";
-        sender->log(WARNING, ss.str());
+        client->log(WARNING, ss.str());
         break;
 
       case QUIC_STREAM_EVENT_START_COMPLETE:
 #ifdef DEBUGGING
         ss << "started";
-        sender->log(DEBUG, ss.str());
+        client->log(DEBUG, ss.str());
 #endif
         break;
 
@@ -109,11 +109,11 @@ namespace QUIC {
 
   }
 
-  QUIC_STATUS Sender::connectionHandler(MsQuicConnection *connection,
+  QUIC_STATUS Client::connectionHandler(MsQuicConnection *connection,
                                         void *context,
                                         QUIC_CONNECTION_EVENT *event) {
 
-    auto *sender = (Sender *) context;
+    auto *client = (Client *) context;
     MsQuicStream *stream;
     std::stringstream ss;
     const void *connectionPtr = static_cast<const void *>(connection);
@@ -124,10 +124,10 @@ namespace QUIC {
         // The handshake has completed for the connection.
 #ifdef DEBUGGING
         ss << "Connected";
-        sender->log(DEBUG, ss.str());
+        client->log(DEBUG, ss.str());
 #endif
-        sender->isConnected = true;
-        sender->connected.notify_all();
+        client->isConnected = true;
+        client->connected.notify_all();
         break;
 
       case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED:
@@ -138,7 +138,7 @@ namespace QUIC {
         {
           const void *streamPtr = static_cast<const void *>(stream);
           ss << "Stream " << streamPtr << " started";
-          sender->log(DEBUG, ss.str());
+          client->log(DEBUG, ss.str());
         }
 #endif
         break;
@@ -146,7 +146,7 @@ namespace QUIC {
       case QUIC_CONNECTION_EVENT_RESUMED:
 #ifdef DEBUGGING
         ss << "resumed";
-        sender->log(DEBUG, ss.str());
+        client->log(DEBUG, ss.str());
 #endif
         break;
 
@@ -157,7 +157,7 @@ namespace QUIC {
             .ResumptionTicketLength; i++) {
           ss << event->RESUMPTION_TICKET_RECEIVED.ResumptionTicket[i];
         }
-        sender->log(DEBUG, ss.str());
+        client->log(DEBUG, ss.str());
 #endif
         break;
 
@@ -165,12 +165,12 @@ namespace QUIC {
         connection->Close();
 
         ss << "closed successfully";
-        sender->log(WARNING, ss.str());
+        client->log(WARNING, ss.str());
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
         ss << "shut down by peer";
-        sender->log(WARNING, ss.str());
+        client->log(WARNING, ss.str());
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
@@ -183,11 +183,11 @@ namespace QUIC {
             QUIC_STATUS_CONNECTION_IDLE) {
 #ifdef DEBUGGING
           ss << "shutting down on idle";
-          sender->log(DEBUG, ss.str());
+          client->log(DEBUG, ss.str());
 #endif
         } else {
           ss << "shut down by underlying transport layer";
-          sender->log(WARNING, ss.str());
+          client->log(WARNING, ss.str());
         }
         break;
 
@@ -197,7 +197,7 @@ namespace QUIC {
     return QUIC_STATUS_SUCCESS;
   }
 
-  bool Sender::loadConfiguration(bool noServerValidation) {
+  bool Client::loadConfiguration(bool noServerValidation) {
     auto *settings = new MsQuicSettings;
     settings->SetIdleTimeoutMs(idleTimeoutMs);
 
@@ -224,16 +224,16 @@ namespace QUIC {
     return false;
   }
 
-  Sender::Sender(const std::string &serverName, uint16_t port,
+  Client::Client(const std::string &serverName, uint16_t port,
                  std::function<void(MsQuicStream *stream,
                                     uint8_t *buffer,
-                                    size_t length)> onResponseFunc,
+                                    size_t length)> onReceiveFunc,
                  bool noServerValidation,
                  logLevels _logLevel,
                  uint64_t _idleTimeoutMs) : idleTimeoutMs
                                                 (_idleTimeoutMs), configuration
                                                 (nullptr), connection(nullptr) {
-    onResponse = std::move(onResponseFunc);
+    onReceive = std::move(onReceiveFunc);
     logLevel = _logLevel;
     loadConfiguration(noServerValidation);
     connection = new MsQuicConnection(reg, autoCleanup ? CleanUpAutoDelete :
@@ -250,7 +250,7 @@ namespace QUIC {
 
   }
 
-  MsQuicStream *Sender::startStream() {
+  MsQuicStream *Client::startStream() {
     std::unique_lock<std::mutex> lock(connectionLock);
     connected.wait(lock, [this]() { return isConnected; });
     MsQuicStream *stream;
@@ -266,7 +266,7 @@ namespace QUIC {
     return stream;
   }
 
-  bool Sender::send(MsQuicStream *stream, uint8_t *data, size_t length) {
+  bool Client::send(MsQuicStream *stream, uint8_t *data, size_t length) {
     // Note: Valgrind reports this as a "definitely lost" block. But QUIC
     //  frees it from another thread after sending is complete
     auto SendBuffer =

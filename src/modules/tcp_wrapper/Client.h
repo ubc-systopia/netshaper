@@ -2,8 +2,8 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_TCP_SENDER_H
-#define MINESVPN_TCP_SENDER_H
+#ifndef MINESVPN_TCP_CLIENT_H
+#define MINESVPN_TCP_CLIENT_H
 
 #define BUF_SIZE 16384
 #define BACKLOG 20 // Number of pending connections the queue should hold
@@ -18,7 +18,7 @@
 #include "../Common.h"
 
 namespace TCP {
-  class Sender {
+  class Client {
   public:
     /**
      * @brief Default constructor for the ProxyListener
@@ -29,8 +29,8 @@ namespace TCP {
      * function by using std::bind or lambda functions
      * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
      */
-    Sender(const std::string &remoteHost, int remotePort,
-           std::function<void(TCP::Sender *, uint8_t *buffer,
+    Client(const std::string &remoteHost, int remotePort,
+           std::function<void(TCP::Client *, uint8_t *buffer,
                               size_t length, connectionStatus connStatus)>
            onReceiveFunc = [](
                auto &&...) {}, logLevels level = DEBUG);
@@ -43,11 +43,15 @@ namespace TCP {
      */
     ssize_t sendData(uint8_t *buffer, size_t length);
 
-    ~Sender();
+    ~Client();
 
+    /**
+     * @brief Close the write end of the socket (sends a FIN)
+     */
     inline void sendFIN() const {
       shutdown(remoteSocket, SHUT_WR);
     }
+
     int remoteSocket;
 
   private:
@@ -70,17 +74,20 @@ namespace TCP {
      */
     int connectToRemote();
 
-
+    /**
+     * @brief Loop to start receiving
+     */
     void startReceiving();
 
     /**
      * @brief The function that is called on each buffer that is received
+     * @param client The client which received the data
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
-    std::function<void(TCP::Sender *, uint8_t *buffer,
+    std::function<void(TCP::Client * client, uint8_t *buffer,
                        size_t length, connectionStatus connStatus)> onReceive;
   };
 }
 
-#endif //MINESVPN_TCP_SENDER_H
+#endif //MINESVPN_TCP_CLIENT_H

@@ -3,7 +3,7 @@
 //
 
 #include <iomanip>
-#include "ShapedSender.h"
+#include "ShapedClient.h"
 
 #ifdef RECORD_STATS
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
@@ -12,12 +12,12 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicOut;
 #endif
 
-ShapedSender::ShapedSender(std::string &appName, int maxClients,
+ShapedClient::ShapedClient(std::string &appName, int maxClients,
                            double noiseMultiplier, double sensitivity,
                            uint64_t maxDecisionSize, uint64_t minDecisionSize,
                            const std::string &peer2IP, uint16_t peer2Port,
                            __useconds_t DPCreditorLoopInterval,
-                           __useconds_t senderLoopInterval,
+                           __useconds_t sendingLoopInterval,
                            __useconds_t unshapedResponseLoopInterval,
                            logLevels logLevel, sendingStrategy strategy,
                            uint64_t idleTimeout) :
@@ -46,8 +46,8 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
 
   // Two middle-boxes are connected in a client-server setup, where peer1 middlebox is
   // the client and peer2 middlebox is the server. In middlebox 1 we have
-  // shapedSender and in middlebox 2 we have shapedReceiver
-  shapedSender = new QUIC::Sender{peer2IP, peer2Port, onResponseFunc,
+  // shapedClient and in middlebox 2 we have shapedServer
+  shapedClient = new QUIC::Client{peer2IP, peer2Port, onResponseFunc,
                                   true,
                                   logLevel,
                                   idleTimeout};
@@ -68,8 +68,6 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
                                DPCreditorLoopInterval, std::ref(mapLock));
   dpCreditorThread.detach();
 
-//  auto sendShapedData = std::bind(&ShapedSender::sendShapedData, this,
-//                                  std::placeholders::_1);
   std::thread sendingThread(helpers::sendShapedData, &sendingCredit,
                             queuesToStream,
                             [this](auto &&PH1) {
@@ -78,13 +76,13 @@ ShapedSender::ShapedSender(std::string &appName, int maxClients,
                             [this](auto &&PH1) {
                               sendData(std::forward<decltype(PH1)>(PH1));
                             },
-                            senderLoopInterval, DPCreditorLoopInterval,
+                            sendingLoopInterval, DPCreditorLoopInterval,
                             strategy, std::ref(mapLock));
 
   sendingThread.detach();
 }
 
-QueuePair ShapedSender::findQueuesByID(uint64_t queueID) {
+QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {
   for (const auto &[queues, stream]: *queuesToStream) {
     if (queues.toShaped->ID == queueID) {
       return queues;
@@ -93,7 +91,7 @@ QueuePair ShapedSender::findQueuesByID(uint64_t queueID) {
   return {nullptr, nullptr};
 }
 
-MsQuicStream *ShapedSender::findStreamByID(QUIC_UINT62 ID) {
+MsQuicStream *ShapedClient::findStreamByID(QUIC_UINT62 ID) {
   QUIC_UINT62 streamID;
   for (const auto &[stream, queues]: *streamToQueues) {
     if (stream == nullptr) continue;
@@ -103,7 +101,7 @@ MsQuicStream *ShapedSender::findStreamByID(QUIC_UINT62 ID) {
   return nullptr;
 }
 
-void ShapedSender::signalUnshapedProcess(uint64_t queueID,
+void ShapedClient::signalUnshapedProcess(uint64_t queueID,
                                          connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
@@ -113,7 +111,7 @@ void ShapedSender::signalUnshapedProcess(uint64_t queueID,
   kill(sigInfo->unshaped, SIGUSR1);
 }
 
-void ShapedSender::handleQueueSignal(int signum) {
+void ShapedClient::handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
     struct SignalInfo::queueInfo queueInfo{};
@@ -140,7 +138,7 @@ void ShapedSender::handleQueueSignal(int signum) {
                     queues.toShaped->addrPair.serverAddress);
         std::strcpy(message->addrPair.serverPort,
                     queues.toShaped->addrPair.serverPort);
-        shapedSender->send(controlStream,
+        shapedClient->send(controlStream,
                            reinterpret_cast<uint8_t *>(message),
                            sizeof(*message));
       } else if (queueInfo.connStatus == FIN) {
@@ -153,7 +151,7 @@ void ShapedSender::handleQueueSignal(int signum) {
   }
 }
 
-inline void ShapedSender::initialiseSHM() {
+inline void ShapedClient::initialiseSHM() {
   auto shmAddr = helpers::initialiseSHM(maxClients, appName, true);
 
   // The beginning of the SHM contains the signalStruct struct
@@ -171,7 +169,7 @@ inline void ShapedSender::initialiseSHM() {
         (LamportQueue *) (shmAddr + (i * sizeof(class LamportQueue)));
     auto queue2 =
         (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
-    auto stream = shapedSender->startStream();
+    auto stream = shapedClient->startStream();
 
     QUIC_UINT62 streamID;
     stream->GetID(&streamID);
@@ -186,7 +184,7 @@ inline void ShapedSender::initialiseSHM() {
   }
 }
 
-void ShapedSender::sendData(size_t dataSize) {
+void ShapedClient::sendData(size_t dataSize) {
   // TODO: Add prioritisation
   for (const auto &[queues, stream]: *queuesToStream) {
     auto toShaped = queues.toShaped;
@@ -209,7 +207,7 @@ void ShapedSender::sendData(size_t dataSize) {
 #endif
         message->streamType = Data;
         message->connStatus = FIN;
-        shapedSender->send(controlStream,
+        shapedClient->send(controlStream,
                            reinterpret_cast<uint8_t *>(message),
                            sizeof(*message));
         (*pendingSignal).erase(toShaped->ID);
@@ -224,19 +222,19 @@ void ShapedSender::sendData(size_t dataSize) {
     quicOut[queues.fromShaped->ID / 2]
         .push_back(std::chrono::steady_clock::now());
 #endif
-    shapedSender->send(stream, buffer, sizeToSend);
+    shapedClient->send(stream, buffer, sizeToSend);
     dataSize -= sizeToSend;
   }
 }
 
-void ShapedSender::sendDummy(size_t dummySize) {
+void ShapedClient::sendDummy(size_t dummySize) {
   auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
   memset(buffer, 0, dummySize);
-  shapedSender->send(dummyStream,
+  shapedClient->send(dummyStream,
                      buffer, dummySize);
 }
 
-void ShapedSender::handleControlMessages(uint8_t *buffer, size_t length) {
+void ShapedClient::handleControlMessages(uint8_t *buffer, size_t length) {
   if (length % sizeof(ControlMessage) != 0) {
     log(ERROR, "Received half a control message!");
     return;
@@ -262,7 +260,7 @@ void ShapedSender::handleControlMessages(uint8_t *buffer, size_t length) {
 }
 
 void
-ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
+ShapedClient::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
   if (stream == controlStream) {
     handleControlMessages(buffer, length);
     return;
@@ -298,8 +296,8 @@ ShapedSender::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
 
 }
 
-inline void ShapedSender::startControlStream() {
-  controlStream = shapedSender->startStream();
+inline void ShapedClient::startControlStream() {
+  controlStream = shapedClient->startStream();
   auto *message =
       reinterpret_cast<struct ControlMessage *>(calloc(1, sizeof(struct
           ControlMessage)));
@@ -307,7 +305,7 @@ inline void ShapedSender::startControlStream() {
   // save the control stream ID for later
   controlStreamID = message->streamID;
   message->streamType = Control;
-  shapedSender->send(controlStream,
+  shapedClient->send(controlStream,
                      reinterpret_cast<uint8_t *>(message),
                      sizeof(*message));
 #ifdef DEBUGGING
@@ -315,8 +313,8 @@ inline void ShapedSender::startControlStream() {
 #endif
 }
 
-inline void ShapedSender::startDummyStream() {
-  dummyStream = shapedSender->startStream();
+inline void ShapedClient::startDummyStream() {
+  dummyStream = shapedClient->startStream();
   auto *message =
       reinterpret_cast<struct ControlMessage *>(calloc(1, sizeof(struct
           ControlMessage)));
@@ -324,7 +322,7 @@ inline void ShapedSender::startDummyStream() {
   // save the dummy stream ID for later
   dummyStreamID = message->streamID;
   message->streamType = Dummy;
-  shapedSender->send(controlStream,
+  shapedClient->send(controlStream,
                      reinterpret_cast<uint8_t *>(message),
                      sizeof(*message));
 #ifdef DEBUGGING
@@ -334,7 +332,7 @@ inline void ShapedSender::startDummyStream() {
 
 }
 
-void ShapedSender::log(logLevels level, const std::string &log) {
+void ShapedClient::log(logLevels level, const std::string &log) {
   if (logLevel < level) return;
   std::string levelStr;
   switch (level) {

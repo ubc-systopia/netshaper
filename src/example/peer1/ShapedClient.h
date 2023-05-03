@@ -2,13 +2,13 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_SHAPED_SENDER_H
-#define MINESVPN_SHAPED_SENDER_H
+#ifndef MINESVPN_SHAPED_CLIENT_H
+#define MINESVPN_SHAPED_CLIENT_H
 
 #include <thread>
 #include <unordered_map>
 #include <csignal>
-#include "../../modules/quic_wrapper/Sender.h"
+#include "../../modules/quic_wrapper/Client.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../../modules/shaper/NoiseGenerator.h"
@@ -17,14 +17,14 @@
 
 using namespace helpers;
 
-class ShapedSender {
+class ShapedClient {
 private:
   std::string appName;
   const logLevels logLevel;
   std::mutex logWriter;
   __useconds_t unshapedResponseLoopInterval;
 
-  QUIC::Sender *shapedSender;
+  QUIC::Client *shapedClient;
 
 // We fix the number of streams beforehand to avoid side-channels caused by
 // the additional size of the stream header.
@@ -61,6 +61,11 @@ private:
  */
   QueuePair findQueuesByID(uint64_t queueID);
 
+  /**
+   * @brief Find a stream by it's ID
+   * @param ID The ID to look for
+   * @return The stream pointer corresponding to that ID
+   */
   MsQuicStream *findStreamByID(QUIC_UINT62 ID);
 
 
@@ -102,11 +107,16 @@ private:
    */
   void handleControlMessages(uint8_t *buffer, size_t length);
 
+  /**
+   * @brief Log the comments passed by various functions
+   * @param level The level of the comment passed by the function
+   * @param log The string containing the actual log
+   */
   void log(logLevels level, const std::string &log);
 
 public:
   /**
-   * @brief Constructor for the Shaped Sender
+   * @brief Constructor for the Shaped Client
    * @param appName The name of this application. Used as a key to initialise
    * shared memory with the unshaped process
    * @param maxClients The maximum number of TCP flows to support
@@ -114,26 +124,41 @@ public:
    * more overhead)
    * @param sensitivity The max "distance" between 2 queues that we want to
    * hide
+   * @param maxDecisionSize The maximum decision that the DP Decision
+   * algorithm should generate
+   * @param minDecisionSize The minimum decision that the DP Decision
+   * algorithm should generate
    * @param peer2IP The IP address of the other middlebox
    * @param peer2Port The port of the other middlebox
-   * @param idleTimeout The time (in milliseconds) after which an idle
-   * connection between the middleboxes will be terminated
    * @param DPCreditorLoopInterval The interval (in microseconds) with which
    * the DP Creditor will credit the tokens
-   * @param senderLoopInterval The interval (in microseconds) with which the
-   * sender will read the tokens and send the shaped data
+   * @param sendingLoopInterval The interval (in microseconds) with which the
+   * sending loop will read the tokens and send the shaped data
+   * @param unshapedResponseLoopInterval The interval (in microseconds) with which the
+   * queues will be read from the unshaped side (used for optimising wait
+   * time when queues are full)
+   * @param logLevel The level of logging you want (NOTE: For DEBUG logs, the
+   * code has to be compiled with the flag DEBUGGING)
+   * @param strategy The sending strategy when the DP decision interval >= 2
+   * * sending interval. Can be UNIFORM or BURST
+   * @param idleTimeout The time (in milliseconds) after which an idle
+   * connection between the middleboxes will be terminated
    */
-  ShapedSender(std::string &appName, int maxClients,
+  ShapedClient(std::string &appName, int maxClients,
                double noiseMultiplier = 38, double sensitivity = 500000,
                uint64_t maxDecisionSize = 500000, uint64_t minDecisionSize = 0,
                const std::string &peer2IP = "localhost",
                uint16_t peer2Port = 4567,
                __useconds_t DPCreditorLoopInterval = 50000,
-               __useconds_t senderLoopInterval = 50000,
+               __useconds_t sendingLoopInterval = 50000,
                __useconds_t unshapedResponseLoopInterval = 50000,
                logLevels logLevel = WARNING, sendingStrategy strategy = BURST,
                uint64_t idleTimeout = 100000);
 
+  /**
+   * @brief Send dummy of given size on the dummy stream
+   * @param dummySize The #bytes to send
+   */
   void sendDummy(size_t dummySize);
 
 /**
@@ -151,4 +176,4 @@ public:
 };
 
 
-#endif //MINESVPN_SHAPED_SENDER_H
+#endif //MINESVPN_SHAPED_CLIENT_H

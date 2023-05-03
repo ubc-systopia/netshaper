@@ -1,4 +1,4 @@
-add_library(QUICWrapper STATIC Sender.cpp Receiver.cpp)
+add_library(QUICWrapper STATIC Client.cpp Server.cpp)
 target_link_libraries(QUICWrapper PRIVATE msquic)
 
 # Build example

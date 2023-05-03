@@ -59,7 +59,8 @@ parameter is not present in the config file
 {
   "logLevel": "DEBUG",
   "maxClients": 40,
-  "shapedSender": {
+  "appName": "minesVPNPeer1",
+  "shapedClient": {
     "peer2Addr": "localhost",
     "peer2Port": 4567,
     "noiseMultiplier": 38,
@@ -67,10 +68,10 @@ parameter is not present in the config file
     "maxDecisionSize": 500000,
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
-    "senderLoopInterval": 50000,
+    "sendingLoopInterval": 50000,
     "sendingStrategy": "BURST"
   },
-  "unshapedReceiver": {
+  "unshapedServer": {
     "bindAddr": "",
     "bindPort": 8000,
     "checkResponseLoopInterval": 50000,
@@ -86,12 +87,14 @@ parameter is not present in the config file
 - `maxClients` is the maximum number of clients this system
   will support. The system will initialise exactly `maxClient` number of queue
   pairs.
-- `shapedSender` is a json object containing the parameters to configure the
-  shapedSender component
-- `unshapedReceiver` is a json object containing the parameters to configure the
-  unshapedReceiver component
+- `appName` is the name of this instance of the application (used as key for
+  creating/accessing shared memory between the shaped and unshaped components)
+- `shapedClient` is a json object containing the parameters to configure the
+  shapedClient component
+- `unshapedServer` is a json object containing the parameters to configure the
+  unshapedServer component
 
-#### shapedSender
+#### shapedClient
 
 - `peer2Addr` is the address where Peer 2 is hosted
 - `peer2Port` is the port which Peer 2 is listening on (QUIC Listener)
@@ -101,8 +104,8 @@ parameter is not present in the config file
   ensure we don't get a decision of "infinite")
 - `DPCreditorLoopInterval` is the time interval in microseconds with which the
   loop that reads the queue and adds to the "sending credit" should be run  
-  _Note: This should be a multiple of `senderLoopInterval`_
-- `senderLoopInterval` is the time interval in microseconds with which the
+  _Note: This should be a multiple of `sendingLoopInterval`_
+- `sendingLoopInterval` is the time interval in microseconds with which the
   loop that reads the "sending credit" and sends the data to Peer 2 should
   be run
 - `sendingStrategy` defines how to send the data when the DP Creditor loop
@@ -110,7 +113,7 @@ parameter is not present in the config file
   accepts are "BURST" (send all data ASAP) and "UNIFORM" (divide the credit
   equally across all intervals till the next decision time)
 
-#### unshapedReceiver
+#### unshapedServer
 
 - `bindAddr` is the address peer 1's TCP listener will listen on (for
   unshaped traffic to be proxy-ied via minesVPN). The default is "", which
@@ -133,7 +136,8 @@ parameter is not present in the config file
 {
   "logLevel": "DEBUG",
   "maxStreamsPerPeer": 40,
-  "shapedReceiver": {
+  "appName": "minesVPNPeer2",
+  "shapedServer": {
     "serverCert": "server.cert",
     "serverKey": "server.key",
     "listeningPort": 4567,
@@ -142,10 +146,10 @@ parameter is not present in the config file
     "maxDecisionSize": 500000,
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
-    "senderLoopInterval": 50000,
+    "sendingLoopInterval": 50000,
     "sendingStrategy": "BURST"
   },
-  "unshapedSender": {
+  "unshapedClient": {
     "checkQueuesInterval": 50000
   }
 }
@@ -159,12 +163,14 @@ parameter is not present in the config file
   system will support per peer. As minesVPN currently supports only 1 peer
   at a time, the system will initialise exactly  `maxStreamsPerPeer`  number of
   queue pairs.
-- `shapedSender` is a json object containing the parameters to configure the
-  shapedSender component
-- `unshapedReceiver` is a json object containing the parameters to configure the
-  unshapedReceiver component
+- `appName` is the name of this instance of the application (used as key for
+  creating/accessing shared memory between the shaped and unshaped components)
+- `shapedClient` is a json object containing the parameters to configure the
+  shapedClient component
+- `unshapedServer` is a json object containing the parameters to configure the
+  unshapedServer component
 
-#### shapedReceiver
+#### shapedServer
 
 - `serverCert` is the path to the server certificate file
 - `serverKey` is the path to the server key file  
@@ -177,16 +183,16 @@ parameter is not present in the config file
   ensure we don't get a decision of "infinite")
 - `DPCreditorLoopInterval` is the time interval in microseconds with which the
   loop that reads the queue and adds to the "sending credit" should be run  
-  _Note: This should be a multiple of `senderLoopInterval`_
-- `senderLoopInterval` is the time interval in microseconds with which the
-  loop that reads the "sending credit" and sends the data to Peer 2 should
+  _Note: This should be a multiple of `sendingLoopInterval`_
+- `sendingLoopInterval` is the time interval in microseconds with which the
+  loop that reads the "sending credit" and sends the data to Peer 1 should
   be run
 - `sendingStrategy` defines how to send the data when the DP Creditor loop
   is run at a higher interval than the sending loop. Currently, the values it
   accepts are "BURST" (send all data ASAP) and "UNIFORM" (divide the credit
   equally across all intervals till the next decision time)
 
-#### unshapedReceiver
+#### unshapedServer
 
 - `checkQueuesInterval` is the interval with which the queues will be
   checked for responses from the shaped component

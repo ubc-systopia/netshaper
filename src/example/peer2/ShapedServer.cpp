@@ -2,7 +2,7 @@
 // Created by Rut Vora
 //
 
-#include "ShapedReceiver.h"
+#include "ShapedServer.h"
 #include <utility>
 #include <iomanip>
 
@@ -13,21 +13,21 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicOut;
 #endif
 
-ShapedReceiver::ShapedReceiver(std::string appName,
-                               const std::string &serverCert,
-                               const std::string &serverKey,
-                               int maxPeers, int maxStreamsPerPeer,
-                               uint16_t bindPort,
-                               double noiseMultiplier, double sensitivity,
-                               uint64_t maxDecisionSize,
-                               uint64_t minDecisionSize,
-                               __useconds_t DPCreditorLoopInterval,
-                               __useconds_t senderLoopInterval,
-                               __useconds_t unshapedSenderLoopInterval,
-                               logLevels logLevel, sendingStrategy strategy,
-                               uint64_t idleTimeout) :
+ShapedServer::ShapedServer(std::string appName,
+                           const std::string &serverCert,
+                           const std::string &serverKey,
+                           int maxPeers, int maxStreamsPerPeer,
+                           uint16_t bindPort,
+                           double noiseMultiplier, double sensitivity,
+                           uint64_t maxDecisionSize,
+                           uint64_t minDecisionSize,
+                           __useconds_t DPCreditorLoopInterval,
+                           __useconds_t sendingLoopInterval,
+                           __useconds_t unshapedClientLoopInterval,
+                           logLevels logLevel, sendingStrategy strategy,
+                           uint64_t idleTimeout) :
     appName(std::move(appName)), logLevel(logLevel),
-    unshapedSenderLoopInterval(unshapedSenderLoopInterval), sigInfo(nullptr),
+    unshapedClientLoopInterval(unshapedClientLoopInterval), sigInfo(nullptr),
     controlStream(nullptr), dummyStream(nullptr),
     dummyStreamID(QUIC_UINT62_MAX) {
   queuesToStream =
@@ -49,11 +49,11 @@ ShapedReceiver::ShapedReceiver(std::string appName,
 
   // Start listening for connections from the other middlebox
   // Add additional stream for dummy data
-  shapedReceiver =
-      new QUIC::Receiver{serverCert, serverKey, bindPort,
-                         receivedShapedDataFunc, logLevel,
-                         maxStreamsPerPeer + 2, idleTimeout};
-  shapedReceiver->startListening();
+  shapedServer =
+      new QUIC::Server{serverCert, serverKey, bindPort,
+                       receivedShapedDataFunc, logLevel,
+                       maxStreamsPerPeer + 2, idleTimeout};
+  shapedServer->startListening();
 
   noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity,
                                       maxDecisionSize, minDecisionSize};
@@ -62,9 +62,6 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                                queuesToStream, noiseGenerator,
                                DPCreditorLoopInterval, std::ref(mapLock));
   dpCreditorThread.detach();
-
-//  auto sendShapedData = std::bind(&ShapedReceiver::sendShapedData, this,
-//                                  std::placeholders::_1);
 
   std::thread sendShaped(helpers::sendShapedData, &sendingCredit,
                          queuesToStream,
@@ -76,12 +73,12 @@ ShapedReceiver::ShapedReceiver(std::string appName,
                            sendData
                                (std::forward<decltype(PH1)>(PH1));
                          },
-                         senderLoopInterval, DPCreditorLoopInterval, strategy,
+                         sendingLoopInterval, DPCreditorLoopInterval, strategy,
                          std::ref(mapLock));
   sendShaped.detach();
 }
 
-inline void ShapedReceiver::initialiseSHM(int numStreams) {
+inline void ShapedServer::initialiseSHM(int numStreams) {
   auto shmAddr = helpers::initialiseSHM(numStreams, appName, true);
 
   // The beginning of the SHM contains the signalStruct struct
@@ -106,8 +103,8 @@ inline void ShapedReceiver::initialiseSHM(int numStreams) {
   }
 }
 
-bool ShapedReceiver::sendResponse(MsQuicStream *stream, uint8_t *data,
-                                  size_t length) {
+bool ShapedServer::sendResponse(MsQuicStream *stream, uint8_t *data,
+                                size_t length) {
   // Note: Valgrind reports this as a "definitely lost" block. But QUIC
   //  frees it from another thread after sending is complete
   auto SendBuffer =
@@ -126,7 +123,7 @@ bool ShapedReceiver::sendResponse(MsQuicStream *stream, uint8_t *data,
   return true;
 }
 
-MsQuicStream *ShapedReceiver::findStreamByID(QUIC_UINT62 ID) {
+MsQuicStream *ShapedServer::findStreamByID(QUIC_UINT62 ID) {
   QUIC_UINT62 streamID;
   for (const auto &[stream, queues]: *streamToQueues) {
     if (stream != nullptr) {
@@ -137,7 +134,7 @@ MsQuicStream *ShapedReceiver::findStreamByID(QUIC_UINT62 ID) {
   return nullptr;
 }
 
-void ShapedReceiver::handleQueueSignal(int signum) {
+void ShapedServer::handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
     struct SignalInfo::queueInfo queueInfo{};
@@ -149,8 +146,8 @@ void ShapedReceiver::handleQueueSignal(int signum) {
   }
 }
 
-void ShapedReceiver::signalUnshapedProcess(uint64_t queueID,
-                                           connectionStatus connStatus) {
+void ShapedServer::signalUnshapedProcess(uint64_t queueID,
+                                         connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
@@ -159,8 +156,8 @@ void ShapedReceiver::signalUnshapedProcess(uint64_t queueID,
   kill(sigInfo->unshaped, SIGUSR1);
 }
 
-void ShapedReceiver::copyClientInfo(QueuePair queues,
-                                    struct ControlMessage *ctrlMsg) {
+void ShapedServer::copyClientInfo(QueuePair queues,
+                                  struct ControlMessage *ctrlMsg) {
   // Source/Client
   std::strcpy(queues.toShaped->addrPair.clientAddress,
               ctrlMsg->addrPair.clientAddress);
@@ -182,7 +179,7 @@ void ShapedReceiver::copyClientInfo(QueuePair queues,
               ctrlMsg->addrPair.serverPort);
 }
 
-inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
+inline bool ShapedServer::assignQueues(MsQuicStream *stream) {
   if (unassignedQueues->empty()) return false;
 //  mapLock.lock();
   auto queues = unassignedQueues->front();
@@ -198,8 +195,7 @@ inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
       std::to_string(queues.fromShaped->ID) + "," +
       std::to_string(queues.toShaped->ID) + "}");
 #endif
-  //TODO: Check assumption that unshaped sender closed the connection
-  // before this queue was re-assigned
+
   queues.fromShaped->markedForDeletion = false;
   queues.toShaped->markedForDeletion = false;
   queues.toShaped->sentFIN = queues.fromShaped->sentFIN = false;
@@ -218,7 +214,7 @@ inline bool ShapedReceiver::assignQueues(MsQuicStream *stream) {
   return true;
 }
 
-inline void ShapedReceiver::eraseMapping(MsQuicStream *stream) {
+inline void ShapedServer::eraseMapping(MsQuicStream *stream) {
   auto queues = (*streamToQueues)[stream];
   if (queues.toShaped->size() != 0) {
     log(ERROR, "Requested map clearing before all data was sent!");
@@ -239,8 +235,8 @@ inline void ShapedReceiver::eraseMapping(MsQuicStream *stream) {
   mapLock.unlock();
 }
 
-void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
-                                           uint8_t *buffer, size_t length) {
+void ShapedServer::handleControlMessages(MsQuicStream *ctrlStream,
+                                         uint8_t *buffer, size_t length) {
   if (length % sizeof(ControlMessage) != 0) {
     log(ERROR, "Received half a control message!");
     return;
@@ -305,8 +301,8 @@ void ShapedReceiver::handleControlMessages(MsQuicStream *ctrlStream,
   }
 }
 
-void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
-                                        uint8_t *buffer, size_t length) {
+void ShapedServer::receivedShapedData(MsQuicStream *stream,
+                                      uint8_t *buffer, size_t length) {
   // Check if this is first byte from the other middlebox
   if (stream == controlStream || controlStream == nullptr) {
     handleControlMessages(stream, buffer, length);
@@ -345,12 +341,12 @@ void ShapedReceiver::receivedShapedData(MsQuicStream *stream,
     // Sleep for some time. For performance reasons, this is the same as
     // the interval with the unshaped components checks queues for data.
     std::this_thread::sleep_for(
-        std::chrono::microseconds(unshapedSenderLoopInterval));
+        std::chrono::microseconds(unshapedClientLoopInterval));
 #endif
   }
 }
 
-void ShapedReceiver::sendDummy(size_t dummySize) {
+void ShapedServer::sendDummy(size_t dummySize) {
   // We do not have dummy stream yet
   if (dummyStream == nullptr) return;
   auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
@@ -359,7 +355,7 @@ void ShapedReceiver::sendDummy(size_t dummySize) {
   }
 }
 
-size_t ShapedReceiver::sendData(size_t dataSize) {
+size_t ShapedServer::sendData(size_t dataSize) {
   auto origSize = dataSize;
 
   mapLock.lock_shared();
@@ -423,7 +419,7 @@ size_t ShapedReceiver::sendData(size_t dataSize) {
   return origSize - dataSize;
 }
 
-void ShapedReceiver::log(logLevels level, const std::string &log) {
+void ShapedServer::log(logLevels level, const std::string &log) {
   if (logLevel < level) return;
   std::string levelStr;
   switch (level) {

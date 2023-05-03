@@ -4,15 +4,15 @@
 
 #include <iomanip>
 #include <utility>
-#include "UnshapedReceiver.h"
+#include "UnshapedServer.h"
 
-UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
-                                   std::string bindAddr, uint16_t bindPort,
-                                   __useconds_t checkResponseInterval,
-                                   __useconds_t shapedSenderLoopInterval,
-                                   logLevels logLevel, std::string serverAddr) :
+UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
+                               std::string bindAddr, uint16_t bindPort,
+                               __useconds_t checkResponseInterval,
+                               __useconds_t shapedClientLoopInterval,
+                               logLevels logLevel, std::string serverAddr) :
     appName(appName), logLevel(logLevel), serverAddr(std::move(serverAddr)),
-    shapedSenderLoopInterval(shapedSenderLoopInterval), maxClients(maxClients),
+    shapedClientLoopInterval(shapedClientLoopInterval), maxClients(maxClients),
     sigInfo(nullptr) {
   socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
   queuesToSocket = new std::unordered_map<QueuePair,
@@ -33,9 +33,9 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
                                 std::forward<decltype(PH5)>(PH5));
   };
 
-  unshapedReceiver = new TCP::Receiver{std::move(bindAddr), bindPort,
-                                       tcpReceiveFunc, logLevel};
-  unshapedReceiver->startListening();
+  unshapedServer = new TCP::Server{std::move(bindAddr), bindPort,
+                                   tcpReceiveFunc, logLevel};
+  unshapedServer->startListening();
 
   std::thread responseLoop([=, this]() {
     receivedResponse(checkResponseInterval);
@@ -45,7 +45,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 //  std::signal(SIGUSR1, handleQueueSignal);
 }
 
-[[noreturn]] void UnshapedReceiver::receivedResponse(__useconds_t interval) {
+[[noreturn]] void UnshapedServer::receivedResponse(__useconds_t interval) {
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
   while (true) {
@@ -70,7 +70,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
                 std::to_string(queues.fromShaped->ID) + "," +
                 std::to_string(queues.toShaped->ID) + "}");
 #endif
-          TCP::Receiver::sendFIN(socket);
+          TCP::Server::sendFIN(socket);
           (*pendingSignal).erase(queues.fromShaped->ID);
           queues.fromShaped->sentFIN = true;
         }
@@ -84,7 +84,7 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
         auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         queues.fromShaped->pop(buffer, size);
         auto sentBytes =
-            unshapedReceiver->sendData(socket, buffer, size);
+            unshapedServer->sendData(socket, buffer, size);
         if (sentBytes > 0 && (size_t) sentBytes == size) free(buffer);
       }
     }
@@ -92,8 +92,8 @@ UnshapedReceiver::UnshapedReceiver(std::string &appName, int maxClients,
 }
 
 inline QueuePair
-UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
-                              std::string serverAddress) {
+UnshapedServer::assignQueue(int clientSocket, std::string &clientAddress,
+                            std::string serverAddress) {
   if (unassignedQueues->empty()) return {nullptr, nullptr};
   mapLock.lock();
   auto queues = unassignedQueues->front();
@@ -132,7 +132,7 @@ UnshapedReceiver::assignQueue(int clientSocket, std::string &clientAddress,
   return queues;
 }
 
-inline void UnshapedReceiver::eraseMapping(int socket) {
+inline void UnshapedServer::eraseMapping(int socket) {
   auto queues = (*socketToQueues)[socket];
   if (!queues.fromShaped->markedForDeletion
       || !queues.toShaped->markedForDeletion) {
@@ -153,8 +153,8 @@ inline void UnshapedReceiver::eraseMapping(int socket) {
   mapLock.unlock();
 }
 
-void UnshapedReceiver::signalShapedProcess(uint64_t queueID,
-                                           connectionStatus connStatus) {
+void UnshapedServer::signalShapedProcess(uint64_t queueID,
+                                         connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::toShaped, queueInfo);
@@ -163,7 +163,7 @@ void UnshapedReceiver::signalShapedProcess(uint64_t queueID,
   kill(sigInfo->shaped, SIGUSR1);
 }
 
-void UnshapedReceiver::handleQueueSignal(int signum) {
+void UnshapedServer::handleQueueSignal(int signum) {
   if (signum == SIGUSR1) {
     std::scoped_lock lock(readLock);
     struct SignalInfo::queueInfo queueInfo{};
@@ -175,10 +175,10 @@ void UnshapedReceiver::handleQueueSignal(int signum) {
   }
 }
 
-bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
-                                            std::string &clientAddress,
-                                            uint8_t *buffer, size_t length, enum
-                                                connectionStatus connStatus) {
+bool UnshapedServer::receivedUnshapedData(int fromSocket,
+                                          std::string &clientAddress,
+                                          uint8_t *buffer, size_t length, enum
+                                              connectionStatus connStatus) {
 
   switch (connStatus) {
     case SYN: {
@@ -214,7 +214,7 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
         // Sleep for some time. For performance reasons, this is the same as
         // the interval with which DP Logic thread runs in Shaped component.
         std::this_thread::sleep_for(
-            std::chrono::microseconds(shapedSenderLoopInterval));
+            std::chrono::microseconds(shapedClientLoopInterval));
 #endif
       }
       return true;
@@ -239,7 +239,7 @@ bool UnshapedReceiver::receivedUnshapedData(int fromSocket,
   }
 }
 
-inline void UnshapedReceiver::initialiseSHM() {
+inline void UnshapedServer::initialiseSHM() {
   auto shmAddr = helpers::initialiseSHM(maxClients, appName);
 
   // The beginning of the SHM contains the signalStruct struct
@@ -259,7 +259,7 @@ inline void UnshapedReceiver::initialiseSHM() {
   }
 }
 
-void UnshapedReceiver::log(logLevels level, const std::string &log) {
+void UnshapedServer::log(logLevels level, const std::string &log) {
   if (logLevel < level) return;
   std::string levelStr;
   switch (level) {

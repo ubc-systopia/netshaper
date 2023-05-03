@@ -1,7 +1,8 @@
 {
   "logLevel": "DEBUG",
   "maxStreamsPerPeer": 40,
-  "shapedReceiver": {
+  "appName": "minesVPNPeer2",
+  "shapedServer": {
     "serverCert": "server.cert",
     "serverKey": "server.key",
     "listeningPort": 4567,
@@ -10,10 +11,10 @@
     "maxDecisionSize": 500000,
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
-    "senderLoopInterval": 50000,
+    "sendingLoopInterval": 50000,
     "sendingStrategy": "BURST"
   },
-  "unshapedSender": {
+  "unshapedClient": {
     "checkQueuesInterval": 50000
   }
 }

@@ -8,10 +8,10 @@
 #include <utility>
 #include <ctime>
 #include <iomanip>
-#include "Receiver.h"
+#include "Server.h"
 
 namespace QUIC {
-  void Receiver::log(logLevels level, const std::string &log) {
+  void Server::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
     auto localTime = std::localtime(&time);
     std::string levelStr;
@@ -33,10 +33,10 @@ namespace QUIC {
     }
   }
 
-  QUIC_STATUS Receiver::streamCallbackHandler(MsQuicStream *stream,
-                                              void *context,
-                                              QUIC_STREAM_EVENT *event) {
-    auto *receiver = (Receiver *) context;
+  QUIC_STATUS Server::streamCallbackHandler(MsQuicStream *stream,
+                                            void *context,
+                                            QUIC_STREAM_EVENT *event) {
+    auto *server = (Server *) context;
 
     const void *streamPtr = static_cast<const void *>(stream);
     std::stringstream ss;
@@ -45,14 +45,14 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
         stream->Shutdown(0);
         ss << "shut down as peer aborted";
-        receiver->log(WARNING, ss.str());
+        server->log(WARNING, ss.str());
         break;
 
       case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
         //Send a FIN
         stream->Send(nullptr, 0, QUIC_SEND_FLAG_FIN, nullptr);
         ss << "shut down as peer sent a shutdown signal";
-        receiver->log(WARNING, ss.str());
+        server->log(WARNING, ss.str());
         break;
 
       case QUIC_STREAM_EVENT_RECEIVE: {
@@ -61,13 +61,13 @@ namespace QUIC {
         ss << "Received data from peer: ";
 #endif
         for (uint32_t i = 0; i < bufferCount; i++) {
-          receiver->onReceive(stream, event->RECEIVE.Buffers[i].Buffer,
-                              event->RECEIVE.Buffers[i].Length);
+          server->onReceive(stream, event->RECEIVE.Buffers[i].Buffer,
+                            event->RECEIVE.Buffers[i].Length);
 #ifdef DEBUGGING
           auto length = event->RECEIVE.Buffers[i].Length;
           ss << " \n\t Length: " << length;
         }
-        receiver->log(DEBUG, ss.str());
+        server->log(DEBUG, ss.str());
 #else
         }
 #endif
@@ -77,7 +77,7 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_SEND_COMPLETE:
 #ifdef DEBUGGING
         ss << "Finished a call to streamSend";
-        receiver->log(DEBUG, ss.str());
+        server->log(DEBUG, ss.str());
 #endif
         break;
 
@@ -85,7 +85,7 @@ namespace QUIC {
         //Automatically handled as cleanUpAutoDelete is set when creating the
         // stream class instance in connectionHandler
         ss << "The stream was shutdown and cleaned up successfully";
-        receiver->log(WARNING, ss.str());
+        server->log(WARNING, ss.str());
       default:
         break;
     }
@@ -93,10 +93,10 @@ namespace QUIC {
 
   }
 
-  QUIC_STATUS Receiver::connectionHandler(MsQuicConnection *connection,
-                                          void *context,
-                                          QUIC_CONNECTION_EVENT *event) {
-    auto *receiver = (Receiver *) context;
+  QUIC_STATUS Server::connectionHandler(MsQuicConnection *connection,
+                                        void *context,
+                                        QUIC_CONNECTION_EVENT *event) {
+    auto *server = (Server *) context;
 
     MsQuicStream *stream;
     std::stringstream ss;
@@ -108,7 +108,7 @@ namespace QUIC {
         // The handshake has completed for the connection.
 #ifdef DEBUGGING
         ss << "Connected";
-        receiver->log(DEBUG, ss.str());
+        server->log(DEBUG, ss.str());
 #endif
         connection->SendResumptionTicket();
         break;
@@ -121,7 +121,7 @@ namespace QUIC {
         {
           const void *streamPtr = static_cast<const void *>(stream);
           ss << "Stream " << streamPtr << " started";
-          receiver->log(DEBUG, ss.str());
+          server->log(DEBUG, ss.str());
         }
 #endif
         break;
@@ -129,19 +129,19 @@ namespace QUIC {
       case QUIC_CONNECTION_EVENT_RESUMED:
 #ifdef DEBUGGING
         ss << "resumed";
-        receiver->log(DEBUG, ss.str());
+        server->log(DEBUG, ss.str());
 #endif
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE:
         connection->Close();
         ss << "closed successfully";
-        receiver->log(WARNING, ss.str());
+        server->log(WARNING, ss.str());
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
         ss << "shut down by peer";
-        receiver->log(WARNING, ss.str());
+        server->log(WARNING, ss.str());
         break;
 
       case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
@@ -154,11 +154,11 @@ namespace QUIC {
             QUIC_STATUS_CONNECTION_IDLE) {
 #ifdef DEBUGGING
           ss << "shutting down on idle";
-          receiver->log(DEBUG, ss.str());
+          server->log(DEBUG, ss.str());
 #endif
         } else {
           ss << "shut down by underlying transport layer";
-          receiver->log(WARNING, ss.str());
+          server->log(WARNING, ss.str());
         }
         break;
 
@@ -168,8 +168,8 @@ namespace QUIC {
     return QUIC_STATUS_SUCCESS;
   }
 
-  bool Receiver::loadConfiguration(const std::string &certFile,
-                                   const std::string &keyFile) {
+  bool Server::loadConfiguration(const std::string &certFile,
+                                 const std::string &keyFile) {
     // The settings for the QUIC Connection
     auto *settings = new MsQuicSettings;
     settings->SetIdleTimeoutMs(idleTimeoutMs);
@@ -203,18 +203,18 @@ namespace QUIC {
     return false;
   }
 
-  Receiver::Receiver(const std::string &certFile, const std::string &keyFile,
-                     int port, std::function<void(MsQuicStream *stream,
-                                                  uint8_t *buffer,
-                                                  size_t length)> onReceiveFunc,
-                     logLevels level, int maxPeerStreams, uint64_t
-                     idleTimeoutMs) : configuration(nullptr),
-                                      listener(nullptr),
-                                      addr(new QuicAddr(
-                                          QUIC_ADDRESS_FAMILY_UNSPEC)),
-                                      maxPeerStreams(maxPeerStreams),
-                                      idleTimeoutMs(idleTimeoutMs),
-                                      logLevel(level) {
+  Server::Server(const std::string &certFile, const std::string &keyFile,
+                 int port, std::function<void(MsQuicStream *stream,
+                                              uint8_t *buffer,
+                                              size_t length)> onReceiveFunc,
+                 logLevels level, int maxPeerStreams, uint64_t
+                 idleTimeoutMs) : configuration(nullptr),
+                                  listener(nullptr),
+                                  addr(new QuicAddr(
+                                      QUIC_ADDRESS_FAMILY_UNSPEC)),
+                                  maxPeerStreams(maxPeerStreams),
+                                  idleTimeoutMs(idleTimeoutMs),
+                                  logLevel(level) {
     onReceive = std::move(onReceiveFunc);
 #ifdef DEBUGGING
     log(DEBUG, "Loading Configuration...");
@@ -237,11 +237,11 @@ namespace QUIC {
 #endif
   }
 
-  void Receiver::startListening() {
-    // Open the QUIC Listener (Receiver) for the given application and register
+  void Server::startListening() {
+    // Open the QUIC Listener (Server) for the given application and register
     // a listenerCallback function that is called for all events
     if (listener != nullptr) {
-      log(WARNING, "startListening called on a receiver that's already "
+      log(WARNING, "startListening called on a server that's already "
                    "listening");
       return;
     }
@@ -254,7 +254,7 @@ namespace QUIC {
 #endif
   }
 
-  void Receiver::stopListening() {
+  void Server::stopListening() {
     delete listener;
     listener = nullptr;
 #ifdef DEBUGGING

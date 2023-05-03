@@ -2,8 +2,8 @@
 // Created by Rut Vora
 //
 
-#ifndef MINESVPN_TCP_RECEIVER_H
-#define MINESVPN_TCP_RECEIVER_H
+#ifndef MINESVPN_TCP_SERVER_H
+#define MINESVPN_TCP_SERVER_H
 
 #define BUF_SIZE 16384
 #define BACKLOG 20 // Number of pending connections the queue should hold
@@ -25,7 +25,7 @@
 #include "../Common.h"
 
 namespace TCP {
-  class Receiver {
+  class Server {
   public:
     /**
  * @brief Default constructor for the ProxyListener
@@ -36,15 +36,15 @@ namespace TCP {
  * function by using std::bind or lambda functions
  * @param [opt] level Log Level (ERROR, WARNING, DEBUG)
  */
-    explicit Receiver(std::string bindAddr = "",
-                      int localPort = 8000,
-                      std::function<bool(int fromSocket,
-                                         std::string &clientAddress,
-                                         uint8_t *buffer,
-                                         size_t length,
-                                         enum connectionStatus connStatus)>
-                      onReceiveFunc = [](auto &&...) { return true; },
-                      logLevels level = DEBUG);
+    explicit Server(std::string bindAddr = "",
+                    int localPort = 8000,
+                    std::function<bool(int fromSocket,
+                                       std::string &clientAddress,
+                                       uint8_t *buffer,
+                                       size_t length,
+                                       enum connectionStatus connStatus)>
+                    onReceiveFunc = [](auto &&...) { return true; },
+                    logLevels level = DEBUG);
 
     /**
      * @brief Start listening on given bind Address and port
@@ -61,7 +61,7 @@ namespace TCP {
      */
     ssize_t sendData(int toSocket, uint8_t *buffer, size_t length);
 
-    ~Receiver();
+    ~Server();
 
     static inline void sendFIN(int socket) {
       shutdown(socket, SHUT_WR);
@@ -99,6 +99,7 @@ namespace TCP {
     /**
      * @brief Handles the given client (called from serverLoop)
      * @param clientSocket The socket where the client connected
+     * @param clientAddress The address of the client
      */
     void handleClient(int clientSocket, std::string clientAddress);
 
@@ -109,17 +110,22 @@ namespace TCP {
     [[noreturn]] void serverLoop();
 
     /**
-     * @brief Receive data from the given socket and call onReceive
+     * @brief Receive data from the given socket and call serverOnReceive
      * @param socket The socket to read the data from
      */
     void receiveData(int socket, std::string &clientAddress);
 
-    // Returns a string of the form "address:port"
+    /**
+     * @brief Returns a string of the form "address:port"
+     * @param sockAddr The socket address structure
+     * @return A string of the form "address:port"
+     */
     static std::string getAddress(struct sockaddr &sockAddr);
 
     /**
      * @brief The function that is called on each buffer that is received
      * @param fromSocket The socket from which the buffer was received
+     * @param clientAddress The address of the client
      * @param buffer The byte-array that was received
      * @param length The length of the data in buffer
      */
@@ -130,4 +136,4 @@ namespace TCP {
   };
 }
 
-#endif //MINESVPN_TCP_RECEIVER_H
+#endif //MINESVPN_TCP_SERVER_H

@@ -2,7 +2,7 @@
 // Created by Rut Vora
 //
 
-#include "Receiver.h"
+#include "Server.h"
 
 #include <utility>
 #include <netdb.h>
@@ -21,13 +21,13 @@ extern std::vector<std::vector<uint64_t>> tcpSend;
 #endif
 
 namespace TCP {
-  Receiver::Receiver(std::string bindAddr, int localPort,
-                     std::function<bool(int fromSocket,
-                                        std::string &clientAddress,
-                                        uint8_t *buffer, size_t length,
-                                        enum connectionStatus connStatus)>
-                     onReceiveFunc,
-                     logLevels level) : logLevel(level) {
+  Server::Server(std::string bindAddr, int localPort,
+                 std::function<bool(int fromSocket,
+                                    std::string &clientAddress,
+                                    uint8_t *buffer, size_t length,
+                                    enum connectionStatus connStatus)>
+                 onReceiveFunc,
+                 logLevels level) : logLevel(level) {
     if (bindAddr.empty()) bindAddr = "0.0.0.0";
     inetFamily = checkIPVersion(bindAddr);
     if (inetFamily == -1) {
@@ -41,19 +41,19 @@ namespace TCP {
     // Initialise localSocket to -1 (invalid value)
     this->localSocket = -1;
 #ifdef DEBUGGING
-    log(DEBUG, "Receiver initialised");
+    log(DEBUG, "Server initialised");
 #endif
   }
 
-  Receiver::~Receiver() {
+  Server::~Server() {
     close(localSocket);
 #ifdef DEBUGGING
-    log(DEBUG, "Receiver destructed");
+    log(DEBUG, "Server destructed");
 #endif
     exit(0);
   }
 
-  void Receiver::startListening() {
+  void Server::startListening() {
     localSocket = openSocket();
     switch (localSocket) {
       case CLIENT_RESOLVE_ERROR:
@@ -75,13 +75,13 @@ namespace TCP {
         log(DEBUG, "Started listening on " + bindAddr + ":"
                    + std::to_string(localPort));
 #endif
-        std::thread loop(&Receiver::serverLoop, this);
+        std::thread loop(&Server::serverLoop, this);
         loop.detach();
     }
 
   }
 
-  int Receiver::openSocket() {
+  int Server::openSocket() {
     struct addrinfo hints = {}, *res = nullptr;
 
     // getaddrinfo(...) requires the port in the c_string format
@@ -130,14 +130,14 @@ namespace TCP {
       freeaddrinfo(res);
     }
 #ifdef DEBUGGING
-    log(DEBUG, "Receiver running on socket " + std::to_string(serverSocket));
+    log(DEBUG, "Server running on socket " + std::to_string(serverSocket));
 #endif
     return serverSocket;
 
   }
 
   // Returns a string of the form "address:port"
-  std::string Receiver::getAddress(struct sockaddr &sockAddr) {
+  std::string Server::getAddress(struct sockaddr &sockAddr) {
     if (sockAddr.sa_family == AF_INET) {
       auto addrStruct = reinterpret_cast<struct sockaddr_in *>(&sockAddr);
       char addr[INET_ADDRSTRLEN];
@@ -160,11 +160,11 @@ namespace TCP {
     }
   }
 
-  [[noreturn]] void Receiver::serverLoop() {
+  [[noreturn]] void Server::serverLoop() {
     struct sockaddr_storage clientAddress{};
     socklen_t addrLen = sizeof(clientAddress);
 #ifdef DEBUGGING
-    log(DEBUG, "Starting Receiver loop");
+    log(DEBUG, "Starting Server loop");
 #endif
     while (true) {
       int clientSocket =
@@ -174,7 +174,7 @@ namespace TCP {
 
       try {
         auto address = getAddress(*(struct sockaddr *) (&clientAddress));
-        std::thread clientHandler(&Receiver::handleClient, this, clientSocket,
+        std::thread clientHandler(&Server::handleClient, this, clientSocket,
                                   address);
         clientHandler.detach();
       } catch (...) {
@@ -184,7 +184,7 @@ namespace TCP {
 
   }
 
-  void Receiver::handleClient(int clientSocket, std::string clientAddress) {
+  void Server::handleClient(int clientSocket, std::string clientAddress) {
 #ifdef DEBUGGING
     log(DEBUG, "Client at " + clientAddress + " connected on socket " +
                std::to_string(clientSocket));
@@ -198,7 +198,7 @@ namespace TCP {
     receiveData(clientSocket, clientAddress);
   }
 
-  void Receiver::receiveData(int socket, std::string &clientAddress) {
+  void Server::receiveData(int socket, std::string &clientAddress) {
     ssize_t bytesReceived;  // Number of bytes received
     uint8_t buffer[BUF_SIZE];
 
@@ -225,7 +225,7 @@ namespace TCP {
     onReceive(socket, clientAddress, nullptr, 0, FIN);
   }
 
-  ssize_t Receiver::sendData(int toSocket, uint8_t *buffer, size_t length) {
+  ssize_t Server::sendData(int toSocket, uint8_t *buffer, size_t length) {
 #ifdef DEBUGGING
     log(DEBUG, "Sending data on socket " + std::to_string(toSocket));
 #endif
@@ -241,7 +241,7 @@ namespace TCP {
     return bytesSent;
   }
 
-  int Receiver::checkIPVersion(const std::string &address) {
+  int Server::checkIPVersion(const std::string &address) {
 /* Check for valid IPv4 or Iv6 string. Returns AF_INET for IPv4, AF_INET6 for IPv6 */
 
     struct in6_addr addr{};
@@ -258,7 +258,7 @@ namespace TCP {
     return -1;
   }
 
-  void Receiver::log(logLevels level, const std::string &log) {
+  void Server::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
     auto localTime = std::localtime(&time);
     std::string levelStr;
