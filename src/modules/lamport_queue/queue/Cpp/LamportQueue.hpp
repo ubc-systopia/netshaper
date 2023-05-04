@@ -13,7 +13,7 @@
 #include <cstring>
 #include "../../../Common.h"
 
-#define BUFFER_SIZE 2500000
+#define BUFFER_SIZE 2097152 // 2 MB
 
 class LamportQueue {
 public:
@@ -69,7 +69,7 @@ private:
   size_t cachedBack;
   uint8_t queueStorage[BUFFER_SIZE]{};
 
-  size_t mod(ssize_t a, ssize_t b);
+  static size_t mod(ssize_t a, ssize_t b);
 
   size_t getQueueSizeLocal(size_t f, size_t b);
 

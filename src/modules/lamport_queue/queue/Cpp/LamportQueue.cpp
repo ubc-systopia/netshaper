@@ -16,7 +16,7 @@ LamportQueue::LamportQueue(uint64_t queueID) : ID(queueID) {
 // }
 
 int LamportQueue::push(uint8_t *buffer, size_t length) {
-  assert(length < BUFFER_SIZE && length > 0);
+  if (length >= BUFFER_SIZE) return -1;
 
   size_t b, f;
   b = this->back.load(std::memory_order_relaxed);
@@ -41,7 +41,7 @@ int LamportQueue::push(uint8_t *buffer, size_t length) {
 }
 
 int LamportQueue::pop(uint8_t *buffer, size_t length) {
-  assert(length < BUFFER_SIZE && length > 0);
+  if (length >= BUFFER_SIZE) return -1;
 
   size_t b, f;
   f = this->front.load(std::memory_order_relaxed);
