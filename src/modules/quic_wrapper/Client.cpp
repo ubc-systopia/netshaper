@@ -16,13 +16,13 @@ namespace QUIC {
     std::string levelStr;
     switch (level) {
       case DEBUG:
-        levelStr = "QS:DEBUG: ";
+        levelStr = "QuicClient:DEBUG: ";
         break;
       case ERROR:
-        levelStr = "QS:ERROR: ";
+        levelStr = "QuicClient:ERROR: ";
         break;
       case WARNING:
-        levelStr = "QS:WARNING: ";
+        levelStr = "QuicClient:WARNING: ";
         break;
 
     }

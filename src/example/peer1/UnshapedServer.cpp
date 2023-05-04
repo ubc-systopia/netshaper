@@ -264,13 +264,13 @@ void UnshapedServer::log(logLevels level, const std::string &log) {
   std::string levelStr;
   switch (level) {
     case DEBUG:
-      levelStr = "UR:DEBUG: ";
+      levelStr = "UnshapedServer:DEBUG: ";
       break;
     case ERROR:
-      levelStr = "UR:ERROR: ";
+      levelStr = "UnshapedServer:ERROR: ";
       break;
     case WARNING:
-      levelStr = "UR:WARNING: ";
+      levelStr = "UnshapedServer:WARNING: ";
       break;
 
   }

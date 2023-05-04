@@ -424,13 +424,13 @@ void ShapedServer::log(logLevels level, const std::string &log) {
   std::string levelStr;
   switch (level) {
     case DEBUG:
-      levelStr = "SR:DEBUG: ";
+      levelStr = "ShapedServer:DEBUG: ";
       break;
     case ERROR:
-      levelStr = "SR:ERROR: ";
+      levelStr = "ShapedServer:ERROR: ";
       break;
     case WARNING:
-      levelStr = "SR:WARNING: ";
+      levelStr = "ShapedServer:WARNING: ";
       break;
 
   }

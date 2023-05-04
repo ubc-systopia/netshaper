@@ -156,13 +156,13 @@ namespace TCP {
     std::string levelStr;
     switch (level) {
       case DEBUG:
-        levelStr = "TS:DEBUG: ";
+        levelStr = "TcpClient:DEBUG: ";
         break;
       case ERROR:
-        levelStr = "TS:ERROR: ";
+        levelStr = "TcpClient:ERROR: ";
         break;
       case WARNING:
-        levelStr = "TS:WARNING: ";
+        levelStr = "TcpClient:WARNING: ";
         break;
 
     }

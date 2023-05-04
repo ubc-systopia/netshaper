@@ -264,13 +264,13 @@ namespace TCP {
     std::string levelStr;
     switch (level) {
       case DEBUG:
-        levelStr = "TR:DEBUG: ";
+        levelStr = "TcpServer:DEBUG: ";
         break;
       case ERROR:
-        levelStr = "TR:ERROR: ";
+        levelStr = "TcpServer:ERROR: ";
         break;
       case WARNING:
-        levelStr = "TR:WARNING: ";
+        levelStr = "TcpServer:WARNING: ";
         break;
     }
     if (logLevel >= level) {
