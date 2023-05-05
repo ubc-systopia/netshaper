@@ -36,7 +36,7 @@ namespace QUIC {
                                             void *context,
                                             QUIC_STREAM_EVENT *event) {
 
-    auto *client = (Client *) context;
+    auto *client = reinterpret_cast<Client *>(context);
     const void *streamPtr = static_cast<const void *>(stream);
     std::stringstream ss;
     ss << "[Stream] " << streamPtr << " ";
@@ -80,8 +80,12 @@ namespace QUIC {
       }
         break;
 
-      case QUIC_STREAM_EVENT_SEND_COMPLETE:
-//      free(event->SEND_COMPLETE.ClientContext);
+      case QUIC_STREAM_EVENT_SEND_COMPLETE: {
+        ctx *contextPtr =
+            reinterpret_cast<ctx *>(event->SEND_COMPLETE.ClientContext);
+        free(contextPtr->buffer->Buffer); // The data that was sent
+        free(contextPtr->buffer); // The QUIC_BUFFER struct
+      }
 #ifdef DEBUGGING
         ss << "Finished a call to streamSend";
         client->log(DEBUG, ss.str());
@@ -278,8 +282,12 @@ namespace QUIC {
 
     SendBuffer->Buffer = data;
     SendBuffer->Length = length;
+    ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
+    context->client = this;
+    context->buffer = SendBuffer;
 
-    if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, this))) {
+    if (QUIC_FAILED(
+        stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
       uint64_t streamID;
       stream->GetID(&streamID);
       std::stringstream ss;

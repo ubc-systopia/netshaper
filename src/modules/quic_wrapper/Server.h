@@ -49,6 +49,14 @@ namespace QUIC {
      */
     void stopListening();
 
+    /**
+     * @brief Send data on given stream
+     * @param stream The stream to send the data on
+     * @param data The buffer which holds the data to be sent
+     * @param length The length of the data to be sent
+     * @return
+     */
+    bool send(MsQuicStream *stream, uint8_t *data, size_t length);
 
   private:
     MsQuicConfiguration *configuration;
@@ -71,7 +79,10 @@ namespace QUIC {
     inline static const std::string appName = "minesVPN";
     const enum logLevels logLevel;
 
-
+    struct ctx {
+      Server *server;
+      QUIC_BUFFER *buffer;
+    };
     // MsQuic is a shared library. Hence, register this application with it.
     // The name has to be unique per application on a single machine
     const MsQuicRegistration reg{appName.c_str(), profile,

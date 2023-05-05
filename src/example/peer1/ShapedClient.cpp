@@ -171,9 +171,9 @@ inline void ShapedClient::initialiseSHM() {
         (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
     auto stream = shapedClient->startStream();
 
+#ifdef DEBUGGING
     QUIC_UINT62 streamID;
     stream->GetID(&streamID);
-#ifdef DEBUGGING
     log(DEBUG, "Mapping stream " + std::to_string(streamID) +
                " to queues {" + std::to_string(queue1->ID) + "," +
                std::to_string(queue2->ID) + "}");

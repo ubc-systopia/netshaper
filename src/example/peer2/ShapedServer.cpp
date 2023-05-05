@@ -103,26 +103,6 @@ inline void ShapedServer::initialiseSHM(int numStreams) {
   }
 }
 
-bool ShapedServer::sendResponse(MsQuicStream *stream, uint8_t *data,
-                                size_t length) {
-  // Note: Valgrind reports this as a "definitely lost" block. But QUIC
-  //  frees it from another thread after sending is complete
-  auto SendBuffer =
-      reinterpret_cast<QUIC_BUFFER *>(malloc(sizeof(QUIC_BUFFER)));
-  if (SendBuffer == nullptr) {
-    return false;
-  }
-
-  SendBuffer->Buffer = data;
-  SendBuffer->Length = length;
-
-  if (QUIC_FAILED(stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE))) {
-    free(SendBuffer);
-    return false;
-  }
-  return true;
-}
-
 MsQuicStream *ShapedServer::findStreamByID(QUIC_UINT62 ID) {
   QUIC_UINT62 streamID;
   for (const auto &[stream, queues]: *streamToQueues) {
@@ -351,7 +331,7 @@ void ShapedServer::sendDummy(size_t dummySize) {
   if (dummyStream == nullptr) return;
   auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
   memset(buffer, 0, dummySize);
-  if (!sendResponse(dummyStream, buffer, dummySize)) {
+  if (!shapedServer->send(dummyStream, buffer, dummySize)) {
   }
 }
 
@@ -381,9 +361,9 @@ size_t ShapedServer::sendData(size_t dataSize) {
 #endif
         message->streamType = Data;
         message->connStatus = FIN;
-        sendResponse(controlStream,
-                     reinterpret_cast<uint8_t *>(message),
-                     sizeof(*message));
+        shapedServer->send(controlStream,
+                           reinterpret_cast<uint8_t *>(message),
+                           sizeof(*message));
         (*pendingSignal).erase(queues.toShaped->ID);
         queues.toShaped->sentFIN = true;
       }
@@ -406,7 +386,7 @@ size_t ShapedServer::sendData(size_t dataSize) {
     quicOut[queues.fromShaped->ID / 2].push_back(
         std::chrono::steady_clock::now());
 #endif
-    if (!sendResponse(stream, buffer, SizeToSendFromQueue)) {
+    if (!shapedServer->send(stream, buffer, SizeToSendFromQueue)) {
       uint64_t streamID;
       stream->GetID(&streamID);
       log(ERROR, "Failed to send Shaped response on stream " +

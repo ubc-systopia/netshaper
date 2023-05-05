@@ -60,15 +60,6 @@ private:
   inline void initialiseSHM(int numStreams);
 
 /**
- * @brief Send response to the other middleBox
- * @param stream The stream to send the response on
- * @param data The buffer which holds the data to be sent
- * @param length The length of the data to be sent
- * @return
- */
-  static bool sendResponse(MsQuicStream *stream, uint8_t *data, size_t length);
-
-/**
  * @brief Finds a stream by it's ID
  * @param ID The ID of the stream to match
  * @return The stream pointer of the stream the ID matches with, or nullptr

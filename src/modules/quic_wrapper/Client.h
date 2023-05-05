@@ -64,6 +64,10 @@ namespace QUIC {
     std::condition_variable connected;
     bool isConnected = false;
 
+    struct ctx {
+      Client *client;
+      QUIC_BUFFER *buffer;
+    };
     // MsQuic is a shared library. Hence, register this application with it.
     // The name has to be unique per application on a single machine
     const MsQuicRegistration reg{appName.c_str(), profile,

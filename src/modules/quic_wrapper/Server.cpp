@@ -36,7 +36,7 @@ namespace QUIC {
   QUIC_STATUS Server::streamCallbackHandler(MsQuicStream *stream,
                                             void *context,
                                             QUIC_STREAM_EVENT *event) {
-    auto *server = (Server *) context;
+    auto *server = reinterpret_cast<Server *>(context);
 
     const void *streamPtr = static_cast<const void *>(stream);
     std::stringstream ss;
@@ -74,7 +74,12 @@ namespace QUIC {
       }
         break;
 
-      case QUIC_STREAM_EVENT_SEND_COMPLETE:
+      case QUIC_STREAM_EVENT_SEND_COMPLETE: {
+        ctx *contextPtr =
+            reinterpret_cast<ctx *>(event->SEND_COMPLETE.ClientContext);
+        free(contextPtr->buffer->Buffer); // The data that was sent
+        free(contextPtr->buffer); // The QUIC_BUFFER struct
+      }
 #ifdef DEBUGGING
         ss << "Finished a call to streamSend";
         server->log(DEBUG, ss.str());
@@ -260,5 +265,27 @@ namespace QUIC {
 #ifdef DEBUGGING
     log(DEBUG, "Stopped listening");
 #endif
+  }
+
+  bool Server::send(MsQuicStream *stream, uint8_t *data, size_t length) {
+    auto SendBuffer =
+        reinterpret_cast<QUIC_BUFFER *>(malloc(sizeof(QUIC_BUFFER)));
+    if (SendBuffer == nullptr) {
+      return false;
+    }
+
+    SendBuffer->Buffer = data;
+    SendBuffer->Length = length;
+
+    ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
+    context->server = this;
+    context->buffer = SendBuffer;
+
+    if (QUIC_FAILED(
+        stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
+      free(SendBuffer);
+      return false;
+    }
+    return true;
   }
 }
