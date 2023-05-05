@@ -19,6 +19,7 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut;
 extern std::vector<std::vector<uint64_t>> tcpSend;
+extern std::vector<std::vector<uint64_t>> quicSend;
 #endif
 
 namespace helpers {
@@ -62,6 +63,21 @@ namespace helpers {
 
   void printStats(bool isShapedProcess) {
     if (isShapedProcess) {
+      std::ofstream quicSendLatencies;
+      quicSendLatencies.open("quicSend.csv");
+      for (unsigned long i = 0; i < quicSend.size(); i++) {
+        if (!quicSend[i].empty()) {
+          quicSendLatencies << "Stream " << i << ",";
+          for (auto elem: quicSend[i]) {
+            quicSendLatencies << elem << ",";
+          }
+          quicSendLatencies << "\n";
+        }
+      }
+      quicSendLatencies << std::endl;
+      quicSendLatencies.close();
+
+
       std::ofstream shapedEval;
       shapedEval.open("shaped.csv");
       for (unsigned long i = 0; i < quicIn.size(); i++) {

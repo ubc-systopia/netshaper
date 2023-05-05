@@ -80,8 +80,11 @@ namespace QUIC {
     const enum logLevels logLevel;
 
     struct ctx {
-      Server *server;
-      QUIC_BUFFER *buffer;
+      Server *server = nullptr;
+      QUIC_BUFFER *buffer = nullptr;
+#ifdef RECORD_STATS
+      std::chrono::time_point<std::chrono::steady_clock> start;
+#endif
     };
     // MsQuic is a shared library. Hence, register this application with it.
     // The name has to be unique per application on a single machine

@@ -10,6 +10,8 @@
 #include <iomanip>
 #include "Server.h"
 
+extern std::vector<std::vector<uint64_t>> quicSend;
+
 namespace QUIC {
   void Server::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
@@ -77,8 +79,13 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_SEND_COMPLETE: {
         ctx *contextPtr =
             reinterpret_cast<ctx *>(event->SEND_COMPLETE.ClientContext);
+#ifdef RECORD_STATS
+        auto end = std::chrono::steady_clock::now();
+        quicSend[stream->ID() / 4].push_back((end - contextPtr->start).count());
+#endif
         free(contextPtr->buffer->Buffer); // The data that was sent
         free(contextPtr->buffer); // The QUIC_BUFFER struct
+        free(contextPtr); // The ctx struct
       }
 #ifdef DEBUGGING
         ss << "Finished a call to streamSend";
@@ -101,8 +108,7 @@ namespace QUIC {
   QUIC_STATUS Server::connectionHandler(MsQuicConnection *connection,
                                         void *context,
                                         QUIC_CONNECTION_EVENT *event) {
-    auto *server = (Server *) context;
-
+    auto *server = reinterpret_cast<Server *>(context);
     MsQuicStream *stream;
     std::stringstream ss;
     const void *connectionPtr = static_cast<const void *>(connection);
@@ -177,6 +183,7 @@ namespace QUIC {
                                  const std::string &keyFile) {
     // The settings for the QUIC Connection
     auto *settings = new MsQuicSettings;
+    settings->SetSendBufferingEnabled(false);
     settings->SetIdleTimeoutMs(idleTimeoutMs);
     settings->SetServerResumptionLevel(QUIC_SERVER_RESUME_AND_ZERORTT);
 
@@ -229,16 +236,13 @@ namespace QUIC {
       exit(1);
     }
     addr->SetPort(port);
-
+#ifdef DEBUGGING
     {
       std::stringstream ss;
       ss << (alpn.operator const QUIC_BUFFER *())[0].Buffer;
-#ifdef DEBUGGING
       log(DEBUG, "ALPN: " + ss.str());
     }
     log(DEBUG, "Port: " + std::to_string(port));
-#else
-    }
 #endif
   }
 
@@ -280,6 +284,9 @@ namespace QUIC {
     ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
     context->server = this;
     context->buffer = SendBuffer;
+#ifdef RECORD_STATS
+    context->start = std::chrono::steady_clock::now();
+#endif
 
     if (QUIC_FAILED(
         stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {

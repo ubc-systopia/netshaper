@@ -9,6 +9,8 @@
 #include <ctime>
 #include <iomanip>
 
+extern std::vector<std::vector<uint64_t>> quicSend;
+
 namespace QUIC {
   void Client::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
@@ -83,8 +85,13 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_SEND_COMPLETE: {
         ctx *contextPtr =
             reinterpret_cast<ctx *>(event->SEND_COMPLETE.ClientContext);
+#ifdef RECORD_STATS
+        auto end = std::chrono::steady_clock::now();
+        quicSend[stream->ID() / 4].push_back((end - contextPtr->start).count());
+#endif
         free(contextPtr->buffer->Buffer); // The data that was sent
         free(contextPtr->buffer); // The QUIC_BUFFER struct
+        free(contextPtr); // The ctx struct
       }
 #ifdef DEBUGGING
         ss << "Finished a call to streamSend";
@@ -117,7 +124,7 @@ namespace QUIC {
                                         void *context,
                                         QUIC_CONNECTION_EVENT *event) {
 
-    auto *client = (Client *) context;
+    auto *client = reinterpret_cast<Client *>(context);
     MsQuicStream *stream;
     std::stringstream ss;
     const void *connectionPtr = static_cast<const void *>(connection);
@@ -203,6 +210,8 @@ namespace QUIC {
 
   bool Client::loadConfiguration(bool noServerValidation) {
     auto *settings = new MsQuicSettings;
+    settings->SetSendBufferingEnabled(false);
+    settings->SetKeepAlive(idleTimeoutMs / 2);
     settings->SetIdleTimeoutMs(idleTimeoutMs);
 
     // Configure default client configuration
@@ -285,6 +294,9 @@ namespace QUIC {
     ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
     context->client = this;
     context->buffer = SendBuffer;
+#ifdef RECORD_STATS
+    context->start = std::chrono::steady_clock::now();
+#endif
 
     if (QUIC_FAILED(
         stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
