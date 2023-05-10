@@ -152,7 +152,7 @@ namespace helpers {
     int ret_val;
     sigemptyset(&set);
 
-    addSignal(&set, 6, SIGINT, SIGKILL, SIGTERM, SIGABRT, SIGSTOP,
+    addSignal(&set, 7, SIGINT, SIGKILL, SIGTERM, SIGABRT, SIGSTOP,
               SIGTSTP, SIGHUP);
     sigprocmask(SIG_BLOCK, &set, nullptr);
 
@@ -211,9 +211,9 @@ namespace helpers {
       // Get DP Decision
       decisionSleepUntil = std::chrono::steady_clock::now() +
                            std::chrono::microseconds(decisionInterval);
-      mapLock.lock();
+      mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
-      mapLock.unlock();
+      mapLock.unlock_shared();
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
       if (DPDecision != 0) {
         // Enqueue data for quic to send.
@@ -245,6 +245,7 @@ namespace helpers {
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
+      if (aggregatedSize == 0) continue;
       int err = pthread_rwlock_wrlock(&quicSendLock);
       if (err == 0) {
         sendData(aggregatedSize);

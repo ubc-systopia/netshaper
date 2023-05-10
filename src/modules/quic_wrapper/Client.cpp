@@ -211,6 +211,7 @@ namespace QUIC {
   bool Client::loadConfiguration(bool noServerValidation) {
     auto *settings = new MsQuicSettings;
     settings->SetSendBufferingEnabled(false);
+    settings->SetPacingEnabled(false);
     settings->SetKeepAlive(idleTimeoutMs / 2);
     settings->SetIdleTimeoutMs(idleTimeoutMs);
 
@@ -300,21 +301,16 @@ namespace QUIC {
 
     if (QUIC_FAILED(
         stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
-      uint64_t streamID;
-      stream->GetID(&streamID);
       std::stringstream ss;
-      ss << "[Stream " << streamID << "] ";
+      ss << "[Stream " << stream->ID() << "] ";
       ss << " could not send data";
       log(ERROR, ss.str());
       free(SendBuffer);
       return false;
     }
 #ifdef DEBUGGING
-
-    uint64_t streamID;
-    stream->GetID(&streamID);
     std::stringstream ss;
-    ss << "[Stream " << streamID << "] ";
+    ss << "[Stream " << stream->ID() << "] ";
     ss << " Data sent successfully";
     log(DEBUG, ss.str());
 #endif

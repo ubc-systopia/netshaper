@@ -41,13 +41,12 @@ private:
 
   std::mutex readLock;
   std::mutex writeLock;
+  // Map lock is required as a param in the senderLoop. Otherwise, the map in
+  // the client never changes and hence no locking is required.
   std::shared_mutex mapLock;
 
   MsQuicStream *dummyStream;
   MsQuicStream *controlStream;
-  // Control and Dummy stream IDs
-  QUIC_UINT62 dummyStreamID;
-  QUIC_UINT62 controlStreamID;
 
   NoiseGenerator *noiseGenerator;
 

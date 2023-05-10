@@ -97,11 +97,9 @@ inline void ShapedServer::initialiseSHM(int numStreams) {
 }
 
 MsQuicStream *ShapedServer::findStreamByID(QUIC_UINT62 ID) {
-  QUIC_UINT62 streamID;
   for (const auto &[stream, queues]: *streamToQueues) {
     if (stream != nullptr) {
-      stream->GetID(&streamID);
-      if (streamID == ID) return stream;
+      if (stream->ID() == ID) return stream;
     }
   }
   return nullptr;
@@ -160,8 +158,7 @@ inline bool ShapedServer::assignQueues(MsQuicStream *stream) {
   (*streamToQueues)[stream] = queues;
   (*queuesToStream)[queues] = stream;
 
-  QUIC_UINT62 streamID;
-  stream->GetID(&streamID);
+  QUIC_UINT62 streamID = stream->ID();
 #ifdef DEBUGGING
   log(DEBUG,
       "Assigning stream " + std::to_string(streamID) + " to queues {" +
@@ -194,10 +191,8 @@ inline void ShapedServer::eraseMapping(MsQuicStream *stream) {
     return;
   }
 #ifdef DEBUGGING
-  uint64_t streamID;
-  stream->GetID(&streamID);
   log(DEBUG, "Clearing the mapping for the stream " +
-             std::to_string(streamID) + " mapped to queues {" +
+             std::to_string(stream->ID()) + " mapped to queues {" +
              std::to_string(queues.fromShaped->ID) + "," +
              std::to_string(queues.toShaped->ID) + "}");
 #endif
@@ -284,9 +279,7 @@ void ShapedServer::receivedShapedData(MsQuicStream *stream,
 
   // Not a control stream... Check for other types
   if (dummyStream == nullptr) {
-    uint64_t streamID;
-    stream->GetID(&streamID);
-    if (streamID == dummyStreamID) {
+    if (stream->ID() == dummyStreamID) {
       // Dummy Data
       if (dummyStream == nullptr) dummyStream = stream;
       return;
@@ -344,7 +337,7 @@ size_t ShapedServer::sendData(size_t dataSize) {
         auto *message =
             reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
                 ControlMessage)));
-        stream->GetID(&message->streamID);
+        message->streamID = stream->ID();
 #ifdef DEBUGGING
         log(DEBUG,
             "Sending FIN on stream " + std::to_string(message->streamID)
@@ -380,10 +373,8 @@ size_t ShapedServer::sendData(size_t dataSize) {
         std::chrono::steady_clock::now());
 #endif
     if (!shapedServer->send(stream, buffer, SizeToSendFromQueue)) {
-      uint64_t streamID;
-      stream->GetID(&streamID);
       log(ERROR, "Failed to send Shaped response on stream " +
-                 std::to_string(streamID));
+                 std::to_string(stream->ID()));
     } else {
       dataSize -= SizeToSendFromQueue;
     }

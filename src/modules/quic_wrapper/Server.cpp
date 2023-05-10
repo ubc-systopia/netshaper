@@ -184,6 +184,8 @@ namespace QUIC {
     // The settings for the QUIC Connection
     auto *settings = new MsQuicSettings;
     settings->SetSendBufferingEnabled(false);
+    settings->SetPacingEnabled(false);
+    settings->SetKeepAlive(idleTimeoutMs / 2);
     settings->SetIdleTimeoutMs(idleTimeoutMs);
     settings->SetServerResumptionLevel(QUIC_SERVER_RESUME_AND_ZERORTT);
 
