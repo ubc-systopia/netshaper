@@ -9,6 +9,9 @@
 #include <fstream>
 #include <sched.h>
 #include "../../modules/PerfEval.h"
+#include "../../../msquic/src/inc/external_sync.h"
+
+pthread_rwlock_t quicSendLock;
 
 using json = nlohmann::json;
 
@@ -58,6 +61,7 @@ void setCPUAffinity(std::vector<int> &cpus) {
 }
 
 int main() {
+  pthread_rwlock_init(&quicSendLock, nullptr);
   // Load configurations
   std::string configFileName;
   std::cout << "Enter the config file name/path" << std::endl;

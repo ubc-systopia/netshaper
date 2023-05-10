@@ -9,6 +9,7 @@
 #include <shared_mutex>
 #include "helpers.h"
 
+extern pthread_rwlock_t quicSendLock;
 #ifdef RECORD_STATS
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpIn;
@@ -159,6 +160,7 @@ namespace helpers {
     if (ret_val == -1)
       perror("The signal wait failed\n");
     else {
+      pthread_rwlock_destroy(&quicSendLock);
       if (sigismember(&set, sig)) {
         std::cout << "\nExiting with signal " << sig << std::endl;
 #ifdef RECORD_STATS
@@ -229,7 +231,6 @@ namespace helpers {
                       __useconds_t sendingInterval,
                       __useconds_t decisionInterval,
                       sendingStrategy strategy, std::shared_mutex &mapLock) {
-
 #ifdef SHAPING
     auto nextCheck = std::chrono::steady_clock::now();
 #endif
@@ -257,15 +258,21 @@ namespace helpers {
           // Get dummy and data size
           size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
           size_t dummySize = maxBytesToSend - dataSize;
+          pthread_rwlock_wrlock(&quicSendLock);
           if (dummySize > 0) sendDummy(dummySize);
           sendData(dataSize);
+          pthread_rwlock_unlock(&quicSendLock);
           credit -= (dataSize + dummySize);
           sendingCredit->store(credit, std::memory_order_release);
           std::this_thread::sleep_until(nextCheck);
         }
       }
 #else
-      sendData(aggregatedSize);
+      int err = pthread_rwlock_wrlock(&quicSendLock);
+      if (err == 0) {
+        sendData(aggregatedSize);
+        pthread_rwlock_unlock(&quicSendLock);
+      }
 #endif
     }
   }
