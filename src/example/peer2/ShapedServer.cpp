@@ -58,24 +58,17 @@ ShapedServer::ShapedServer(std::string appName,
   noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity,
                                       maxDecisionSize, minDecisionSize};
 
-  std::thread dpCreditorThread(helpers::DPCreditor, &sendingCredit,
-                               queuesToStream, noiseGenerator,
-                               DPCreditorLoopInterval, std::ref(mapLock));
-  dpCreditorThread.detach();
-
-  std::thread sendShaped(helpers::sendShapedData, &sendingCredit,
-                         queuesToStream,
-                         [this](auto &&PH1) {
-                           sendDummy
-                               (std::forward<decltype(PH1)>(PH1));
-                         },
-                         [this](auto &&PH1) {
-                           sendData
-                               (std::forward<decltype(PH1)>(PH1));
-                         },
-                         sendingLoopInterval, DPCreditorLoopInterval, strategy,
-                         std::ref(mapLock));
-  sendShaped.detach();
+  std::thread senderLoopThread(helpers::shaperLoop, queuesToStream,
+                               noiseGenerator,
+                               [this](auto &&PH1) {
+                                 sendDummy(std::forward<decltype(PH1)>(PH1));
+                               },
+                               [this](auto &&PH1) {
+                                 sendData(std::forward<decltype(PH1)>(PH1));
+                               },
+                               sendingLoopInterval, DPCreditorLoopInterval,
+                               strategy, std::ref(mapLock));
+  senderLoopThread.detach();
 }
 
 inline void ShapedServer::initialiseSHM(int numStreams) {

@@ -196,84 +196,61 @@ namespace helpers {
     return shmAddr;
   }
 
-#ifdef SHAPING
   [[noreturn]]
-#endif
-
-  void DPCreditor(std::atomic<size_t> *sendingCredit,
-                  std::unordered_map<QueuePair, MsQuicStream *,
-                      QueuePairHash> *queuesToStream,
+  void shaperLoop(std::unordered_map<QueuePair, MsQuicStream *,
+      QueuePairHash> *queuesToStream,
                   NoiseGenerator *noiseGenerator,
-                  __useconds_t decisionInterval, std::shared_mutex &mapLock) {
+                  const std::function<void(size_t)> &sendDummy,
+                  const std::function<void(size_t)> &sendData,
+                  __useconds_t sendingInterval, __useconds_t decisionInterval,
+                  sendingStrategy strategy, std::shared_mutex &mapLock) {
 #ifdef SHAPING
-    auto nextCheck = std::chrono::steady_clock::now();
+    auto decisionSleepUntil = std::chrono::steady_clock::now();
+    auto sendingSleepUntil = std::chrono::steady_clock::now();
     while (true) {
-      nextCheck = std::chrono::steady_clock::now() +
-                  std::chrono::microseconds(decisionInterval);
+      // Get DP Decision
+      decisionSleepUntil = std::chrono::steady_clock::now() +
+                           std::chrono::microseconds(decisionInterval);
       mapLock.lock();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock();
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
-      size_t credit = sendingCredit->load(std::memory_order_acquire);
-      credit += DPDecision;
-      sendingCredit->store(credit, std::memory_order_release);
-      std::this_thread::sleep_until(nextCheck);
-    }
-#endif
-  }
-
-  [[noreturn]]
-  void sendShapedData(std::atomic<size_t> *sendingCredit,
-                      std::unordered_map<QueuePair, MsQuicStream *,
-                          QueuePairHash> *queuesToStream,
-                      const std::function<void(size_t)> &sendDummy,
-                      const std::function<void(size_t)> &sendData,
-                      __useconds_t sendingInterval,
-                      __useconds_t decisionInterval,
-                      sendingStrategy strategy, std::shared_mutex &mapLock) {
-#ifdef SHAPING
-    auto nextCheck = std::chrono::steady_clock::now();
-#endif
-    while (true) {
-#ifdef SHAPING
-      nextCheck = std::chrono::steady_clock::now() +
-                  std::chrono::microseconds(sendingInterval);
-      unsigned int divisor;
-      if (strategy == BURST) divisor = 1; // Strategy is BURST
-      if (strategy == UNIFORM) divisor = decisionInterval / sendingInterval;
-      auto credit = sendingCredit->load(std::memory_order_acquire);
-#endif
-      mapLock.lock_shared();
-      auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
-      mapLock.unlock_shared();
-#ifdef SHAPING
-      if (credit == 0) {
-        // Don't send anything
-        continue;
-      } else {
-        auto maxBytesToSend = credit / divisor;
+      if (DPDecision != 0) {
+        // Enqueue data for quic to send.
+        unsigned int divisor;
+        if (strategy == BURST) divisor = 1; // Strategy is BURST
+        if (strategy == UNIFORM) divisor = decisionInterval / sendingInterval;
+        auto maxBytesToSend = DPDecision / divisor;
         for (unsigned int i = 0; i < divisor; i++) {
-          nextCheck = std::chrono::steady_clock::now() +
-                      std::chrono::microseconds(sendingInterval);
+          sendingSleepUntil = std::chrono::steady_clock::now() +
+                              std::chrono::microseconds(sendingInterval);
           // Get dummy and data size
           size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
           size_t dummySize = maxBytesToSend - dataSize;
-          pthread_rwlock_wrlock(&quicSendLock);
-          if (dummySize > 0) sendDummy(dummySize);
-          sendData(dataSize);
-          pthread_rwlock_unlock(&quicSendLock);
-          credit -= (dataSize + dummySize);
-          sendingCredit->store(credit, std::memory_order_release);
-          std::this_thread::sleep_until(nextCheck);
+          int err = pthread_rwlock_wrlock(&quicSendLock);
+          if (err == 0) {
+            if (dummySize > 0) sendDummy(dummySize);
+            sendData(dataSize);
+            pthread_rwlock_unlock(&quicSendLock);
+          }
+          if (std::chrono::steady_clock::now() < sendingSleepUntil)
+            std::this_thread::sleep_until(sendingSleepUntil);
         }
       }
+      if (std::chrono::steady_clock::now() < decisionSleepUntil)
+        std::this_thread::sleep_until(decisionSleepUntil);
+    }
 #else
+    while (true) {
+      mapLock.lock_shared();
+      auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
+      mapLock.unlock_shared();
       int err = pthread_rwlock_wrlock(&quicSendLock);
       if (err == 0) {
         sendData(aggregatedSize);
         pthread_rwlock_unlock(&quicSendLock);
       }
-#endif
     }
+#endif
   }
 }

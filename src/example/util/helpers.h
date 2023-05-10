@@ -141,48 +141,27 @@ namespace helpers {
 
   /**
    * @brief DP Decision function (runs in a separate thread at decisionInterval interval)
-   * @param sendingCredit The atomic variable to add to
    * @param queuesToStream The map containing all queues to get the
    * aggregated size of
    * @param noiseGenerator The configured noise generator instance
-   * @param decisionInterval The interval with which this loop will run
-   * @param mapLock The mapLock shared mutex used for locking the
-   * queuesToStream map
-   */
-#ifdef SHAPING
-  [[noreturn]]
-#endif
-  void DPCreditor(std::atomic<size_t> *sendingCredit,
-                  std::unordered_map<QueuePair, MsQuicStream *,
-                      QueuePairHash> *queuesToStream,
-                  NoiseGenerator *noiseGenerator,
-                  __useconds_t decisionInterval, std::shared_mutex &mapLock);
-
-  /**
-   * @brief Loop which sends Shaped Data at sendingInterval
-   * @param sendingCredit The atomic variable that contains the available
-   * sending credit
-   * @param queuesToStream The map containing all queues
    * @param sendDummy The function to call when the decision is made to send
    * dummy bytes
    * @param sendData The function to call when the decision is made to send
    * actual data
    * @param sendingInterval The interval with which this loop should iterate
-   * @param decisionInterval The interval at which the DP credit is updated.
-   * This should be a multiple of decisionInterval
+   * @param decisionInterval The interval with which this loop will run
    * @param strategy The sending strategy (when decisionInterval >= 2 *
    * sendingInterval). Can be "BURST" or "UNIFORM"
    * @param mapLock The mapLock shared mutex used for locking the
    * queuesToStream map
    */
   [[noreturn]]
-  void sendShapedData(std::atomic<size_t> *sendingCredit,
-                      std::unordered_map<QueuePair, MsQuicStream *,
-                          QueuePairHash> *queuesToStream,
-                      const std::function<void(size_t)> &sendDummy,
-                      const std::function<void(size_t)> &sendData,
-                      __useconds_t sendingInterval,
-                      __useconds_t decisionInterval, sendingStrategy strategy,
-                      std::shared_mutex &mapLock);
+  void shaperLoop(std::unordered_map<QueuePair, MsQuicStream *,
+      QueuePairHash> *queuesToStream,
+                  NoiseGenerator *noiseGenerator,
+                  const std::function<void(size_t)> &sendDummy,
+                  const std::function<void(size_t)> &sendData,
+                  __useconds_t sendingInterval, __useconds_t decisionInterval,
+                  sendingStrategy strategy, std::shared_mutex &mapLock);
 }
 #endif //MINESVPN_HELPERS_H

@@ -63,23 +63,18 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
   startDummyStream();
   sleep(2);
 
-  std::thread dpCreditorThread(helpers::DPCreditor, &sendingCredit,
-                               queuesToStream, noiseGenerator,
-                               DPCreditorLoopInterval, std::ref(mapLock));
-  dpCreditorThread.detach();
+  std::thread senderLoopThread(helpers::shaperLoop, queuesToStream,
+                               noiseGenerator,
+                               [this](auto &&PH1) {
+                                 sendDummy(std::forward<decltype(PH1)>(PH1));
+                               },
+                               [this](auto &&PH1) {
+                                 sendData(std::forward<decltype(PH1)>(PH1));
+                               },
+                               sendingLoopInterval, DPCreditorLoopInterval,
+                               strategy, std::ref(mapLock));
+  senderLoopThread.detach();
 
-  std::thread sendingThread(helpers::sendShapedData, &sendingCredit,
-                            queuesToStream,
-                            [this](auto &&PH1) {
-                              sendDummy(std::forward<decltype(PH1)>(PH1));
-                            },
-                            [this](auto &&PH1) {
-                              sendData(std::forward<decltype(PH1)>(PH1));
-                            },
-                            sendingLoopInterval, DPCreditorLoopInterval,
-                            strategy, std::ref(mapLock));
-
-  sendingThread.detach();
 }
 
 QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {

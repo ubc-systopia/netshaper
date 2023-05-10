@@ -50,8 +50,6 @@ private:
   QUIC_UINT62 controlStreamID;
 
   NoiseGenerator *noiseGenerator;
-  // Max data that can be sent out now
-  std::atomic<size_t> sendingCredit;
 
 
 /**

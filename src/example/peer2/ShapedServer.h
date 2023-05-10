@@ -48,8 +48,6 @@ private:
   // before the dummy stream begins.
   QUIC_UINT62 dummyStreamID;
 
-  // The maximum bytes that should be sent at this moment
-  std::atomic<size_t> sendingCredit;
   NoiseGenerator *noiseGenerator;
 
 
