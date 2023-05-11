@@ -152,9 +152,15 @@ void ShapedServer::copyClientInfo(QueuePair queues,
 
 inline bool ShapedServer::assignQueues(MsQuicStream *stream) {
   if (unassignedQueues->empty()) return false;
-//  mapLock.lock();
   auto queues = unassignedQueues->front();
   unassignedQueues->pop();
+  while (queues.fromShaped->inUse) {
+    // Unshaped side is still sending old data
+    unassignedQueues->push(queues);
+    queues = unassignedQueues->front();
+    unassignedQueues->pop();
+  }
+  queues.toShaped->inUse = queues.fromShaped->inUse = true;
   (*streamToQueues)[stream] = queues;
   (*queuesToStream)[queues] = stream;
 
@@ -199,6 +205,7 @@ inline void ShapedServer::eraseMapping(MsQuicStream *stream) {
   mapLock.lock();
   (*streamToQueues).erase(stream);
   (*queuesToStream).erase(queues);
+  queues.toShaped->inUse = false;
   unassignedQueues->push(queues);
   mapLock.unlock();
 }
@@ -328,7 +335,7 @@ size_t ShapedServer::sendData(size_t dataSize) {
   auto tempMap = *queuesToStream;
   mapLock.unlock_shared();
   for (const auto &[queues, stream]: tempMap) {
-//    if (stream == nullptr) continue;
+    if (!queues.toShaped->inUse) continue;
     auto queueSize = queues.toShaped->size();
     // No data in this queue, check for FINs and erase mappings
     if (queueSize == 0) {

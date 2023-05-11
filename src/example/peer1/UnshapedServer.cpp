@@ -12,6 +12,7 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
                                __useconds_t shapedClientLoopInterval,
                                logLevels logLevel, std::string serverAddr) :
     appName(appName), logLevel(logLevel), serverAddr(std::move(serverAddr)),
+    checkResponseInterval(checkResponseInterval),
     shapedClientLoopInterval(shapedClientLoopInterval), maxClients(maxClients),
     sigInfo(nullptr) {
   socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
@@ -36,68 +37,62 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
   unshapedServer = new TCP::Server{std::move(bindAddr), bindPort,
                                    tcpReceiveFunc, logLevel};
   unshapedServer->startListening();
-
-  std::thread responseLoop([=, this]() {
-    receivedResponse(checkResponseInterval);
-  });
-  responseLoop.detach();
-
-//  std::signal(SIGUSR1, handleQueueSignal);
 }
 
-[[noreturn]] void UnshapedServer::receivedResponse(__useconds_t interval) {
+void UnshapedServer::forwardData(QueuePair queues, int socket,
+                                 __useconds_t interval) {
+
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
-  while (true) {
-    nextCheck += std::chrono::microseconds(interval);
-//    std::this_thread::sleep_for(std::chrono::microseconds(interval));
+  while (queues.fromShaped->inUse) {
+    nextCheck = std::chrono::steady_clock::now() +
+                 std::chrono::microseconds(interval);
     std::this_thread::sleep_until(nextCheck);
 #else
-  while (true) {
+  while (queues.fromShaped->inUse) {
 #endif
-    mapLock.lock_shared();
-    auto tempMap = *queuesToSocket;
-    mapLock.unlock_shared();
-    for (const auto &[queues, socket]: tempMap) {
-//      if (socket == 0) continue;
-      auto size = queues.fromShaped->size();
-      if (size == 0) {
-        if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
+    auto size = queues.fromShaped->size();
+    if (size == 0) {
+      if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
 #ifdef DEBUGGING
-          log(DEBUG,
-                "Sending FIN to socket " + std::to_string(socket) +
-                " mapped to queues {" +
-                std::to_string(queues.fromShaped->ID) + "," +
-                std::to_string(queues.toShaped->ID) + "}");
+        log(DEBUG,
+            "Sending FIN to socket " + std::to_string(socket) +
+            " mapped to queues {" +
+            std::to_string(queues.fromShaped->ID) + "," +
+            std::to_string(queues.toShaped->ID) + "}");
 #endif
-          TCP::Server::sendFIN(socket);
-          (*pendingSignal).erase(queues.fromShaped->ID);
-          queues.fromShaped->sentFIN = true;
-        }
-        if (queues.toShaped->markedForDeletion
-            && queues.fromShaped->markedForDeletion
-            && queues.fromShaped->sentFIN) {
-          eraseMapping(socket);
-        }
+        TCP::Server::sendFIN(socket);
+        (*pendingSignal).erase(queues.fromShaped->ID);
+        queues.fromShaped->sentFIN = true;
       }
-      if (size > 0) {
-        auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
-        queues.fromShaped->pop(buffer, size);
-        auto sentBytes =
-            unshapedServer->sendData(socket, buffer, size);
-        if (sentBytes > 0 && (size_t) sentBytes == size) free(buffer);
+      if (queues.toShaped->markedForDeletion
+          && queues.fromShaped->markedForDeletion
+          && queues.fromShaped->sentFIN) {
+        eraseMapping(socket);
       }
+    } else {
+      auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
+      queues.fromShaped->pop(buffer, size);
+      auto sentBytes =
+          unshapedServer->sendData(socket, buffer, size);
+      if (sentBytes > 0 && (size_t) sentBytes == size) free(buffer);
     }
   }
 }
 
 inline QueuePair
 UnshapedServer::assignQueue(int clientSocket, std::string &clientAddress,
-                            std::string serverAddress) {
+                            const std::string serverAddress) {
   if (unassignedQueues->empty()) return {nullptr, nullptr};
   mapLock.lock();
   auto queues = unassignedQueues->front();
   unassignedQueues->pop();
+  while (queues.toShaped->inUse) {
+    // Shaped side is still sending old data
+    unassignedQueues->push(queues);
+    queues = unassignedQueues->front();
+    unassignedQueues->pop();
+  }
 #ifdef DEBUGGING
   log(DEBUG, "Assigning socket " +
              std::to_string(clientSocket) + " (client: " + clientAddress
@@ -111,8 +106,9 @@ UnshapedServer::assignQueue(int clientSocket, std::string &clientAddress,
   // Set client of queue to the new client
   auto address = clientAddress.substr(0, clientAddress.find(':'));
   auto port = clientAddress.substr(address.size() + 1);
-  queues.toShaped->markedForDeletion = false;
-  queues.fromShaped->markedForDeletion = false;
+  queues.toShaped->markedForDeletion = queues.fromShaped->markedForDeletion
+      = false;
+  queues.fromShaped->inUse = queues.toShaped->inUse = true;
   queues.toShaped->sentFIN = queues.fromShaped->sentFIN = false;
   queues.toShaped->clear();
   queues.fromShaped->clear();
@@ -149,6 +145,7 @@ inline void UnshapedServer::eraseMapping(int socket) {
   mapLock.lock();
   (*socketToQueues).erase(socket);
   (*queuesToSocket).erase(queues);
+  queues.fromShaped->inUse = false;
   unassignedQueues->push(queues);
   mapLock.unlock();
 }
@@ -187,9 +184,6 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
         log(ERROR, "More clients than configured for!");
         return false;
       }
-//      mapLock.lock_shared();
-//      queues = (*socketToQueues)[fromSocket];
-//      mapLock.unlock_shared();
 #ifdef DEBUGGING
       {
         log(DEBUG, "Received SYN from socket " + std::to_string(fromSocket)
@@ -198,6 +192,11 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
                    std::to_string(queues.toShaped->ID) + "}");
       }
 #endif
+      std::thread forwardDataThread(
+          [=, this]() {
+            forwardData(queues, fromSocket, checkResponseInterval);
+          });
+      forwardDataThread.detach();
       signalShapedProcess(queues.toShaped->ID, SYN);
       return true;
     }

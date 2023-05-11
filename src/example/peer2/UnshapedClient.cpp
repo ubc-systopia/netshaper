@@ -13,6 +13,7 @@ UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
                                __useconds_t shapedServerLoopInterval,
                                logLevels logLevel) :
     appName(std::move(appName)), logLevel(logLevel),
+    checkQueuesInterval(checkQueuesInterval),
     shapedServerLoopInterval(shapedServerLoopInterval), sigInfo(nullptr) {
   queuesToClient =
       new std::unordered_map<QueuePair, TCP::Client *,
@@ -23,12 +24,6 @@ UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
       new std::unordered_map<TCP::Client *, QueuePair>();
 
   initialiseSHM(maxPeers * maxStreamsPerPeer);
-
-  auto checkQueuesFunc = [=, this]() {
-    checkQueuesForData(checkQueuesInterval);
-  };
-  std::thread checkQueuesLoop(checkQueuesFunc);
-  checkQueuesLoop.detach();
 }
 
 inline void UnshapedClient::initialiseSHM(int numStreams) {
@@ -96,6 +91,7 @@ inline void UnshapedClient::eraseMapping(TCP::Client *client) {
 #endif
   // Clear mappings
   (*clientToQueues).erase(client);
+  queues.fromShaped->inUse = false;
   delete client;
   (*queuesToClient)[queues] = nullptr;
 }
@@ -137,7 +133,7 @@ void UnshapedClient::handleQueueSignal(int signum) {
                      std::forward<decltype(PH3)>(PH3),
                      std::forward<decltype(PH4)>(PH4));
         };
-        auto unshapedClient = new TCP::Client{
+        auto client = new TCP::Client{
             queues.fromShaped->addrPair.serverAddress,
             std::stoi(queues.fromShaped->addrPair.serverPort),
             onResponseFunc, logLevel};
@@ -146,8 +142,12 @@ void UnshapedClient::handleQueueSignal(int signum) {
                    std::to_string(queues.fromShaped->ID) + "," +
                    std::to_string(queues.toShaped->ID) + "}");
 #endif
-        (*queuesToClient)[queues] = unshapedClient;
-        (*clientToQueues)[unshapedClient] = queues;
+        (*queuesToClient)[queues] = client;
+        (*clientToQueues)[client] = queues;
+        std::thread forwardDataThread(
+            [=, this]() { forwardData(queues, client, checkQueuesInterval); }
+        );
+        forwardDataThread.detach();
       } else if (queueInfo.connStatus == FIN) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
@@ -155,28 +155,26 @@ void UnshapedClient::handleQueueSignal(int signum) {
   }
 }
 
-[[noreturn]] void UnshapedClient::checkQueuesForData(__useconds_t interval) {
+void UnshapedClient::forwardData(QueuePair queues, TCP::Client *client,
+                                 __useconds_t interval) {
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
-
-  while (true) {
-    nextCheck += std::chrono::microseconds(interval);
-//    std::this_thread::sleep_for(std::chrono::microseconds(interval));
+  while (queues.fromShaped->inUse) {
+    nextCheck = std::chrono::steady_clock::now() +
+        std::chrono::microseconds(interval);
     std::this_thread::sleep_until(nextCheck);
 #else
-  while (true) {
+  while (queues.fromShaped->inUse) {
 #endif
-    for (const auto &[queues, client]: *queuesToClient) {
-      if (client == nullptr) continue;
-      auto size = queues.fromShaped->size();
-      if (size == 0) {
-        if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
+    auto size = queues.fromShaped->size();
+    if (size == 0) {
+      if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
 #ifdef DEBUGGING
-          log(DEBUG, "Sending FIN to client connected to (fromShaped)" +
-                     std::to_string(queues.fromShaped->ID));
+        log(DEBUG, "Sending FIN to client connected to (fromShaped)" +
+                   std::to_string(queues.fromShaped->ID));
 #endif
-          client->sendFIN();
-          (*pendingSignal).erase(queues.fromShaped->ID);
+        client->sendFIN();
+        (*pendingSignal).erase(queues.fromShaped->ID);
           queues.fromShaped->sentFIN = true;
         }
         if (queues.fromShaped->markedForDeletion
@@ -194,7 +192,6 @@ void UnshapedClient::handleQueueSignal(int signum) {
 
       }
     }
-  }
 }
 
 void UnshapedClient::log(logLevels level, const std::string &log) {

@@ -61,6 +61,7 @@ public:
   uint64_t ID;
   bool markedForDeletion = false;
   bool sentFIN = false;
+  bool inUse = false;
 
 private:
   std::atomic<size_t> front;

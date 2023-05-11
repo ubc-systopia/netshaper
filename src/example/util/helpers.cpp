@@ -245,7 +245,6 @@ namespace helpers {
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
-      if (aggregatedSize == 0) continue;
       int err = pthread_rwlock_wrlock(&quicSendLock);
       if (err == 0) {
         sendData(aggregatedSize);

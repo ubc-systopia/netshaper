@@ -20,6 +20,7 @@ private:
   std::unordered_map<QueuePair, TCP::Client *, QueuePairHash> *queuesToClient;
   std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
   std::mutex logWriter;
+  __useconds_t checkQueuesInterval;
   __useconds_t shapedServerLoopInterval;
 
   // Client to queue_in and queue_out. queue_out contains response received on
@@ -60,10 +61,13 @@ private:
   QueuePair findQueuesByID(uint64_t queueID);
 
   /**
- * @brief Check queues for data periodically and send it to corresponding socket
- * @param interval The interval at which the queues are checked
- */
-  [[noreturn]] void checkQueuesForData(__useconds_t interval);
+   * @brief Thread that reads the queue and forwards the data
+   * @param queues The queuePair to check the data from
+   * @param client The client instance to send the data via
+   * @param interval The interval with which this loop should run
+   */
+  void forwardData(QueuePair queues, TCP::Client *client,
+                   __useconds_t interval);
 
   /**
    * @brief Signal the shaped process

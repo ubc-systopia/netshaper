@@ -60,7 +60,7 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
 
   // Start the dummy stream
   startDummyStream();
-  sleep(2);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   std::thread senderLoopThread(helpers::shaperLoop, queuesToStream,
                                noiseGenerator,
@@ -73,7 +73,6 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
                                sendingLoopInterval, DPCreditorLoopInterval,
                                strategy, std::ref(mapLock));
   senderLoopThread.detach();
-
 }
 
 QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {
@@ -178,7 +177,7 @@ void ShapedClient::sendData(size_t dataSize) {
   // TODO: Add prioritisation
   for (const auto &[queues, stream]: *queuesToStream) {
     auto toShaped = queues.toShaped;
-
+    if (!toShaped->inUse) continue;
     auto queueSize = toShaped->size();
     if (queueSize == 0) {
       if ((*pendingSignal)[toShaped->ID] == FIN) {
@@ -201,6 +200,7 @@ void ShapedClient::sendData(size_t dataSize) {
                            reinterpret_cast<uint8_t *>(message),
                            sizeof(*message));
         (*pendingSignal).erase(toShaped->ID);
+        queues.toShaped->inUse = false;
       }
       continue;
     }

@@ -134,6 +134,7 @@ namespace helpers {
       QueuePairHash> *queuesToStream) {
     size_t aggregatedSize = 0;
     for (auto &iterator: *queuesToStream) {
+      if (!iterator.first.toShaped->inUse) continue;
       aggregatedSize += iterator.first.toShaped->size();
     }
     return aggregatedSize;

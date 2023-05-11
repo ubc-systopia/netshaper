@@ -23,6 +23,7 @@ private:
   const logLevels logLevel;
   std::string serverAddr;
   std::mutex logWriter;
+  __useconds_t checkResponseInterval;
   __useconds_t shapedClientLoopInterval;
 
 // We fix the number of streams beforehand to avoid side-channels caused by
@@ -46,11 +47,13 @@ private:
   TCP::Server *unshapedServer;
 
   /**
- * @brief Read queues periodically and send the responses to the
- * corresponding sockets
- * @param interval The interval at which the queues will be checked
- */
-  [[noreturn]] void receivedResponse(__useconds_t interval);
+   * @brief The thread to check the queues and forward the data
+   * @param queues The queuePair to check for the data
+   * @param socket The socket on which the data should be forwarded
+   * @param interval The interval with which the loop should run
+   */
+  void forwardData(QueuePair queues, int socket, __useconds_t interval);
+
 
   /**
  * @brief assign a new queue for a new client
