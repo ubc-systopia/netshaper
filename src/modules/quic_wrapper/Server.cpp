@@ -284,7 +284,6 @@ namespace QUIC {
     SendBuffer->Length = length;
 
     ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
-    context->server = this;
     context->buffer = SendBuffer;
 #ifdef RECORD_STATS
     context->start = std::chrono::steady_clock::now();
@@ -292,6 +291,10 @@ namespace QUIC {
 
     if (QUIC_FAILED(
         stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
+      std::stringstream ss;
+      ss << "[Stream " << stream->ID() << "] ";
+      ss << " could not send data";
+      log(ERROR, ss.str());
       free(SendBuffer);
       return false;
     }

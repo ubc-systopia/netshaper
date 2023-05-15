@@ -20,6 +20,7 @@ std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     quicOut(128);
 std::vector<std::vector<uint64_t>> tcpSend(128);
 std::vector<std::vector<uint64_t>> quicSend(128);
+std::vector<uint64_t> timeToPlaceInQUICQueues{};
 
 #endif  //MINESVPN_PERFEVAL_H
 

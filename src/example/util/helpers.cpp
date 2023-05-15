@@ -7,6 +7,7 @@
 #include <sstream>
 #include <fstream>
 #include <shared_mutex>
+#include <numeric>
 #include "helpers.h"
 
 extern pthread_rwlock_t quicSendLock;
@@ -21,6 +22,7 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicOut;
 extern std::vector<std::vector<uint64_t>> tcpSend;
 extern std::vector<std::vector<uint64_t>> quicSend;
+extern std::vector<uint64_t> timeToPlaceInQUICQueues;
 #endif
 
 namespace helpers {
@@ -64,6 +66,24 @@ namespace helpers {
 
   void printStats(bool isShapedProcess) {
     if (isShapedProcess) {
+      {
+        double sum = std::accumulate(timeToPlaceInQUICQueues.begin(),
+                                     timeToPlaceInQUICQueues.end(), 0.0);
+        double mean = sum / timeToPlaceInQUICQueues.size();
+
+        double accum = 0.0;
+        std::for_each(timeToPlaceInQUICQueues.begin(),
+                      timeToPlaceInQUICQueues.end(), [&](const double d) {
+              return accum += (d - mean) * (d - mean);
+            });
+
+        double stdev = std::sqrt(accum / timeToPlaceInQUICQueues.size());
+        std::cout << "Time to place in Queues:" <<
+                  "\n\t Mean = " << mean
+                  << "\n\t Stdev = " << stdev
+                  << std::endl;
+      }
+
       std::ofstream quicSendLatencies;
       quicSendLatencies.open("quicSend.csv");
       for (unsigned long i = 0; i < quicSend.size(); i++) {
@@ -200,17 +220,22 @@ namespace helpers {
   void shaperLoop(std::unordered_map<QueuePair, MsQuicStream *,
       QueuePairHash> *queuesToStream,
                   NoiseGenerator *noiseGenerator,
-                  const std::function<void(size_t)> &sendDummy,
-                  const std::function<void(size_t)> &sendData,
+                  const std::function<PreparedBuffer(size_t)>
+                  &prepareDummy,
+                  const std::function<std::vector<PreparedBuffer>(size_t)>
+                  &prepareData,
+                  const std::function<void(MsQuicStream *, uint8_t *, size_t)>
+                  &placeInQuicQueues,
                   __useconds_t sendingInterval, __useconds_t decisionInterval,
                   sendingStrategy strategy, std::shared_mutex &mapLock) {
+    auto quicSendBlockUntil = std::chrono::steady_clock::now();
+    auto quicSendBlockDurationUs = 1000;  // TODO: Placeholder, REPLACE!
 #ifdef SHAPING
     auto decisionSleepUntil = std::chrono::steady_clock::now();
     auto sendingSleepUntil = std::chrono::steady_clock::now();
     while (true) {
       // Get DP Decision
-      decisionSleepUntil = std::chrono::steady_clock::now() +
-                           std::chrono::microseconds(decisionInterval);
+      decisionSleepUntil += std::chrono::microseconds(decisionInterval);
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
@@ -222,15 +247,26 @@ namespace helpers {
         if (strategy == UNIFORM) divisor = decisionInterval / sendingInterval;
         auto maxBytesToSend = DPDecision / divisor;
         for (unsigned int i = 0; i < divisor; i++) {
-          sendingSleepUntil = std::chrono::steady_clock::now() +
-                              std::chrono::microseconds(sendingInterval);
+          sendingSleepUntil += std::chrono::microseconds(sendingInterval);
           // Get dummy and data size
           size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
           size_t dummySize = maxBytesToSend - dataSize;
+          auto preparedBuffers = prepareData(dataSize);
+          preparedBuffers.push_back(prepareDummy(dummySize));
           int err = pthread_rwlock_wrlock(&quicSendLock);
+          quicSendBlockUntil = std::chrono::steady_clock::now() +
+                               std::chrono::microseconds(
+                                   quicSendBlockDurationUs);
           if (err == 0) {
-            if (dummySize > 0) sendDummy(dummySize);
-            sendData(dataSize);
+            for (auto preparedBuffer: preparedBuffers) {
+              if (preparedBuffer.stream == nullptr
+                  || preparedBuffer.buffer == nullptr)
+                continue;
+              placeInQuicQueues(preparedBuffer.stream, preparedBuffer.buffer,
+                                preparedBuffer.length);
+            }
+            if (std::chrono::steady_clock::now() < quicSendBlockUntil)
+              std::this_thread::sleep_until(quicSendBlockUntil);
             pthread_rwlock_unlock(&quicSendLock);
           }
           if (std::chrono::steady_clock::now() < sendingSleepUntil)
@@ -246,11 +282,29 @@ namespace helpers {
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
       if (aggregatedSize == 0) continue;
+      auto preparedBuffers = prepareData(aggregatedSize);
+#ifdef RECORD_STATS
+      auto start = std::chrono::steady_clock::now();
+      for (auto preparedBuffer: preparedBuffers) {
+        placeInQuicQueues(preparedBuffer.stream, preparedBuffer.buffer,
+                          preparedBuffer.length);
+      }
+      auto end = std::chrono::steady_clock::now();
+      timeToPlaceInQUICQueues.push_back((end - start).count());
+#else
       int err = pthread_rwlock_wrlock(&quicSendLock);
+      quicSendBlockUntil = std::chrono::steady_clock::now() +
+                           std::chrono::microseconds(quicSendBlockDurationUs);
       if (err == 0) {
-        sendData(aggregatedSize);
+        for (auto preparedBuffer: preparedBuffers) {
+          placeInQuicQueues(preparedBuffer.stream, preparedBuffer.buffer,
+                            preparedBuffer.length);
+        }
+        if (std::chrono::steady_clock::now() < quicSendBlockUntil)
+          std::this_thread::sleep_until(quicSendBlockUntil);
         pthread_rwlock_unlock(&quicSendLock);
       }
+#endif
     }
 #endif
   }

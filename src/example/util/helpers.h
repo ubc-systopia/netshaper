@@ -95,6 +95,12 @@ namespace helpers {
     addressPair addrPair{};
   };
 
+  struct PreparedBuffer {
+    MsQuicStream *stream = nullptr;
+    uint8_t *buffer = nullptr;
+    size_t length = 0;
+  };
+
 /**
  * @brief Add given signal to the signal set
  * @param set The signal set to add the signal in
@@ -159,8 +165,12 @@ namespace helpers {
   void shaperLoop(std::unordered_map<QueuePair, MsQuicStream *,
       QueuePairHash> *queuesToStream,
                   NoiseGenerator *noiseGenerator,
-                  const std::function<void(size_t)> &sendDummy,
-                  const std::function<void(size_t)> &sendData,
+                  const std::function<PreparedBuffer(size_t)>
+                  &prepareDummy,
+                  const std::function<std::vector<PreparedBuffer>(size_t)>
+                  &prepareData,
+                  const std::function<void(MsQuicStream *, uint8_t *, size_t)>
+                  &placeInQuicQueues,
                   __useconds_t sendingInterval, __useconds_t decisionInterval,
                   sendingStrategy strategy, std::shared_mutex &mapLock);
 }

@@ -65,7 +65,6 @@ namespace QUIC {
     bool isConnected = false;
 
     struct ctx {
-      Client *client = nullptr;
       QUIC_BUFFER *buffer = nullptr;
 #ifdef RECORD_STATS
       std::chrono::time_point<std::chrono::steady_clock> start;

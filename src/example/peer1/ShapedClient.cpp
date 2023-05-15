@@ -60,20 +60,26 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
 
   // Start the dummy stream
   startDummyStream();
-  sleep(2);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   std::thread senderLoopThread(helpers::shaperLoop, queuesToStream,
                                noiseGenerator,
-                               [this](auto &&PH1) {
-                                 sendDummy(std::forward<decltype(PH1)>(PH1));
+                               [this](auto &&PH1) -> PreparedBuffer {
+                                 return prepareDummy(std::forward<decltype(PH1)>
+                                                         (PH1));
                                },
-                               [this](auto &&PH1) {
-                                 sendData(std::forward<decltype(PH1)>(PH1));
+                               [this](auto &&PH1) ->
+                                   std::vector<PreparedBuffer> {
+                                 return prepareData(std::forward<decltype(PH1)>
+                                                        (PH1));
+                               },
+                               [this](MsQuicStream *stream, uint8_t *buffer,
+                                      size_t length) {
+                                 shapedClient->send(stream, buffer, length);
                                },
                                sendingLoopInterval, DPCreditorLoopInterval,
                                strategy, std::ref(mapLock));
   senderLoopThread.detach();
-
 }
 
 QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {
@@ -174,11 +180,11 @@ inline void ShapedClient::initialiseSHM() {
   }
 }
 
-void ShapedClient::sendData(size_t dataSize) {
+std::vector<PreparedBuffer> ShapedClient::prepareData(size_t dataSize) {
+  std::vector<PreparedBuffer> preparedBuffers{};
   // TODO: Add prioritisation
   for (const auto &[queues, stream]: *queuesToStream) {
     auto toShaped = queues.toShaped;
-
     auto queueSize = toShaped->size();
     if (queueSize == 0) {
       if ((*pendingSignal)[toShaped->ID] == FIN) {
@@ -212,16 +218,16 @@ void ShapedClient::sendData(size_t dataSize) {
     quicOut[queues.fromShaped->ID / 2]
         .push_back(std::chrono::steady_clock::now());
 #endif
-    shapedClient->send(stream, buffer, sizeToSend);
+    preparedBuffers.push_back({stream, buffer, sizeToSend});
     dataSize -= sizeToSend;
   }
+  return preparedBuffers;
 }
 
-void ShapedClient::sendDummy(size_t dummySize) {
+PreparedBuffer ShapedClient::prepareDummy(size_t dummySize) {
   auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
   memset(buffer, 0, dummySize);
-  shapedClient->send(dummyStream,
-                     buffer, dummySize);
+  return {dummyStream, buffer, dummySize};
 }
 
 void ShapedClient::handleControlMessages(uint8_t *buffer, size_t length) {

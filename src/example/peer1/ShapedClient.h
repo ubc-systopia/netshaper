@@ -155,14 +155,16 @@ public:
   /**
    * @brief Send dummy of given size on the dummy stream
    * @param dummySize The #bytes to send
+   * @return The prepared buffer (stream, buffer and size)
    */
-  void sendDummy(size_t dummySize);
+  PreparedBuffer prepareDummy(size_t dummySize);
 
 /**
  * @brief Send data to the receiving middleBox
  * @param dataSize The number of bytes to send out
+ * @return Vector containing the prepared buffer (stream, buffer and size)
  */
-  void sendData(size_t dataSize);
+  std::vector<PreparedBuffer> prepareData(size_t dataSize);
 
 /**
  * @brief Handle the queue status change signal sent by the unshaped process
