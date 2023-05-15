@@ -22,7 +22,7 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicOut;
 extern std::vector<std::vector<uint64_t>> tcpSend;
 extern std::vector<std::vector<uint64_t>> quicSend;
-extern std::vector<uint64_t> timeToPlaceInQUICQueues;
+extern std::vector<std::pair<uint64_t, uint64_t>> timeToPrepareData;
 #endif
 
 namespace helpers {
@@ -67,61 +67,55 @@ namespace helpers {
   void printStats(bool isShapedProcess) {
     if (isShapedProcess) {
       {
-        double sum = std::accumulate(timeToPlaceInQUICQueues.begin(),
-                                     timeToPlaceInQUICQueues.end(), 0.0);
-        double mean = sum / timeToPlaceInQUICQueues.size();
-
-        double accum = 0.0;
-        std::for_each(timeToPlaceInQUICQueues.begin(),
-                      timeToPlaceInQUICQueues.end(), [&](const double d) {
-              return accum += (d - mean) * (d - mean);
-            });
-
-        double stdev = std::sqrt(accum / timeToPlaceInQUICQueues.size());
-        std::cout << "Time to place in Queues:" <<
-                  "\n\t Mean = " << mean
-                  << "\n\t Stdev = " << stdev
-                  << std::endl;
-      }
-
-      std::ofstream quicSendLatencies;
-      quicSendLatencies.open("quicSend.csv");
-      for (unsigned long i = 0; i < quicSend.size(); i++) {
-        if (!quicSend[i].empty()) {
-          quicSendLatencies << "Stream " << i << ",";
-          for (auto elem: quicSend[i]) {
-            quicSendLatencies << elem << ",";
-          }
-          quicSendLatencies << "\n";
+        std::ofstream prepareDurations;
+        prepareDurations.open("prepareDurations.csv");
+        prepareDurations << "Data size, Duration\n";
+        for (auto elem: timeToPrepareData) {
+          prepareDurations << elem.first << ", " << elem.second << "\n";
         }
+        prepareDurations << std::endl;
+        prepareDurations.close();
       }
-      quicSendLatencies << std::endl;
-      quicSendLatencies.close();
-
-
-      std::ofstream shapedEval;
-      shapedEval.open("shaped.csv");
-      for (unsigned long i = 0; i < quicIn.size(); i++) {
-        if (!quicIn[i].empty()) {
-          shapedEval << "quicIn " << i << ",";
-          for (auto elem: quicIn[i]) {
-            shapedEval << elem.time_since_epoch().count() << ",";
+      {
+        std::ofstream quicSendLatencies;
+        quicSendLatencies.open("quicSend.csv");
+        for (unsigned long i = 0; i < quicSend.size(); i++) {
+          if (!quicSend[i].empty()) {
+            quicSendLatencies << "Stream " << i << ",";
+            for (auto elem: quicSend[i]) {
+              quicSendLatencies << elem << ",";
+            }
+            quicSendLatencies << "\n";
           }
-          shapedEval << "\n";
         }
+        quicSendLatencies << std::endl;
+        quicSendLatencies.close();
       }
-      shapedEval << "\n";
-      for (unsigned long i = 0; i < quicOut.size(); i++) {
-        if (!quicOut[i].empty()) {
-          shapedEval << "quicOut " << i << ",";
-          for (auto elem: quicOut[i]) {
-            shapedEval << elem.time_since_epoch().count() << ",";
+      {
+        std::ofstream shapedEval;
+        shapedEval.open("shaped.csv");
+        for (unsigned long i = 0; i < quicIn.size(); i++) {
+          if (!quicIn[i].empty()) {
+            shapedEval << "quicIn " << i << ",";
+            for (auto elem: quicIn[i]) {
+              shapedEval << elem.time_since_epoch().count() << ",";
+            }
+            shapedEval << "\n";
           }
-          shapedEval << "\n";
         }
+        shapedEval << "\n";
+        for (unsigned long i = 0; i < quicOut.size(); i++) {
+          if (!quicOut[i].empty()) {
+            shapedEval << "quicOut " << i << ",";
+            for (auto elem: quicOut[i]) {
+              shapedEval << elem.time_since_epoch().count() << ",";
+            }
+            shapedEval << "\n";
+          }
+        }
+        shapedEval << std::endl;
+        shapedEval.close();
       }
-      shapedEval << std::endl;
-      shapedEval.close();
     } else {
       std::ofstream tcpSendLatencies;
       tcpSendLatencies.open("tcpSend.csv");
@@ -228,14 +222,14 @@ namespace helpers {
                   &placeInQuicQueues,
                   __useconds_t sendingInterval, __useconds_t decisionInterval,
                   sendingStrategy strategy, std::shared_mutex &mapLock) {
-    auto quicSendBlockUntil = std::chrono::steady_clock::now();
-    auto quicSendBlockDurationUs = 1000;  // TODO: Placeholder, REPLACE!
 #ifdef SHAPING
     auto decisionSleepUntil = std::chrono::steady_clock::now();
     auto sendingSleepUntil = std::chrono::steady_clock::now();
     while (true) {
       // Get DP Decision
-      decisionSleepUntil += std::chrono::microseconds(decisionInterval);
+      decisionSleepUntil = std::chrono::steady_clock::now() +
+                           std::chrono::microseconds(decisionInterval);
+      sendingSleepUntil = std::chrono::steady_clock::now();
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
@@ -253,10 +247,9 @@ namespace helpers {
           size_t dummySize = maxBytesToSend - dataSize;
           auto preparedBuffers = prepareData(dataSize);
           preparedBuffers.push_back(prepareDummy(dummySize));
+          if (std::chrono::steady_clock::now() < sendingSleepUntil)
+            std::this_thread::sleep_until(sendingSleepUntil);
           int err = pthread_rwlock_wrlock(&quicSendLock);
-          quicSendBlockUntil = std::chrono::steady_clock::now() +
-                               std::chrono::microseconds(
-                                   quicSendBlockDurationUs);
           if (err == 0) {
             for (auto preparedBuffer: preparedBuffers) {
               if (preparedBuffer.stream == nullptr
@@ -265,12 +258,8 @@ namespace helpers {
               placeInQuicQueues(preparedBuffer.stream, preparedBuffer.buffer,
                                 preparedBuffer.length);
             }
-            if (std::chrono::steady_clock::now() < quicSendBlockUntil)
-              std::this_thread::sleep_until(quicSendBlockUntil);
             pthread_rwlock_unlock(&quicSendLock);
           }
-          if (std::chrono::steady_clock::now() < sendingSleepUntil)
-            std::this_thread::sleep_until(sendingSleepUntil);
         }
       }
       if (std::chrono::steady_clock::now() < decisionSleepUntil)
@@ -278,33 +267,26 @@ namespace helpers {
     }
 #else
     while (true) {
+#ifdef RECORD_STATS
+      auto start = std::chrono::steady_clock::now();
+#endif
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
-      if (aggregatedSize == 0) continue;
+//      if (aggregatedSize == 0) continue;
       auto preparedBuffers = prepareData(aggregatedSize);
 #ifdef RECORD_STATS
-      auto start = std::chrono::steady_clock::now();
-      for (auto preparedBuffer: preparedBuffers) {
-        placeInQuicQueues(preparedBuffer.stream, preparedBuffer.buffer,
-                          preparedBuffer.length);
-      }
       auto end = std::chrono::steady_clock::now();
-      timeToPlaceInQUICQueues.push_back((end - start).count());
-#else
+      timeToPrepareData.emplace_back(aggregatedSize, (end - start).count());
+#endif
       int err = pthread_rwlock_wrlock(&quicSendLock);
-      quicSendBlockUntil = std::chrono::steady_clock::now() +
-                           std::chrono::microseconds(quicSendBlockDurationUs);
       if (err == 0) {
         for (auto preparedBuffer: preparedBuffers) {
           placeInQuicQueues(preparedBuffer.stream, preparedBuffer.buffer,
                             preparedBuffer.length);
         }
-        if (std::chrono::steady_clock::now() < quicSendBlockUntil)
-          std::this_thread::sleep_until(quicSendBlockUntil);
         pthread_rwlock_unlock(&quicSendLock);
       }
-#endif
     }
 #endif
   }
