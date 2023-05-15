@@ -39,6 +39,7 @@ find_package(nlohmann_json REQUIRED)
 
 include_directories(msquic/src/inc)
 
+add_subdirectory(msquic)
 add_subdirectory(src/modules/quic_wrapper)
 add_subdirectory(src/modules/tcp_wrapper)
 add_subdirectory(src/modules/lamport_queue/queue)

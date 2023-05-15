@@ -114,15 +114,16 @@ private:
 /**
  * @brief Send dummy bytes on the dummy stream
  * @param dummySize The number of bytes to be sent out
+ * @return The prepared buffer (stream, buffer and size)
  */
-  void sendDummy(size_t dummySize);
+  PreparedBuffer prepareDummy(size_t dummySize);
 
 /**
  * @brief Send data to the other middlebox
  * @param dataSize The number of bytes to send to the other middlebox
- * @return The number of bytes sent out
+ * @return Vector containing the prepared buffer (stream, buffer and size)
  */
-  size_t sendData(size_t dataSize);
+  std::vector<PreparedBuffer> prepareData(size_t dataSize);
 
 /**
  * @brief Log the comments passed by various functions

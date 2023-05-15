@@ -60,11 +60,18 @@ ShapedServer::ShapedServer(std::string appName,
 
   std::thread senderLoopThread(helpers::shaperLoop, queuesToStream,
                                noiseGenerator,
-                               [this](auto &&PH1) {
-                                 sendDummy(std::forward<decltype(PH1)>(PH1));
+                               [this](auto &&PH1) -> PreparedBuffer {
+                                 return prepareDummy(std::forward<decltype(PH1)>
+                                                         (PH1));
                                },
-                               [this](auto &&PH1) {
-                                 sendData(std::forward<decltype(PH1)>(PH1));
+                               [this](auto &&PH1) ->
+                                   std::vector<PreparedBuffer> {
+                                 return prepareData(std::forward<decltype(PH1)>
+                                                        (PH1));
+                               },
+                               [this](MsQuicStream *stream, uint8_t *buffer,
+                                      size_t length) {
+                                 shapedServer->send(stream, buffer, length);
                                },
                                sendingLoopInterval, DPCreditorLoopInterval,
                                strategy, std::ref(mapLock));
@@ -319,18 +326,16 @@ void ShapedServer::receivedShapedData(MsQuicStream *stream,
   }
 }
 
-void ShapedServer::sendDummy(size_t dummySize) {
+PreparedBuffer ShapedServer::prepareDummy(size_t dummySize) {
   // We do not have dummy stream yet
-  if (dummyStream == nullptr) return;
+  if (dummyStream == nullptr) return {};
   auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
   memset(buffer, 0, dummySize);
-  if (!shapedServer->send(dummyStream, buffer, dummySize)) {
-  }
+  return {dummyStream, buffer, dummySize};
 }
 
-size_t ShapedServer::sendData(size_t dataSize) {
-  auto origSize = dataSize;
-
+std::vector<PreparedBuffer> ShapedServer::prepareData(size_t dataSize) {
+  std::vector<PreparedBuffer> preparedBuffers{};
   mapLock.lock_shared();
   auto tempMap = *queuesToStream;
   mapLock.unlock_shared();
@@ -370,24 +375,18 @@ size_t ShapedServer::sendData(size_t dataSize) {
 
     // We have sent enough
     if (dataSize == 0) break;
-    auto SizeToSendFromQueue = std::min(queueSize, dataSize);
+    auto sizeToSendFromQueue = std::min(queueSize, dataSize);
     auto buffer =
-        reinterpret_cast<uint8_t *>(malloc(SizeToSendFromQueue + 1));
+        reinterpret_cast<uint8_t *>(malloc(sizeToSendFromQueue + 1));
 
-    queues.toShaped->pop(buffer, SizeToSendFromQueue);
+    queues.toShaped->pop(buffer, sizeToSendFromQueue);
 #ifdef RECORD_STATS
     quicOut[queues.fromShaped->ID / 2].push_back(
         std::chrono::steady_clock::now());
 #endif
-    if (!shapedServer->send(stream, buffer, SizeToSendFromQueue)) {
-      log(ERROR, "Failed to send Shaped response on stream " +
-                 std::to_string(stream->ID()));
-    } else {
-      dataSize -= SizeToSendFromQueue;
-    }
+    preparedBuffers.push_back({stream, buffer, sizeToSendFromQueue});
   }
-  // We expect the data size to be zero if we have sent all the data
-  return origSize - dataSize;
+  return preparedBuffers;
 }
 
 void ShapedServer::log(logLevels level, const std::string &log) {

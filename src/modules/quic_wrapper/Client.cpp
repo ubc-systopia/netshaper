@@ -281,8 +281,6 @@ namespace QUIC {
   }
 
   bool Client::send(MsQuicStream *stream, uint8_t *data, size_t length) {
-    // Note: Valgrind reports this as a "definitely lost" block. But QUIC
-    //  frees it from another thread after sending is complete
     auto SendBuffer =
         reinterpret_cast<QUIC_BUFFER *>(malloc(sizeof(QUIC_BUFFER)));
     if (SendBuffer == nullptr) {
@@ -293,7 +291,6 @@ namespace QUIC {
     SendBuffer->Buffer = data;
     SendBuffer->Length = length;
     ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
-    context->client = this;
     context->buffer = SendBuffer;
 #ifdef RECORD_STATS
     context->start = std::chrono::steady_clock::now();
