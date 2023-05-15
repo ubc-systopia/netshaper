@@ -25,7 +25,22 @@ extern std::vector<std::vector<uint64_t>> quicSend;
 extern std::vector<std::pair<uint64_t, uint64_t>> timeToPrepareData;
 #endif
 
+std::vector<int> shaperCPU{8};
+
 namespace helpers {
+  void setCPUAffinity(std::vector<int> &cpus) {
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    for (int i: cpus) {
+      CPU_SET(i, &mask);
+    }
+    int result = sched_setaffinity(0, sizeof(mask), &mask);
+    if (result == -1) {
+      std::cout << "Could not set CPU affinity" << std::endl;
+      exit(1);
+    }
+  }
+
   bool SignalInfo::dequeue(Direction direction, SignalInfo::queueInfo &info) {
     switch (direction) {
       case toShaped:
@@ -222,6 +237,7 @@ namespace helpers {
                   &placeInQuicQueues,
                   __useconds_t sendingInterval, __useconds_t decisionInterval,
                   sendingStrategy strategy, std::shared_mutex &mapLock) {
+    setCPUAffinity(shaperCPU);
 #ifdef SHAPING
     auto decisionSleepUntil = std::chrono::steady_clock::now();
     auto sendingSleepUntil = std::chrono::steady_clock::now();

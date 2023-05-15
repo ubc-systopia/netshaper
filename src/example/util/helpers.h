@@ -101,6 +101,12 @@ namespace helpers {
     size_t length = 0;
   };
 
+  /**
+   * @brief Set the CPU affinity of the calling thread
+   * @param cpus The CPUs to set the affinity to
+   */
+  void setCPUAffinity(std::vector<int> &cpus);
+
 /**
  * @brief Add given signal to the signal set
  * @param set The signal set to add the signal in

@@ -7,7 +7,6 @@
 #include <sys/prctl.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
-#include <sched.h>
 #include "../../modules/PerfEval.h"
 #include "../../../msquic/src/inc/external_sync.h"
 
@@ -43,19 +42,6 @@ void handleQueueSignal(int signum) {
     shapedServer->handleQueueSignal(signum);
   } else {
     std::cerr << "Peer2: Issue with handling queue signal!" << std::endl;
-    exit(1);
-  }
-}
-
-void setCPUAffinity(std::vector<int> &cpus) {
-  cpu_set_t mask;
-  CPU_ZERO(&mask);
-  for (int i: cpus) {
-    CPU_SET(i, &mask);
-  }
-  int result = sched_setaffinity(0, sizeof(mask), &mask);
-  if (result == -1) {
-    std::cout << "Could not set CPU affinity" << std::endl;
     exit(1);
   }
 }
