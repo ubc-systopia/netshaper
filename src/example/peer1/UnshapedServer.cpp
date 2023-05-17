@@ -7,12 +7,11 @@
 #include "UnshapedServer.h"
 
 UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
-                               std::string bindAddr, uint16_t bindPort,
-                               __useconds_t checkResponseInterval,
+                               logLevels logLevel,
                                __useconds_t shapedClientLoopInterval,
-                               logLevels logLevel, std::string serverAddr) :
-    appName(appName), logLevel(logLevel), serverAddr(std::move(serverAddr)),
-    checkResponseInterval(checkResponseInterval),
+                               config::UnshapedServer &config) :
+    appName(appName), logLevel(logLevel), serverAddr(config.serverAddr),
+    checkResponseInterval(config.checkResponseLoopInterval),
     shapedClientLoopInterval(shapedClientLoopInterval), maxClients(maxClients),
     sigInfo(nullptr) {
   socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
@@ -34,7 +33,7 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
                                 std::forward<decltype(PH5)>(PH5));
   };
 
-  unshapedServer = new TCP::Server{std::move(bindAddr), bindPort,
+  unshapedServer = new TCP::Server{config.bindAddr, config.bindPort,
                                    tcpReceiveFunc, logLevel};
   unshapedServer->startListening();
 }

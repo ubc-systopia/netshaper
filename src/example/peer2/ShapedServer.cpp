@@ -13,19 +13,10 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicOut;
 #endif
 
-ShapedServer::ShapedServer(std::string appName,
-                           const std::string &serverCert,
-                           const std::string &serverKey,
-                           int maxPeers, int maxStreamsPerPeer,
-                           uint16_t bindPort,
-                           double noiseMultiplier, double sensitivity,
-                           uint64_t maxDecisionSize,
-                           uint64_t minDecisionSize,
-                           __useconds_t DPCreditorLoopInterval,
-                           __useconds_t sendingLoopInterval,
+ShapedServer::ShapedServer(std::string appName, int maxPeers,
+                           int maxStreamsPerPeer, logLevels logLevel,
                            __useconds_t unshapedClientLoopInterval,
-                           logLevels logLevel, sendingStrategy strategy,
-                           uint64_t idleTimeout) :
+                           const config::ShapedServer &config) :
     appName(std::move(appName)), logLevel(logLevel),
     unshapedClientLoopInterval(unshapedClientLoopInterval), sigInfo(nullptr),
     controlStream(nullptr), dummyStream(nullptr),
@@ -50,13 +41,15 @@ ShapedServer::ShapedServer(std::string appName,
   // Start listening for connections from the other middlebox
   // Add additional stream for dummy data
   shapedServer =
-      new QUIC::Server{serverCert, serverKey, bindPort,
-                       receivedShapedDataFunc, logLevel,
-                       maxStreamsPerPeer + 2, idleTimeout};
+      new QUIC::Server{config.serverCert, config.serverKey,
+                       config.listeningPort, receivedShapedDataFunc, logLevel,
+                       maxStreamsPerPeer + 2, config.idleTimeout};
   shapedServer->startListening();
 
-  noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity,
-                                      maxDecisionSize, minDecisionSize};
+  noiseGenerator = new NoiseGenerator{config.noiseMultiplier,
+                                      config.sensitivity,
+                                      config.maxDecisionSize,
+                                      config.minDecisionSize};
 
   std::thread senderLoopThread(helpers::shaperLoop, queuesToStream,
                                noiseGenerator,
@@ -73,8 +66,10 @@ ShapedServer::ShapedServer(std::string appName,
                                       size_t length) {
                                  shapedServer->send(stream, buffer, length);
                                },
-                               sendingLoopInterval, DPCreditorLoopInterval,
-                               strategy, std::ref(mapLock));
+                               config.sendingLoopInterval,
+                               config.DPCreditorLoopInterval,
+                               config.strategy, std::ref(mapLock),
+                               config.shaperCores);
   senderLoopThread.detach();
 }
 

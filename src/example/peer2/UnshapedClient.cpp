@@ -9,11 +9,11 @@
 
 UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
                                int maxStreamsPerPeer,
-                               __useconds_t checkQueuesInterval,
+                               logLevels logLevel,
                                __useconds_t shapedServerLoopInterval,
-                               logLevels logLevel) :
+                               config::UnshapedClient &config) :
     appName(std::move(appName)), logLevel(logLevel),
-    checkQueuesInterval(checkQueuesInterval),
+    checkQueuesInterval(config.checkQueuesInterval),
     shapedServerLoopInterval(shapedServerLoopInterval), sigInfo(nullptr) {
   queuesToClient =
       new std::unordered_map<QueuePair, TCP::Client *,

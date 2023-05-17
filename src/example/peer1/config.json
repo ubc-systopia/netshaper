@@ -1,5 +1,5 @@
 {
-  "logLevel": "DEBUG",
+  "logLevel": "WARNING",
   "maxClients": 40,
   "appName": "minesVPNPeer1",
   "shapedClient": {
@@ -11,12 +11,20 @@
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
     "sendingLoopInterval": 50000,
-    "sendingStrategy": "BURST"
+    "sendingStrategy": "BURST",
+    "idleTimeout": 100000,
+    "shaperCores": [
+      2
+    ],
+    "workerCores": [
+      3
+    ]
   },
   "unshapedServer": {
     "bindAddr": "",
     "bindPort": 8000,
     "checkResponseLoopInterval": 50000,
-    "serverAddr": "localhost:5555"
+    "serverAddr": "localhost:5555",
+    "cores": []
   }
 }

@@ -14,6 +14,7 @@
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../../modules/Common.h"
 #include "../util/helpers.h"
+#include "../peer2/UnshapedClient.h"
 
 using namespace helpers;
 
@@ -107,23 +108,16 @@ public:
    * @param appName The name of this application. Used as a key to initialise
    * shared memory with the shaped process
    * @param maxClients The maximum number of TCP flows to support
-   * @param bindAddr The address to listen to TCP traffic on
-   * @param bindPort The port to listen to TCP traffic on
-   * @param checkResponseInterval The interval with which to check the queues
-   * containing data received from the other middlebox
+   * @param logLevel The log level you want to use
    * @param shapedClientLoopInterval The interval with which the shapedClient
    * sends the data (used only for efficiently checking when the queue
    * empties out in case it's full)
-   * @param logLevel The log level you want to use
-   * @param serverAddr The server (on the other side of the 2nd middlebox)
-   * you want to connect to
+   * @param config The config struct that configures this instance
    */
   UnshapedServer(std::string &appName, int maxClients,
-                 std::string bindAddr = "", uint16_t bindPort = 8000,
-                 __useconds_t checkResponseInterval = 100000,
-                 __useconds_t shapedClientLoopInterval = 50000,
-                 logLevels logLevel = WARNING,
-                 std::string serverAddr = "localhost:5555");
+                 logLevels logLevel,
+                 __useconds_t shapedClientLoopInterval,
+                 config::UnshapedServer &config);
 
   /**
  * @brief Handle the queue status change signal sent by the shaped process

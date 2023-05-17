@@ -101,6 +101,12 @@ namespace helpers {
     size_t length = 0;
   };
 
+  /**
+   * @brief Set the CPU affinity of the calling thread
+   * @param cpus The CPUs to set the affinity to
+   */
+  void setCPUAffinity(std::vector<int> &cpus);
+
 /**
  * @brief Add given signal to the signal set
  * @param set The signal set to add the signal in
@@ -173,6 +179,7 @@ namespace helpers {
                   const std::function<void(MsQuicStream *, uint8_t *, size_t)>
                   &placeInQuicQueues,
                   __useconds_t sendingInterval, __useconds_t decisionInterval,
-                  sendingStrategy strategy, std::shared_mutex &mapLock);
+                  sendingStrategy strategy, std::shared_mutex &mapLock,
+                  std::vector<int> cores);
 }
 #endif //MINESVPN_HELPERS_H

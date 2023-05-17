@@ -1,5 +1,5 @@
 {
-  "logLevel": "DEBUG",
+  "logLevel": "WARNING",
   "maxStreamsPerPeer": 40,
   "appName": "minesVPNPeer2",
   "shapedServer": {
@@ -12,9 +12,17 @@
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
     "sendingLoopInterval": 50000,
-    "sendingStrategy": "BURST"
+    "sendingStrategy": "BURST",
+    "idleTimeout": 100000,
+    "shaperCores": [
+      2
+    ],
+    "workerCores": [
+      3
+    ]
   },
   "unshapedClient": {
-    "checkQueuesInterval": 50000
+    "checkQueuesInterval": 50000,
+    "cores": []
   }
 }

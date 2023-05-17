@@ -15,6 +15,7 @@
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../../modules/shaper/NoiseGenerator.h"
+#include "../util/config.h"
 
 using namespace helpers;
 
@@ -133,50 +134,24 @@ private:
   void log(logLevels level, const std::string &log);
 
 public:
+
   /**
-   * @brief Constructor for ShapedServer
+   * @brief Constructor for shapedServer
    * @param appName The name of this application. Used as a key to initialise
    * shared memory with the unshaped process
-   * @param serverCert The SSL Certificate of the server (path to file)
-   * @param serverKey The SSL key of the server (path to file)
    * @param maxPeers The maximum number of peers that should connect to this
    * middlebox (more connections will be rejected)
    * @param maxStreamsPerPeer The maximum number of TCP flows to support
-   * @param bindPort The port to listen to
-   * @param noiseMultiplier The privacy budget (lower means more privacy but also
-   * more overhead)
-   * @param sensitivity The max "distance" between 2 queues that we want to
-   * hide
-   * @param maxDecisionSize The maximum decision that the DP Decision
-   * algorithm should generate
-   * @param minDecisionSize The minimum decision that the DP Decision
-   * algorithm should generate
-   * @param DPCreditorLoopInterval The interval (in microseconds) with which
-   * the DP Creditor will credit the tokens
-   * @param sendingLoopInterval The interval (in microseconds) with which the
-   * sending loop will read the tokens and send the shaped data
+   * @param logLevel The level of logging you want (NOTE: For DEBUG logs, the
+   * code has to be compiled with the flag DEBUGGING)
    * @param unshapedClientLoopInterval The interval (in microseconds) with which
    * the queues will be read from the unshaped side (used for optimising wait
    * time when queues are full)
-   * @param logLevel The level of logging you want (NOTE: For DEBUG logs, the
-   * code has to be compiled with the flag DEBUGGING)
-   * @param strategy The sending strategy when the DP decision interval >= 2
-   * * sending interval. Can be UNIFORM or BURST
-   * @param idleTimeout The time (in milliseconds) after which an idle
-   * connection between the middleboxes will be terminated
+   * @param config The config struct that configures this instance
    */
-  ShapedServer(std::string appName,
-               const std::string &serverCert, const std::string &serverKey,
-               int maxPeers = 1, int maxStreamsPerPeer = 10,
-               uint16_t bindPort = 4567,
-               double noiseMultiplier = 0.01, double sensitivity = 100,
-               uint64_t maxDecisionSize = 500000,
-               uint64_t minDecisionSize = 0,
-               __useconds_t DPCreditorLoopInterval = 50000,
-               __useconds_t sendingLoopInterval = 50000,
-               __useconds_t unshapedClientLoopInterval = 50000,
-               logLevels logLevel = WARNING, sendingStrategy strategy = BURST,
-               uint64_t idleTimeout = 100000);
+  ShapedServer(std::string appName, int maxPeers, int maxStreamsPerPeer,
+               logLevels logLevel, __useconds_t unshapedClientLoopInterval,
+               const config::ShapedServer &config);
 
   /**
  * @brief Handle the queue status change signal sent by the unshaped process

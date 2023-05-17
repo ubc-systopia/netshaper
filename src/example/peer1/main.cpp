@@ -7,27 +7,10 @@
 #include "ShapedClient.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
-#include <sched.h>
 #include "../../modules/PerfEval.h"
 #include "../../../msquic/src/inc/external_sync.h"
 
 pthread_rwlock_t quicSendLock;
-
-using json = nlohmann::json;
-
-NLOHMANN_JSON_SERIALIZE_ENUM(logLevels, {
-  { DEBUG, "DEBUG" },
-  { WARNING, "WARNING" },
-  { ERROR, "ERROR" },
-})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(sendingStrategy, {
-  { BURST, "BURST" },
-  { UNIFORM, "UNIFORM" },
-})
-
-std::vector<int> unshapedCores{0, 1, 2, 3};
-std::vector<int> shapedCores{4, 5, 6, 7};
 
 UnshapedServer *unshapedServer = nullptr;
 ShapedClient *shapedClient = nullptr;
@@ -55,27 +38,8 @@ void handleQueueSignal(int signum) {
   }
 }
 
-void setCPUAffinity(std::vector<int> &cpus) {
-  cpu_set_t mask;
-  CPU_ZERO(&mask);
-  for (int i: cpus) {
-    CPU_SET(i, &mask);
-  }
-  int result = sched_setaffinity(0, sizeof(mask), &mask);
-  if (result == -1) {
-    std::cout << "Could not set CPU affinity" << std::endl;
-    exit(1);
-  }
-}
-
-int main() {
-  pthread_rwlock_init(&quicSendLock, nullptr);
-  // Load configurations
-  std::string configFileName;
-  std::cout << "Enter the config file name/path" << std::endl;
-  std::cin >> configFileName;
+inline config::Peer1Config loadConfig(char *configFileName) {
   std::ifstream configFile(configFileName);
-
   json config;
   try {
     config = json::parse(configFile);
@@ -84,98 +48,85 @@ int main() {
               std::endl;
     config = json::parse(R"({})");
   }
-  auto logLevel =
-      static_cast<json>(config.value("logLevel", "WARNING")).get<logLevels>();
-  std::string appName = config.value("appName", "minesVPNPeer1");
-  auto maxClients =
-      static_cast<json>(config.value("maxClients", 40)).get<int>();
-
-  json shapedClientConfig = config.value("shapedClient", json::parse(R"({})"));
-  json unshapedServerConfig = config.value("unshapedServer",
-                                           json::parse(R"({})"));
-
-  // Load shapedClientConfig
-  std::string peer2Addr = shapedClientConfig.value("peer2Addr", "localhost");
-  auto peer2Port =
-      static_cast<json>(shapedClientConfig.value("peer2Port",
-                                                 4567)).get<uint16_t>();
-  auto noiseMultiplier =
-      static_cast<json>(shapedClientConfig.value("noiseMultiplier",
-                                                 38)).get<double>();
-  auto sensitivity =
-      static_cast<json>(shapedClientConfig.value("sensitivity",
-                                                 500000)).get<double>();
-  auto maxDecisionSize =
-      static_cast<json>(shapedClientConfig.value("maxDecisionSize",
-                                                 500000)).get<uint64_t>();
-  auto minDecisionSize =
-      static_cast<json>(shapedClientConfig.value("minDecisionSize",
-                                                 0)).get<uint64_t>();
-
-  auto DPCreditorLoopInterval =
-      static_cast<json>(shapedClientConfig.value("DPCreditorLoopInterval",
-                                                 50000)).get<__useconds_t>();
-  auto sendingLoopInterval =
-      static_cast<json>(shapedClientConfig.value("sendingLoopInterval",
-                                                 50000)).get<__useconds_t>();
-
-  if (DPCreditorLoopInterval < sendingLoopInterval) {
-    std::cerr
-        << "DPCreditorLoopInterval should be a multiple of sendingLoopInterval"
-        << std::endl;
-    exit(1);
-  } else {
-    auto division = DPCreditorLoopInterval / sendingLoopInterval;
-    if (division * sendingLoopInterval != DPCreditorLoopInterval) {
+  config::Peer1Config peer1Config = config.get<config::Peer1Config>();
+  // Check DPDecisionLoop is a multiple of sender loop
+  {
+    auto DPLoopInterval = peer1Config.shapedClient.DPCreditorLoopInterval;
+    auto sendingLoopInterval = peer1Config.shapedClient.sendingLoopInterval;
+    auto division = DPLoopInterval / sendingLoopInterval;
+    if (DPLoopInterval < sendingLoopInterval
+        || division * sendingLoopInterval != DPLoopInterval) {
       std::cerr
           << "DPCreditorLoopInterval should be a multiple of sendingLoopInterval"
           << std::endl;
       exit(1);
     }
   }
-  auto strategy =
-      static_cast<json>(shapedClientConfig.value("sendingStrategy",
-                                                 "BURST")).get<sendingStrategy>();
+  // Check that shaperCore and workerCore exist and are different
+  {
+    if (peer1Config.shapedClient.shaperCores.empty()
+        || peer1Config.shapedClient.workerCores.empty()) {
+      std::cerr << "shaperCores and workerCores should not be !" << std::endl;
+      exit(1);
+    }
+    std::vector<int> commonElements(peer1Config.shapedClient.shaperCores.size()
+                                    +
+                                    peer1Config.shapedClient.workerCores.size());
+    auto end =
+        std::set_intersection(peer1Config.shapedClient.shaperCores.begin(),
+                              peer1Config.shapedClient.shaperCores.end(),
+                              peer1Config.shapedClient.workerCores.begin(),
+                              peer1Config.shapedClient.workerCores.end(),
+                              commonElements.begin());
+    if (end != commonElements.begin()) {
+      std::cerr << "shaperCores and workerCores should not be the same!"
+                << std::endl;
+      exit(1);
+    }
 
-  // Load unshapedServerConfig
-  std::string bindAddr = unshapedServerConfig.value("bindAddr", "");
-  auto bindPort =
-      static_cast<json>(unshapedServerConfig.value("bindPort",
-                                                   8000)).get<uint16_t>();
-  auto checkResponseLoopInterval =
-      static_cast<json>(unshapedServerConfig.value(
-          "checkResponseLoopInterval", 50000)).get<uint16_t>();
+  }
+  std::cout << "Config:" << peer1Config << std::endl;
+  return peer1Config;
+}
 
-  std::string serverAddr = unshapedServerConfig.value("serverAddr",
-                                                      "localhost:5555");
-
+int main(int argc, char *argv[]) {
+  pthread_rwlock_init(&quicSendLock, nullptr);
+  // Load configurations
+  if (argc != 2) {
+    std::cerr <<
+              "No config file entered! Please call this using `./peer_1 "
+              "config.json`" << std::endl;
+    exit(1);
+  }
+  auto config = loadConfig(argv[1]);
   std::signal(SIGUSR1, handleQueueSignal);
 
   if (fork() == 0) {
     // Child process - Unshaped Server
-    setCPUAffinity(unshapedCores);
+    if (!config.unshapedServer.cores.empty())
+      setCPUAffinity(config.unshapedServer.cores);
     // This process should get a SIGHUP when it's parent (the shaped
     // client) dies
     prctl(PR_SET_PDEATHSIG, SIGHUP);
-    unshapedServer = new UnshapedServer{appName, maxClients, bindAddr,
-                                        bindPort,
-                                        checkResponseLoopInterval,
-                                        sendingLoopInterval,
-                                        logLevel, serverAddr};
+    unshapedServer = new UnshapedServer{config.appName, config.maxClients,
+                                        config.logLevel,
+                                        config.shapedClient.sendingLoopInterval,
+                                        config.unshapedServer};
     // Wait for signal to exit
     waitForSignal(false);
   } else {
     // Parent Process - Shaped Client
-    setCPUAffinity(shapedCores);
+    // Set CPU affinity of this process to worker cores.
+    // The instantiation of ShapedClient will set the shaper thread affinity
+    // separately
+    setCPUAffinity(config.shapedClient.workerCores);
     sleep(2); // Wait for unshapedServer to initialise
     MsQuic = new MsQuicApi{};
-    shapedClient = new ShapedClient{appName, maxClients, noiseMultiplier,
-                                    sensitivity, maxDecisionSize,
-                                    minDecisionSize, peer2Addr, peer2Port,
-                                    DPCreditorLoopInterval,
-                                    sendingLoopInterval,
-                                    checkResponseLoopInterval,
-                                    logLevel, strategy};
+    shapedClient = new ShapedClient{config.appName, config.maxClients,
+                                    config.logLevel,
+                                    config.unshapedServer
+                                        .checkResponseLoopInterval,
+                                    config.shapedClient};
     sleep(2);
     std::cout << "Peer is ready!" << std::endl;
     // Wait for signal to exit
