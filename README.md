@@ -20,10 +20,10 @@ instance_ (each peer can talk to only 1 other peer)
 #### Run Individual components
 
 3. First start the actual server (or ensure it is up)
-4. Start Peer 2 using `./build/src/example/peer2/peer_2` and enter the path to
-   the config file. Wait for the "Peer is ready" message to appear
-5. Start Peer 1 using `./build/src/example/peer1/peer_1` and enter the path to
-   the config file. Wait for the   "Peer is ready" message to appear
+4. Start Peer 2 using `./build/src/example/peer2/peer_2 <CONFIG FILE>`.
+   Wait for the "Peer is ready" message to appear
+5. Start Peer 1 using `./build/src/example/peer1/peer_1 <CONFIG FILE>`.
+   Wait for the   "Peer is ready" message to appear
 7. Now, you can send requests from any client to peer1
 
 ### UnshapedTransceiever Example
@@ -57,7 +57,7 @@ parameter is not present in the config file
 
 ```json
 {
-  "logLevel": "DEBUG",
+  "logLevel": "WARNING",
   "maxClients": 40,
   "appName": "minesVPNPeer1",
   "shapedClient": {
@@ -69,15 +69,24 @@ parameter is not present in the config file
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
     "sendingLoopInterval": 50000,
-    "sendingStrategy": "BURST"
+    "sendingStrategy": "BURST",
+    "idleTimeout": 100000,
+    "shaperCores": [
+      2
+    ],
+    "workerCores": [
+      3
+    ]
   },
   "unshapedServer": {
     "bindAddr": "",
     "bindPort": 8000,
     "checkResponseLoopInterval": 50000,
-    "serverAddr": "localhost:5555"
+    "serverAddr": "localhost:5555",
+    "cores": []
   }
 }
+
 ```
 
 #### General
@@ -112,6 +121,8 @@ parameter is not present in the config file
   is run at a higher interval than the sending loop. Currently, the values it
   accepts are "BURST" (send all data ASAP) and "UNIFORM" (divide the credit
   equally across all intervals till the next decision time)
+- `shaperCores` The cores on which the shaper thread should run
+- `workerCores` The cores on which the QUIC worker threads should run
 
 #### unshapedServer
 
@@ -124,6 +135,7 @@ parameter is not present in the config file
 - `serverAddr` is the address of the actual server that client is attempting
   to reach. As minesVPN currently does NOT do MITM Proxy, we resort to the
   assumption that all clients want to communicate to one server, mentioned here.
+- `cores` The cores on which this process should run
 
 ### Peer 2
 
@@ -134,7 +146,7 @@ parameter is not present in the config file
 
 ```json
 {
-  "logLevel": "DEBUG",
+  "logLevel": "WARNING",
   "maxStreamsPerPeer": 40,
   "appName": "minesVPNPeer2",
   "shapedServer": {
@@ -147,10 +159,18 @@ parameter is not present in the config file
     "minDecisionSize": 0,
     "DPCreditorLoopInterval": 50000,
     "sendingLoopInterval": 50000,
-    "sendingStrategy": "BURST"
+    "sendingStrategy": "BURST",
+    "idleTimeout": 100000,
+    "shaperCores": [
+      2
+    ],
+    "workerCores": [
+      3
+    ]
   },
   "unshapedClient": {
-    "checkQueuesInterval": 50000
+    "checkQueuesInterval": 50000,
+    "cores": []
   }
 }
 ```
@@ -191,8 +211,13 @@ parameter is not present in the config file
   is run at a higher interval than the sending loop. Currently, the values it
   accepts are "BURST" (send all data ASAP) and "UNIFORM" (divide the credit
   equally across all intervals till the next decision time)
+- `idleTimeout` The time after which one middlebox will consider the other
+  as disconnected if there is no KeepAlive
+- `shaperCores` The cores on which the shaper thread should run
+- `workerCores` The cores on which the QUIC worker threads should run
 
 #### unshapedServer
 
 - `checkQueuesInterval` is the interval with which the queues will be
   checked for responses from the shaped component
+- `cores` The cores on which this process should run

@@ -13,14 +13,9 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
 #endif
 
 ShapedClient::ShapedClient(std::string &appName, int maxClients,
-                           double noiseMultiplier, double sensitivity,
-                           uint64_t maxDecisionSize, uint64_t minDecisionSize,
-                           const std::string &peer2IP, uint16_t peer2Port,
-                           __useconds_t DPCreditorLoopInterval,
-                           __useconds_t sendingLoopInterval,
+                           logLevels logLevel,
                            __useconds_t unshapedResponseLoopInterval,
-                           logLevels logLevel, sendingStrategy strategy,
-                           uint64_t idleTimeout) :
+                           config::ShapedClient &config) :
     appName(appName), logLevel(logLevel),
     unshapedResponseLoopInterval(unshapedResponseLoopInterval),
     maxClients(maxClients), sigInfo(nullptr), dummyStream(nullptr),
@@ -33,8 +28,10 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
   pendingSignal =
       new std::unordered_map<uint64_t, connectionStatus>(maxClients);
 
-  noiseGenerator = new NoiseGenerator{noiseMultiplier, sensitivity,
-                                      maxDecisionSize, minDecisionSize};
+  noiseGenerator = new NoiseGenerator{config.noiseMultiplier,
+                                      config.sensitivity,
+                                      config.maxDecisionSize,
+                                      config.minDecisionSize};
   // Connect to the other middlebox
 
   auto onResponseFunc = [this](auto &&PH1, auto &&PH2, auto &&PH3) {
@@ -46,10 +43,11 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
   // Two middle-boxes are connected in a client-server setup, where peer1 middlebox is
   // the client and peer2 middlebox is the server. In middlebox 1 we have
   // shapedClient and in middlebox 2 we have shapedServer
-  shapedClient = new QUIC::Client{peer2IP, peer2Port, onResponseFunc,
+  shapedClient = new QUIC::Client{config.peer2Addr, config.peer2Port,
+                                  onResponseFunc,
                                   true,
                                   logLevel,
-                                  idleTimeout};
+                                  config.idleTimeout};
 
   // We map a pair of queues over the shared memory region to every stream
   // CAUTION: we assume the shared queues are already initialized in unshaped process
@@ -77,8 +75,10 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
                                       size_t length) {
                                  shapedClient->send(stream, buffer, length);
                                },
-                               sendingLoopInterval, DPCreditorLoopInterval,
-                               strategy, std::ref(mapLock));
+                               config.sendingLoopInterval,
+                               config.DPCreditorLoopInterval,
+                               config.strategy, std::ref(mapLock),
+                               config.shaperCores);
   senderLoopThread.detach();
 }
 

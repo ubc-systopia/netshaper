@@ -10,6 +10,7 @@
 #include "../../modules/tcp_wrapper/Client.h"
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
+#include "../util/config.h"
 
 using namespace helpers;
 
@@ -88,18 +89,17 @@ public:
    * @param maxPeers The max number of peers that will be expected
    * @param maxStreamsPerPeer The max number of streams permitted to be
    * received from each peer
-   * @param checkQueuesInterval The interval with which to poll the queues
-   * for data
    * @param shapedServerLoopInterval The interval with which the shaped
    * component will send out data (used for optimising wait time when queues
    * are full)
    * @param logLevel The level of logs required
+   * @param config The configuration for this instance
    */
-  explicit UnshapedClient(std::string appName, int maxPeers = 1,
-                          int maxStreamsPerPeer = 10,
-                          __useconds_t checkQueuesInterval = 50000,
-                          __useconds_t shapedServerLoopInterval = 50000,
-                          logLevels logLevel = WARNING);
+  UnshapedClient(std::string appName, int maxPeers,
+                 int maxStreamsPerPeer,
+                 logLevels logLevel,
+                 __useconds_t shapedServerLoopInterval,
+                 config::UnshapedClient &config);
 
   /**
 * @brief Handle signal from the shaped process regarding a new client

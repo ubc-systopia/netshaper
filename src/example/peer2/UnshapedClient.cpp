@@ -9,9 +9,9 @@
 
 UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
                                int maxStreamsPerPeer,
-                               __useconds_t checkQueuesInterval,
+                               logLevels logLevel,
                                __useconds_t shapedServerLoopInterval,
-                               logLevels logLevel) :
+                               config::UnshapedClient &config) :
     appName(std::move(appName)), logLevel(logLevel),
     shapedServerLoopInterval(shapedServerLoopInterval), sigInfo(nullptr) {
   queuesToClient =
@@ -25,7 +25,7 @@ UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
   initialiseSHM(maxPeers * maxStreamsPerPeer);
 
   auto checkQueuesFunc = [=, this]() {
-    checkQueuesForData(checkQueuesInterval);
+    checkQueuesForData(config.checkQueuesInterval);
   };
   std::thread checkQueuesLoop(checkQueuesFunc);
   checkQueuesLoop.detach();

@@ -178,6 +178,7 @@ namespace helpers {
                   const std::function<void(MsQuicStream *, uint8_t *, size_t)>
                   &placeInQuicQueues,
                   __useconds_t sendingInterval, __useconds_t decisionInterval,
-                  sendingStrategy strategy, std::shared_mutex &mapLock);
+                  sendingStrategy strategy, std::shared_mutex &mapLock,
+                  std::vector<int> cores);
 }
 #endif //MINESVPN_HELPERS_H

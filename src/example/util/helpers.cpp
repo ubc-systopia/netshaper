@@ -25,8 +25,6 @@ extern std::vector<std::vector<uint64_t>> quicSend;
 extern std::vector<std::pair<uint64_t, uint64_t>> timeToPrepareData;
 #endif
 
-std::vector<int> shaperCPU{8};
-
 namespace helpers {
   void setCPUAffinity(std::vector<int> &cpus) {
     cpu_set_t mask;
@@ -236,8 +234,9 @@ namespace helpers {
                   const std::function<void(MsQuicStream *, uint8_t *, size_t)>
                   &placeInQuicQueues,
                   __useconds_t sendingInterval, __useconds_t decisionInterval,
-                  sendingStrategy strategy, std::shared_mutex &mapLock) {
-    setCPUAffinity(shaperCPU);
+                  sendingStrategy strategy, std::shared_mutex &mapLock,
+                  std::vector<int> cores) {
+    setCPUAffinity(cores);
 #ifdef SHAPING
     auto decisionSleepUntil = std::chrono::steady_clock::now();
     auto sendingSleepUntil = std::chrono::steady_clock::now();

@@ -12,6 +12,7 @@
 #include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../../modules/shaper/NoiseGenerator.h"
+#include "../util/config.h"
 #include <shared_mutex>
 
 
@@ -117,40 +118,16 @@ public:
    * @param appName The name of this application. Used as a key to initialise
    * shared memory with the unshaped process
    * @param maxClients The maximum number of TCP flows to support
-   * @param noiseMultiplier The privacy budget (lower means more privacy but also
-   * more overhead)
-   * @param sensitivity The max "distance" between 2 queues that we want to
-   * hide
-   * @param maxDecisionSize The maximum decision that the DP Decision
-   * algorithm should generate
-   * @param minDecisionSize The minimum decision that the DP Decision
-   * algorithm should generate
-   * @param peer2IP The IP address of the other middlebox
-   * @param peer2Port The port of the other middlebox
-   * @param DPCreditorLoopInterval The interval (in microseconds) with which
-   * the DP Creditor will credit the tokens
-   * @param sendingLoopInterval The interval (in microseconds) with which the
-   * sending loop will read the tokens and send the shaped data
+   * @param logLevel The level of logging you want (NOTE: For DEBUG logs, the
+   * code has to be compiled with the flag DEBUGGING)
    * @param unshapedResponseLoopInterval The interval (in microseconds) with which the
    * queues will be read from the unshaped side (used for optimising wait
    * time when queues are full)
-   * @param logLevel The level of logging you want (NOTE: For DEBUG logs, the
-   * code has to be compiled with the flag DEBUGGING)
-   * @param strategy The sending strategy when the DP decision interval >= 2
-   * * sending interval. Can be UNIFORM or BURST
-   * @param idleTimeout The time (in milliseconds) after which an idle
-   * connection between the middleboxes will be terminated
+   * @param config The configuration for this instance
    */
   ShapedClient(std::string &appName, int maxClients,
-               double noiseMultiplier = 38, double sensitivity = 500000,
-               uint64_t maxDecisionSize = 500000, uint64_t minDecisionSize = 0,
-               const std::string &peer2IP = "localhost",
-               uint16_t peer2Port = 4567,
-               __useconds_t DPCreditorLoopInterval = 50000,
-               __useconds_t sendingLoopInterval = 50000,
-               __useconds_t unshapedResponseLoopInterval = 50000,
-               logLevels logLevel = WARNING, sendingStrategy strategy = BURST,
-               uint64_t idleTimeout = 100000);
+               logLevels logLevel, __useconds_t unshapedResponseLoopInterval,
+               config::ShapedClient &config);
 
   /**
    * @brief Send dummy of given size on the dummy stream
