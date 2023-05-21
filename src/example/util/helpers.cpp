@@ -278,6 +278,7 @@ namespace helpers {
       // Masked DP Decision Time
       mask = std::chrono::steady_clock::now() +
              std::chrono::microseconds(maskDPDecisionUs);
+      start = std::chrono::steady_clock::now();
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
