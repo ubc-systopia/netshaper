@@ -9,7 +9,13 @@
 #include <ctime>
 #include <iomanip>
 
+#ifdef RECORD_STATS
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    quicIn;
+extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
+    quicOut;
 extern std::vector<std::vector<uint64_t>> quicSend;
+#endif
 
 namespace QUIC {
   void Client::log(logLevels level, const std::string &log) {
@@ -64,6 +70,9 @@ namespace QUIC {
         break;
 
       case QUIC_STREAM_EVENT_RECEIVE: {
+#ifdef RECORD_STATS
+        quicIn[stream->ID() / 4].push_back(std::chrono::steady_clock::now());
+#endif
         auto bufferCount = event->RECEIVE.BufferCount;
 #ifdef DEBUGGING
         ss << "Received data from peer: ";
@@ -294,8 +303,8 @@ namespace QUIC {
     context->buffer = SendBuffer;
 #ifdef RECORD_STATS
     context->start = std::chrono::steady_clock::now();
+    quicOut[stream->ID() / 4].push_back(std::chrono::steady_clock::now());
 #endif
-
     if (QUIC_FAILED(
         stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
       std::stringstream ss;

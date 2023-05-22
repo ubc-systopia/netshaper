@@ -6,13 +6,6 @@
 #include <utility>
 #include <iomanip>
 
-#ifdef RECORD_STATS
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicIn;
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicOut;
-#endif
-
 ShapedServer::ShapedServer(std::string appName, int maxPeers,
                            int maxStreamsPerPeer, logLevels logLevel,
                            __useconds_t unshapedClientLoopInterval,
@@ -299,9 +292,6 @@ void ShapedServer::receivedShapedData(MsQuicStream *stream,
 
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
   mapLock.unlock_shared();
-#ifdef RECORD_STATS
-  quicIn[fromShaped->ID / 2].push_back(std::chrono::steady_clock::now());
-#endif
   while (fromShaped->push(buffer, length) == -1) {
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
                  " is full, waiting for it to be empty");
@@ -368,10 +358,6 @@ std::vector<PreparedBuffer> ShapedServer::prepareData(size_t dataSize) {
         reinterpret_cast<uint8_t *>(malloc(sizeToSendFromQueue + 1));
 
     queues.toShaped->pop(buffer, sizeToSendFromQueue);
-#ifdef RECORD_STATS
-    quicOut[queues.fromShaped->ID / 2].push_back(
-        std::chrono::steady_clock::now());
-#endif
     preparedBuffers.push_back({stream, buffer, sizeToSendFromQueue});
   }
   return preparedBuffers;

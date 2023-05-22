@@ -5,13 +5,6 @@
 #include <iomanip>
 #include "ShapedClient.h"
 
-#ifdef RECORD_STATS
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicIn;
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicOut;
-#endif
-
 ShapedClient::ShapedClient(std::string &appName, int maxClients,
                            logLevels logLevel,
                            __useconds_t unshapedResponseLoopInterval,
@@ -214,10 +207,6 @@ std::vector<PreparedBuffer> ShapedClient::prepareData(size_t dataSize) {
     auto sizeToSend = std::min(dataSize, queueSize);
     auto buffer = reinterpret_cast<uint8_t *>(malloc(sizeToSend));
     queues.toShaped->pop(buffer, sizeToSend);
-#ifdef RECORD_STATS
-    quicOut[queues.fromShaped->ID / 2]
-        .push_back(std::chrono::steady_clock::now());
-#endif
     preparedBuffers.push_back({stream, buffer, sizeToSend});
     dataSize -= sizeToSend;
   }
@@ -268,9 +257,6 @@ ShapedClient::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
 
   // All other streams that are not dummy or control
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
-#ifdef RECORD_STATS
-  quicIn[fromShaped->ID / 2].push_back(std::chrono::steady_clock::now());
-#endif
   if (fromShaped == nullptr) {
     log(ERROR, "Received data on unmapped stream " +
                std::to_string(stream->ID()));
