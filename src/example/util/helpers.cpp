@@ -26,7 +26,9 @@ extern std::vector<std::pair<uint64_t, uint64_t>> timeDPDecisions;
 extern std::vector<std::pair<uint64_t, uint64_t>> timeDataPrep;
 extern std::vector<std::pair<uint64_t, uint64_t>> timeDataEnqueue;
 static std::atomic<int> totalIter = 0;
-static std::atomic<int> failedIter = 0;
+static std::atomic<int> failedDPMask = 0;
+static std::atomic<int> failedPrepMask = 0;
+static std::atomic<int> failedEnqueueMask = 0;
 #endif
 
 namespace helpers {
@@ -85,7 +87,10 @@ namespace helpers {
     if (isShapedProcess) {
       {
         std::cout << "Total iters: " << totalIter
-                  << "\nFailed iters: " << failedIter << std::endl;
+                  << "\nFailed DP Masks: " << failedDPMask
+                  << "\nFailed Prep Masks: " << failedPrepMask
+                  << "\nFailed Enqueue Masks: " << failedEnqueueMask
+                  << std::endl;
       }
       {
         std::ofstream maskDurations;
@@ -108,15 +113,23 @@ namespace helpers {
       {
         std::ofstream quicSendLatencies;
         quicSendLatencies.open("quicSend.csv");
+        unsigned long minRows = INT_MAX;
         for (unsigned long i = 0; i < quicSend.size(); i++) {
           if (!quicSend[i].empty()) {
             quicSendLatencies << "Stream " << i << ",";
-            for (auto elem: quicSend[i]) {
-              quicSendLatencies << elem << ",";
-            }
-            quicSendLatencies << "\n";
+            if (minRows > quicSend[i].size()) minRows = quicSend[i].size();
           }
         }
+        quicSendLatencies << "\n";
+        for (unsigned long j = 0; j < minRows; j++) {
+          for (const auto &column: quicSend) {
+            if (!column.empty()) {
+              quicSendLatencies << column[j] << ", ";
+            }
+          }
+          quicSendLatencies << "\n";
+        }
+
         quicSendLatencies << std::endl;
         quicSendLatencies.close();
       }
@@ -148,14 +161,21 @@ namespace helpers {
     } else {
       std::ofstream tcpSendLatencies;
       tcpSendLatencies.open("tcpSend.csv");
+      unsigned long minRows = INT_MAX;
       for (unsigned long i = 0; i < tcpSend.size(); i++) {
         if (!tcpSend[i].empty()) {
           tcpSendLatencies << "Socket " << i << ",";
-          for (auto elem: tcpSend[i]) {
-            tcpSendLatencies << elem << ",";
-          }
-          tcpSendLatencies << "\n";
+          if (minRows > tcpSend[i].size()) minRows = tcpSend[i].size();
         }
+      }
+      tcpSendLatencies << "\n";
+      for (unsigned long j = 0; j < minRows; j++) {
+        for (const auto &column: tcpSend) {
+          if (!column.empty()) {
+            tcpSendLatencies << column[j] << ", ";
+          }
+        }
+        tcpSendLatencies << "\n";
       }
       tcpSendLatencies << std::endl;
       tcpSendLatencies.close();
@@ -255,9 +275,9 @@ namespace helpers {
     setCPUAffinity(cores);
 #ifdef RECORD_STATS
     // 0 because we want to profile for these values
-    auto maskDPDecisionUs = 0;
-    auto maskPrepDurationUs = 0;
-    auto maskEnqueueDurationUs = 0;
+    auto maskDPDecisionUs = 500;
+    auto maskPrepDurationUs = 9000;
+    auto maskEnqueueDurationUs = 250;
 #else
     auto maskDPDecisionUs = 1000; // TODO: Replace this value
     auto maskPrepDurationUs = 1000; // TODO: Replace this value
@@ -285,6 +305,9 @@ namespace helpers {
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
       if (std::chrono::steady_clock::now() < mask)
         std::this_thread::sleep_until(mask);
+#ifdef RECORD_STATS
+      else failedDPMask++;
+#endif
       end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
       totalIter++;
@@ -313,6 +336,9 @@ namespace helpers {
           preparedBuffers.push_back(prepareDummy(dummySize));
           if (std::chrono::steady_clock::now() < mask)
             std::this_thread::sleep_until(mask);
+#ifdef RECORD_STATS
+          else failedPrepMask++;
+#endif
           end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
           timeDataPrep.emplace_back(aggregatedSize, (end - start).count());
@@ -331,6 +357,9 @@ namespace helpers {
             }
             if (std::chrono::steady_clock::now() < mask)
               std::this_thread::sleep_until(mask);
+#ifdef RECORD_STATS
+            else failedEnqueueMask++;
+#endif
             end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
             timeDataEnqueue.emplace_back(aggregatedSize, (end - start).count());
@@ -344,9 +373,6 @@ namespace helpers {
       if (std::chrono::steady_clock::now() < decisionSleepUntil) {
         std::this_thread::sleep_until(decisionSleepUntil);
       }
-#ifdef RECORD_STATS
-      else failedIter++;
-#endif
     }
   }
 }
