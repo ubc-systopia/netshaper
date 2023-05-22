@@ -386,6 +386,8 @@ namespace helpers {
           if (std::chrono::steady_clock::now() < sendingSleepUntil)
             std::this_thread::sleep_until(sendingSleepUntil);
         }
+      } else {
+        prepareData(0); // For state management of client who disconnected
       }
       if (std::chrono::steady_clock::now() < decisionSleepUntil) {
         std::this_thread::sleep_until(decisionSleepUntil);
