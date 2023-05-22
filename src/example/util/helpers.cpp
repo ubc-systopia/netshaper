@@ -274,7 +274,7 @@ namespace helpers {
                   std::vector<int> cores) {
     setCPUAffinity(cores);
 #ifdef RECORD_STATS
-    // 0 because we want to profile for these values
+    // 0 if we want to profile for these values
     auto maskDPDecisionUs = 500;
     auto maskPrepDurationUs = 9000;
     auto maskEnqueueDurationUs = 250;
@@ -303,15 +303,15 @@ namespace helpers {
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
-      if (std::chrono::steady_clock::now() < mask)
-        std::this_thread::sleep_until(mask);
-#ifdef RECORD_STATS
-      else failedDPMask++;
-#endif
       end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
       totalIter++;
       timeDPDecisions.emplace_back(DPDecision, (end - start).count());
+#endif
+      if (std::chrono::steady_clock::now() < mask)
+        std::this_thread::sleep_until(mask);
+#ifdef RECORD_STATS
+      else failedDPMask++;
 #endif
 
 #ifndef SHAPING
@@ -320,8 +320,14 @@ namespace helpers {
       if (DPDecision != 0) {
         // Enqueue data for quic to send.
         unsigned int divisor;
-        if (strategy == BURST) divisor = 1; // Strategy is BURST
-        if (strategy == UNIFORM) divisor = decisionInterval / sendingInterval;
+        switch (strategy) {
+          case BURST:
+            divisor = 1;
+            break;
+          case UNIFORM:
+            divisor = decisionInterval / sendingInterval;
+            break;
+        }
         auto maxBytesToSend = DPDecision / divisor;
         for (unsigned int i = 0; i < divisor; i++) {
           sendingSleepUntil += std::chrono::microseconds(sendingInterval);
@@ -334,14 +340,14 @@ namespace helpers {
           size_t dummySize = maxBytesToSend - dataSize;
           auto preparedBuffers = prepareData(dataSize);
           preparedBuffers.push_back(prepareDummy(dummySize));
+          end = std::chrono::steady_clock::now();
+#ifdef RECORD_STATS
+          timeDataPrep.emplace_back(aggregatedSize, (end - start).count());
+#endif
           if (std::chrono::steady_clock::now() < mask)
             std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
           else failedPrepMask++;
-#endif
-          end = std::chrono::steady_clock::now();
-#ifdef RECORD_STATS
-          timeDataPrep.emplace_back(aggregatedSize, (end - start).count());
 #endif
           int err = pthread_rwlock_wrlock(&quicSendLock);
           mask = std::chrono::steady_clock::now() +
@@ -355,14 +361,14 @@ namespace helpers {
               placeInQuicQueues(preparedBuffer.stream, preparedBuffer.buffer,
                                 preparedBuffer.length);
             }
+            end = std::chrono::steady_clock::now();
+#ifdef RECORD_STATS
+            timeDataEnqueue.emplace_back(aggregatedSize, (end - start).count());
+#endif
             if (std::chrono::steady_clock::now() < mask)
               std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
             else failedEnqueueMask++;
-#endif
-            end = std::chrono::steady_clock::now();
-#ifdef RECORD_STATS
-            timeDataEnqueue.emplace_back(aggregatedSize, (end - start).count());
 #endif
             pthread_rwlock_unlock(&quicSendLock);
           }
