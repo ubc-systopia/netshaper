@@ -113,19 +113,21 @@ namespace helpers {
       {
         std::ofstream quicSendLatencies;
         quicSendLatencies.open("quicSend.csv");
-        unsigned long minRows = INT_MAX;
+        std::vector<unsigned long> filledColumns{};
         for (unsigned long i = 0; i < quicSend.size(); i++) {
-          if (!quicSend[i].empty()) {
-            quicSendLatencies << "Stream " << i << ",";
-            if (minRows > quicSend[i].size()) minRows = quicSend[i].size();
-          }
+          if (!quicSend[i].empty())
+            filledColumns.push_back(i);
+        }
+        filledColumns.pop_back(); // Remove last column as it is control stream
+        unsigned long minRows = INT_MAX;
+        for (auto i: filledColumns) {
+          quicSendLatencies << "Stream " << i << ",";
+          if (minRows > quicSend[i].size()) minRows = quicSend[i].size();
         }
         quicSendLatencies << "\n";
         for (unsigned long j = 0; j < minRows; j++) {
-          for (const auto &column: quicSend) {
-            if (!column.empty()) {
-              quicSendLatencies << column[j] << ", ";
-            }
+          for (auto i: filledColumns) {
+            quicSendLatencies << quicSend[i][j] << ", ";
           }
           quicSendLatencies << "\n";
         }
@@ -136,24 +138,33 @@ namespace helpers {
       {
         std::ofstream shapedEval;
         shapedEval.open("shaped.csv");
+        std::vector<unsigned long> filledColumns{};
         for (unsigned long i = 0; i < quicIn.size(); i++) {
-          if (!quicIn[i].empty()) {
-            shapedEval << "quicIn " << i << ",";
-            for (auto elem: quicIn[i]) {
-              shapedEval << elem.time_since_epoch().count() << ",";
-            }
-            shapedEval << "\n";
+          if (!quicIn[i].empty())
+            filledColumns.push_back(i);
+        }
+        filledColumns.pop_back(); // Remove the control stream entries
+        for (auto i: filledColumns) {
+          shapedEval << "quicIn " << i << ",";
+          for (auto elem: quicIn[i]) {
+            shapedEval << elem.time_since_epoch().count() << ",";
           }
+          shapedEval << "\n";
         }
         shapedEval << "\n";
+
+        filledColumns.clear();
         for (unsigned long i = 0; i < quicOut.size(); i++) {
-          if (!quicOut[i].empty()) {
-            shapedEval << "quicOut " << i << ",";
-            for (auto elem: quicOut[i]) {
-              shapedEval << elem.time_since_epoch().count() << ",";
-            }
-            shapedEval << "\n";
+          if (!quicOut[i].empty())
+            filledColumns.push_back(i);
+        }
+        filledColumns.pop_back(); // Remove the control stream entries
+        for (auto i: filledColumns) {
+          shapedEval << "quicOut " << i << ",";
+          for (auto elem: quicOut[i]) {
+            shapedEval << elem.time_since_epoch().count() << ",";
           }
+          shapedEval << "\n";
         }
         shapedEval << std::endl;
         shapedEval.close();
