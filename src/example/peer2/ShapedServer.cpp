@@ -6,14 +6,16 @@
 #include <utility>
 #include <iomanip>
 
-ShapedServer::ShapedServer(std::string appName, int maxPeers,
+ShapedServer::ShapedServer(std::string &appName, int maxPeers,
                            int maxStreamsPerPeer, logLevels logLevel,
                            __useconds_t unshapedClientLoopInterval,
                            const config::ShapedServer &config) :
-    appName(std::move(appName)), logLevel(logLevel),
-    unshapedClientLoopInterval(unshapedClientLoopInterval), sigInfo(nullptr),
-    controlStream(nullptr), dummyStream(nullptr),
     dummyStreamID(QUIC_UINT62_MAX) {
+  this->appName = appName;
+  this->logLevel = logLevel;
+  unshapedProcessLoopInterval = unshapedClientLoopInterval;
+  controlStream = dummyStream = nullptr;
+
   queuesToStream =
       new std::unordered_map<QueuePair,
           MsQuicStream *, QueuePairHash>(maxStreamsPerPeer);
@@ -112,8 +114,8 @@ void ShapedServer::handleQueueSignal(int signum) {
   }
 }
 
-void ShapedServer::signalUnshapedProcess(uint64_t queueID,
-                                         connectionStatus connStatus) {
+void ShapedServer::signalOtherProcess(uint64_t queueID,
+                                      connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
@@ -169,8 +171,8 @@ inline bool ShapedServer::assignQueues(MsQuicStream *stream) {
 
   if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
     copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
-    signalUnshapedProcess((*streamToQueues)[stream].fromShaped->ID,
-                          SYN);
+    signalOtherProcess((*streamToQueues)[stream].fromShaped->ID,
+                       SYN);
 
     streamIDtoCtrlMsg.erase(streamID);
 
@@ -230,7 +232,7 @@ void ShapedServer::handleControlMessages(MsQuicStream *ctrlStream,
             if (dataStream != nullptr) {
               queues = (*streamToQueues)[dataStream];
               copyClientInfo(queues, ctrlMsg);
-              signalUnshapedProcess(queues.fromShaped->ID, SYN);
+              signalOtherProcess(queues.fromShaped->ID, SYN);
             } else {
               // Map from stream (which has not yet started) to client
               streamIDtoCtrlMsg[ctrlMsg->streamID] = *ctrlMsg;
@@ -247,7 +249,7 @@ void ShapedServer::handleControlMessages(MsQuicStream *ctrlStream,
                          std::to_string(queues.toShaped->ID) + "}");
 #endif
               queues.fromShaped->markedForDeletion = true;
-              signalUnshapedProcess(queues.fromShaped->ID, FIN);
+              signalOtherProcess(queues.fromShaped->ID, FIN);
             }
             break;
           default:
@@ -299,7 +301,7 @@ void ShapedServer::receivedShapedData(MsQuicStream *stream,
     // Sleep for some time. For performance reasons, this is the same as
     // the interval with the unshaped components checks queues for data.
     std::this_thread::sleep_for(
-        std::chrono::microseconds(unshapedClientLoopInterval));
+        std::chrono::microseconds(unshapedProcessLoopInterval));
 #endif
   }
 }

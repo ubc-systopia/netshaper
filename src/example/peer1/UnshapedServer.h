@@ -18,40 +18,18 @@
 
 using namespace helpers;
 
-class UnshapedServer {
+class UnshapedServer : public Unshaped {
 private:
-  std::string appName;
-  const logLevels logLevel;
   std::string serverAddr;
-  std::mutex logWriter;
-  __useconds_t shapedClientLoopInterval;
-
-// We fix the number of streams beforehand to avoid side-channels caused by
-// the additional size of the stream header.
-// Note: For completely correct information, each QUIC Frame should contain a
-// fixed number of streams. MsQuic does NOT do this out of the box, and the
-// current code does not implement it either.
-  int maxClients;
 
   std::unordered_map<int, QueuePair> *socketToQueues;
   std::unordered_map<QueuePair, int, QueuePairHash> *queuesToSocket;
-  std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
   std::queue<QueuePair> *unassignedQueues;
 
-  class SignalInfo *sigInfo;
-
-  std::mutex readLock;
-  std::mutex writeLock;
   std::shared_mutex mapLock;
 
   TCP::Server *unshapedServer;
 
-  /**
- * @brief Read queues periodically and send the responses to the
- * corresponding sockets
- * @param interval The interval at which the queues will be checked
- */
-  [[noreturn]] void receivedResponse(__useconds_t interval);
 
   /**
  * @brief assign a new queue for a new client
@@ -74,7 +52,8 @@ private:
  * @param queueID The ID of the queue whose status has changed
  * @param connStatus The changed status of the given queue
  */
-  void signalShapedProcess(uint64_t queueID, connectionStatus connStatus);
+  void signalOtherProcess(uint64_t queueID, connectionStatus connStatus)
+  override;
 
   /**
  * @brief serverOnReceive function for received Data
@@ -91,13 +70,11 @@ private:
                             uint8_t *buffer, size_t length, enum
                                 connectionStatus connStatus);
 
-  /**
- * @brief Create numStreams number of shared memory streams and initialise
- * Lamport Queues for each stream
- */
-  inline void initialiseSHM();
+  [[noreturn]] void checkQueuesForData(__useconds_t interval) override;
 
-  void log(logLevels level, const std::string &log);
+  void initialiseSHM(int maxClients) override;
+
+  void log(logLevels level, const std::string &log) override;
 
 public:
   /**
@@ -116,11 +93,7 @@ public:
                  __useconds_t shapedClientLoopInterval,
                  config::UnshapedServer &config);
 
-  /**
- * @brief Handle the queue status change signal sent by the shaped process
- * @param signal The signal that was received
- */
-  void handleQueueSignal(int signum);
+  void handleQueueSignal(int signum) override;
 
 };
 

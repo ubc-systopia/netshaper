@@ -81,7 +81,7 @@ parameter is not present in the config file
   "unshapedServer": {
     "bindAddr": "",
     "bindPort": 8000,
-    "checkResponseLoopInterval": 50000,
+    "checkQueuesInterval": 50000,
     "serverAddr": "localhost:5555",
     "cores": []
   }
@@ -130,7 +130,7 @@ parameter is not present in the config file
   unshaped traffic to be proxy-ied via minesVPN). The default is "", which
   is equivalent to "::0" or "0.0.0.0"
 - `bindPort` is the port that peer 1 will listen to
-- `checkResponseLoopInterval` is the interval with which the queues will be
+- `checkQueuesInterval` is the interval with which the queues will be
   checked for responses from the shaped component
 - `serverAddr` is the address of the actual server that client is attempting
   to reach. As minesVPN currently does NOT do MITM Proxy, we resort to the

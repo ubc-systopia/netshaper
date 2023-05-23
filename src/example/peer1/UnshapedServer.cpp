@@ -10,9 +10,11 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
                                logLevels logLevel,
                                __useconds_t shapedClientLoopInterval,
                                config::UnshapedServer &config) :
-    appName(appName), logLevel(logLevel), serverAddr(config.serverAddr),
-    shapedClientLoopInterval(shapedClientLoopInterval), maxClients(maxClients),
-    sigInfo(nullptr) {
+    serverAddr(config.serverAddr) {
+  this->appName = appName;
+  this->logLevel = logLevel;
+  this->shapedProcessLoopInterval = shapedClientLoopInterval;
+
   socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
   queuesToSocket = new std::unordered_map<QueuePair,
       int, QueuePairHash>(maxClients);
@@ -20,7 +22,7 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
       new std::unordered_map<uint64_t, connectionStatus>(maxClients);
   unassignedQueues = new std::queue<QueuePair>{};
 
-  initialiseSHM();
+  initialiseSHM(maxClients);
 
   // Start listening for unshaped traffic
   auto tcpReceiveFunc = [this](auto &&PH1, auto &&PH2, auto &&PH3, auto &&PH4,
@@ -37,14 +39,14 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
   unshapedServer->startListening();
 
   std::thread responseLoop([=, this]() {
-    receivedResponse(config.checkResponseLoopInterval);
+    checkQueuesForData(config.checkQueuesInterval);
   });
   responseLoop.detach();
 
 //  std::signal(SIGUSR1, handleQueueSignal);
 }
 
-[[noreturn]] void UnshapedServer::receivedResponse(__useconds_t interval) {
+[[noreturn]] void UnshapedServer::checkQueuesForData(__useconds_t interval) {
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
   while (true) {
@@ -52,7 +54,7 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
     std::this_thread::sleep_until(nextCheck);
 #else
-  while (true) {
+    while (true) {
 #endif
     mapLock.lock_shared();
     auto tempMap = *queuesToSocket;
@@ -152,8 +154,8 @@ inline void UnshapedServer::eraseMapping(int socket) {
   mapLock.unlock();
 }
 
-void UnshapedServer::signalShapedProcess(uint64_t queueID,
-                                         connectionStatus connStatus) {
+void UnshapedServer::signalOtherProcess(uint64_t queueID,
+                                        connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::toShaped, queueInfo);
@@ -197,7 +199,7 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
                    std::to_string(queues.toShaped->ID) + "}");
       }
 #endif
-      signalShapedProcess(queues.toShaped->ID, SYN);
+      signalOtherProcess(queues.toShaped->ID, SYN);
       return true;
     }
     case ONGOING: {
@@ -213,7 +215,7 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
         // Sleep for some time. For performance reasons, this is the same as
         // the interval with which DP Logic thread runs in Shaped component.
         std::this_thread::sleep_for(
-            std::chrono::microseconds(shapedClientLoopInterval));
+            std::chrono::microseconds(shapedProcessLoopInterval));
 #endif
       }
       return true;
@@ -229,7 +231,7 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
                  std::to_string(queues.toShaped->ID) + "}");
 #endif
       queues.toShaped->markedForDeletion = true;
-      signalShapedProcess(queues.toShaped->ID, FIN);
+      signalOtherProcess(queues.toShaped->ID, FIN);
       return true;
     }
 
@@ -238,7 +240,7 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
   }
 }
 
-inline void UnshapedServer::initialiseSHM() {
+inline void UnshapedServer::initialiseSHM(int maxClients) {
   auto shmAddr = helpers::initialiseSHM(maxClients, appName);
 
   // The beginning of the SHM contains the signalStruct struct

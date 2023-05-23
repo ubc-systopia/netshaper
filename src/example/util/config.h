@@ -53,7 +53,7 @@ namespace config {
   struct UnshapedServer {
     std::string bindAddr;
     uint16_t bindPort = 8000;
-    __useconds_t checkResponseLoopInterval = 50000;
+    __useconds_t checkQueuesInterval = 50000;
     std::string serverAddr = "localhost:5555";
     std::vector<int> cores{};
   };
@@ -242,9 +242,9 @@ namespace config {
         config.unshapedServer.bindPort =
             unshapedServerJson["bindPort"].get<uint16_t>();
       }
-      if (unshapedServerJson.contains("checkResponseLoopInterval")) {
-        config.unshapedServer.checkResponseLoopInterval =
-            unshapedServerJson["checkResponseLoopInterval"].get<__useconds_t>();
+      if (unshapedServerJson.contains("checkQueuesInterval")) {
+        config.unshapedServer.checkQueuesInterval =
+            unshapedServerJson["checkQueuesInterval"].get<__useconds_t>();
       }
       if (unshapedServerJson.contains("serverAddr")) {
         config.unshapedServer.serverAddr =
@@ -340,7 +340,7 @@ namespace config {
     os << "Bind Address: " << unshapedServer.bindAddr << "\n";
     os << "Bind Port: " << unshapedServer.bindPort << "\n";
     os << "Check Response Loop Interval: "
-       << unshapedServer.checkResponseLoopInterval << "\n";
+       << unshapedServer.checkQueuesInterval << "\n";
     os << "Server Address: " << unshapedServer.serverAddr << "\n";
     os << "Cores: " << unshapedServer.cores << "\n";
     return os;

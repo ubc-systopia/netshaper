@@ -234,7 +234,7 @@ namespace QUIC {
 
     MsQuicCredentialConfig credConfig(config);
 
-    configuration = new MsQuicConfiguration(reg, alpn, *settings,
+    configuration = new MsQuicConfiguration(*reg, alpn, *settings,
                                             credConfig);
     delete settings;
     if (configuration->IsValid()) {
@@ -253,14 +253,15 @@ namespace QUIC {
                                     size_t length)> onReceiveFunc,
                  bool noServerValidation,
                  logLevels _logLevel,
-                 uint64_t _idleTimeoutMs) : idleTimeoutMs
-                                                (_idleTimeoutMs), configuration
-                                                (nullptr), connection(nullptr) {
+                 uint64_t idleTimeoutMs) : configuration(nullptr),
+                                           connection(nullptr) {
+    reg = new MsQuicRegistration{appName.c_str(), profile, autoCleanup};
+    this->idleTimeoutMs = idleTimeoutMs;
     onReceive = std::move(onReceiveFunc);
     logLevel = _logLevel;
     loadConfiguration(noServerValidation);
-    connection = new MsQuicConnection(reg, autoCleanup ? CleanUpAutoDelete :
-                                           CleanUpManual,
+    connection = new MsQuicConnection(*reg, autoCleanup ? CleanUpAutoDelete :
+                                            CleanUpManual,
                                       connectionHandler, this);
     connection->Start(*configuration, serverName.c_str(), port);
     if (!connection->IsValid()) {

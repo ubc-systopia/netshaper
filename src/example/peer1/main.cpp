@@ -110,7 +110,9 @@ int main(int argc, char *argv[]) {
     prctl(PR_SET_PDEATHSIG, SIGHUP);
     unshapedServer = new UnshapedServer{config.appName, config.maxClients,
                                         config.logLevel,
-                                        config.shapedClient.sendingLoopInterval,
+                                        config.shapedClient.strategy == UNIFORM
+                                        ? config.shapedClient.sendingLoopInterval
+                                        : config.shapedClient.DPCreditorLoopInterval,
                                         config.unshapedServer};
     // Wait for signal to exit
     waitForSignal(false);
@@ -125,7 +127,7 @@ int main(int argc, char *argv[]) {
     shapedClient = new ShapedClient{config.appName, config.maxClients,
                                     config.logLevel,
                                     config.unshapedServer
-                                        .checkResponseLoopInterval,
+                                        .checkQueuesInterval,
                                     config.shapedClient};
     sleep(2);
     std::cout << "Peer is ready!" << std::endl;

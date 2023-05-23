@@ -212,7 +212,7 @@ namespace QUIC {
 
     MsQuicCredentialConfig credConfig(config);
 
-    configuration = new MsQuicConfiguration(reg, alpn, *settings,
+    configuration = new MsQuicConfiguration(*reg, alpn, *settings,
                                             credConfig);
     delete settings;
     if (configuration->IsValid()) {
@@ -235,9 +235,10 @@ namespace QUIC {
                                   listener(nullptr),
                                   addr(new QuicAddr(
                                       QUIC_ADDRESS_FAMILY_UNSPEC)),
-                                  maxPeerStreams(maxPeerStreams),
-                                  idleTimeoutMs(idleTimeoutMs),
-                                  logLevel(level) {
+                                  maxPeerStreams(maxPeerStreams) {
+    reg = new MsQuicRegistration{appName.c_str(), profile, autoCleanup};
+    this->idleTimeoutMs = idleTimeoutMs;
+    this->logLevel = level;
     onReceive = std::move(onReceiveFunc);
 #ifdef DEBUGGING
     log(DEBUG, "Loading Configuration...");
@@ -266,7 +267,7 @@ namespace QUIC {
       return;
     }
 
-    listener = new MsQuicAutoAcceptListener(reg, *configuration,
+    listener = new MsQuicAutoAcceptListener(*reg, *configuration,
                                             this->connectionHandler, this);
     listener->Start(alpn, &addr->SockAddr);
 #ifdef DEBUGGING

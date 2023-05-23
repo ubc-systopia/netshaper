@@ -11,9 +11,11 @@ UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
                                int maxStreamsPerPeer,
                                logLevels logLevel,
                                __useconds_t shapedServerLoopInterval,
-                               config::UnshapedClient &config) :
-    appName(std::move(appName)), logLevel(logLevel),
-    shapedServerLoopInterval(shapedServerLoopInterval), sigInfo(nullptr) {
+                               config::UnshapedClient &config) {
+  this->appName = std::move(appName);
+  this->logLevel = logLevel;
+  shapedProcessLoopInterval = shapedServerLoopInterval;
+
   queuesToClient =
       new std::unordered_map<QueuePair, TCP::Client *,
           QueuePairHash>(maxStreamsPerPeer);
@@ -64,7 +66,7 @@ void UnshapedClient::onResponse(TCP::Client *client,
       // Sleep for some time. For performance reasons, this is the same as
       // the interval with which DP Logic thread runs in Shaped component.
       std::this_thread::sleep_for(
-          std::chrono::microseconds(shapedServerLoopInterval));
+          std::chrono::microseconds(shapedProcessLoopInterval));
 #endif
     }
   } else if (connStatus == FIN) {
@@ -83,7 +85,7 @@ void UnshapedClient::onResponse(TCP::Client *client,
 //        && queues.fromShaped->size() == 0) {
 //      eraseMapping(client);
 //    }
-    signalShapedProcess(queues.toShaped->ID, FIN);
+    signalOtherProcess(queues.toShaped->ID, FIN);
   }
 }
 
@@ -109,8 +111,8 @@ QueuePair UnshapedClient::findQueuesByID(uint64_t queueID) {
   return {nullptr, nullptr};
 }
 
-void UnshapedClient::signalShapedProcess(uint64_t queueID,
-                                         connectionStatus connStatus) {
+void UnshapedClient::signalOtherProcess(uint64_t queueID,
+                                        connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::toShaped, queueInfo);

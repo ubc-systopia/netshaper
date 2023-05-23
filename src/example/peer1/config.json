@@ -23,7 +23,7 @@
   "unshapedServer": {
     "bindAddr": "",
     "bindPort": 8000,
-    "checkResponseLoopInterval": 50000,
+    "checkQueuesInterval": 50000,
     "serverAddr": "localhost:5555",
     "cores": []
   }

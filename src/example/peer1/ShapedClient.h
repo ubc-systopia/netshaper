@@ -13,104 +13,47 @@
 #include "../util/helpers.h"
 #include "../../modules/shaper/NoiseGenerator.h"
 #include "../util/config.h"
+#include "../util/Shaped.h"
 #include <shared_mutex>
 
 
 using namespace helpers;
 
-class ShapedClient {
+class ShapedClient : Shaped {
 private:
-  std::string appName;
-  const logLevels logLevel;
-  std::mutex logWriter;
-  __useconds_t unshapedResponseLoopInterval;
-
   QUIC::Client *shapedClient;
 
-// We fix the number of streams beforehand to avoid side-channels caused by
-// the additional size of the stream header.
-// Note: For completely correct information, each QUIC Frame should contain a
-// fixed number of streams. MsQuic does NOT do this out of the box, and the
-// current code does not implement it either.
-  int maxClients;
-
-  std::unordered_map<QueuePair, MsQuicStream *, QueuePairHash> *queuesToStream;
-  std::unordered_map<MsQuicStream *, QueuePair> *streamToQueues;
-  std::unordered_map<uint64_t, connectionStatus> *pendingSignal;
-
-  class SignalInfo *sigInfo;
-
-  std::mutex readLock;
-  std::mutex writeLock;
-  // Map lock is required as a param in the senderLoop. Otherwise, the map in
-  // the client never changes and hence no locking is required.
-  std::shared_mutex mapLock;
-
-  MsQuicStream *dummyStream;
-  MsQuicStream *controlStream;
-
-  NoiseGenerator *noiseGenerator;
-
-
-/**
+  /**
  * @brief Find a queue pair by the ID of it's "toShaped" queue
  * @param queueID The ID of the "toShaped" queue to find
  * @return The QueuePair this ID belongs to
  */
   QueuePair findQueuesByID(uint64_t queueID);
 
+
   /**
-   * @brief Find a stream by it's ID
-   * @param ID The ID to look for
-   * @return The stream pointer corresponding to that ID
-   */
-  MsQuicStream *findStreamByID(QUIC_UINT62 ID);
-
-
-/**
- * @brief Create numStreams number of shared memory streams and initialise
- * Lamport Queues for each stream
- */
-  inline void initialiseSHM();
-
-/**
- * @brief Signal the shaped process on change of queue status
- * @param queueID The ID of the queue whose status has changed
- * @param connStatus The changed status of the given queue
- */
-  void signalUnshapedProcess(uint64_t ID, connectionStatus connStatus);
-
-/**
- * @brief Function that is called when a response is received
- * @param stream The stream on which the response was received
- * @param buffer The buffer where the response is stored
- * @param length The length of the received response
- */
-  void onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length);
-
-/**
  * @brief Starts the control stream
  */
   inline void startControlStream();
 
-/**
+  /**
  * @brief Starts the dummy stream
  */
   inline void startDummyStream();
 
-  /**
-   * @brief Handle received control messages
-   * @param buffer The buffer which stores the control messages
-   * @param length Length of the buffer
-   */
-  void handleControlMessages(uint8_t *buffer, size_t length);
+  MsQuicStream *findStreamByID(QUIC_UINT62 ID) override;
 
-  /**
-   * @brief Log the comments passed by various functions
-   * @param level The level of the comment passed by the function
-   * @param log The string containing the actual log
-   */
-  void log(logLevels level, const std::string &log);
+  void initialiseSHM(int maxClients) override;
+
+  void signalOtherProcess(uint64_t ID, connectionStatus connStatus) override;
+
+  void receivedShapedData(MsQuicStream *stream, uint8_t *buffer, size_t
+  length) override;
+
+  void handleControlMessages(MsQuicStream *ctrlStream,
+                             uint8_t *buffer, size_t length) override;
+
+  void log(logLevels level, const std::string &log) override;
 
 public:
   /**
@@ -129,25 +72,11 @@ public:
                logLevels logLevel, __useconds_t unshapedResponseLoopInterval,
                config::ShapedClient &config);
 
-  /**
-   * @brief Send dummy of given size on the dummy stream
-   * @param dummySize The #bytes to send
-   * @return The prepared buffer (stream, buffer and size)
-   */
-  PreparedBuffer prepareDummy(size_t dummySize);
+  PreparedBuffer prepareDummy(size_t dummySize) override;
 
-/**
- * @brief Send data to the receiving middleBox
- * @param dataSize The number of bytes to send out
- * @return Vector containing the prepared buffer (stream, buffer and size)
- */
-  std::vector<PreparedBuffer> prepareData(size_t dataSize);
+  std::vector<PreparedBuffer> prepareData(size_t dataSize) override;
 
-/**
- * @brief Handle the queue status change signal sent by the unshaped process
- * @param signal The signal that was received
- */
-  void handleQueueSignal(int signum);
+  void handleQueueSignal(int signum) override;
 
 };
 

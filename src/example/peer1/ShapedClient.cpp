@@ -8,11 +8,12 @@
 ShapedClient::ShapedClient(std::string &appName, int maxClients,
                            logLevels logLevel,
                            __useconds_t unshapedResponseLoopInterval,
-                           config::ShapedClient &config) :
-    appName(appName), logLevel(logLevel),
-    unshapedResponseLoopInterval(unshapedResponseLoopInterval),
-    maxClients(maxClients), sigInfo(nullptr), dummyStream(nullptr),
-    controlStream(nullptr) {
+                           config::ShapedClient &config) {
+  this->appName = appName;
+  this->logLevel = logLevel;
+  unshapedProcessLoopInterval = unshapedResponseLoopInterval;
+  dummyStream = controlStream = nullptr;
+
   queuesToStream =
       new std::unordered_map<QueuePair,
           MsQuicStream *, QueuePairHash>(maxClients);
@@ -28,9 +29,9 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
   // Connect to the other middlebox
 
   auto onResponseFunc = [this](auto &&PH1, auto &&PH2, auto &&PH3) {
-    onResponse(std::forward<decltype(PH1)>(PH1),
-               std::forward<decltype(PH2)>(PH2),
-               std::forward<decltype(PH3)>(PH3));
+    receivedShapedData(std::forward<decltype(PH1)>(PH1),
+                       std::forward<decltype(PH2)>(PH2),
+                       std::forward<decltype(PH3)>(PH3));
   };
 
   // Two middle-boxes are connected in a client-server setup, where peer1 middlebox is
@@ -44,7 +45,7 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
 
   // We map a pair of queues over the shared memory region to every stream
   // CAUTION: we assume the shared queues are already initialized in unshaped process
-  initialiseSHM();
+  initialiseSHM(maxClients);
 
   // Start the control stream
   startControlStream();
@@ -92,10 +93,10 @@ MsQuicStream *ShapedClient::findStreamByID(QUIC_UINT62 ID) {
   return nullptr;
 }
 
-void ShapedClient::signalUnshapedProcess(uint64_t queueID,
-                                         connectionStatus connStatus) {
+void ShapedClient::signalOtherProcess(uint64_t ID,
+                                      connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
-  struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
+  struct SignalInfo::queueInfo queueInfo{ID, connStatus};
   sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
 
   // Signal the other process (does not actually kill the unshaped process)
@@ -142,7 +143,7 @@ void ShapedClient::handleQueueSignal(int signum) {
   }
 }
 
-inline void ShapedClient::initialiseSHM() {
+inline void ShapedClient::initialiseSHM(int maxClients) {
   auto shmAddr = helpers::initialiseSHM(maxClients, appName, true);
 
   // The beginning of the SHM contains the signalStruct struct
@@ -219,7 +220,10 @@ PreparedBuffer ShapedClient::prepareDummy(size_t dummySize) {
   return {dummyStream, buffer, dummySize};
 }
 
-void ShapedClient::handleControlMessages(uint8_t *buffer, size_t length) {
+void ShapedClient::handleControlMessages(MsQuicStream *ctrlStream,
+                                         uint8_t *buffer,
+                                         size_t length) {
+  (void) (ctrlStream);
   if (length % sizeof(ControlMessage) != 0) {
     log(ERROR, "Received half a control message!");
     return;
@@ -233,7 +237,7 @@ void ShapedClient::handleControlMessages(uint8_t *buffer, size_t length) {
         auto dataStream = findStreamByID(ctrlMsg->streamID);
         auto &queues = (*streamToQueues)[dataStream];
         queues.fromShaped->markedForDeletion = true;
-        signalUnshapedProcess(queues.fromShaped->ID, FIN);
+        signalOtherProcess(queues.fromShaped->ID, FIN);
 #ifdef DEBUGGING
         log(DEBUG, "Received FIN from stream " +
                    std::to_string(ctrlMsg->streamID) + ", marking (fromShaped)"
@@ -245,9 +249,10 @@ void ShapedClient::handleControlMessages(uint8_t *buffer, size_t length) {
 }
 
 void
-ShapedClient::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
+ShapedClient::receivedShapedData(MsQuicStream *stream, uint8_t *buffer,
+                                 size_t length) {
   if (stream == controlStream) {
-    handleControlMessages(buffer, length);
+    handleControlMessages(controlStream, buffer, length);
     return;
   }
   if (stream == dummyStream) {
@@ -268,7 +273,7 @@ ShapedClient::onResponse(MsQuicStream *stream, uint8_t *buffer, size_t length) {
                  " is full, waiting for it to be empty!");
 #ifdef SHAPING
     std::this_thread::sleep_for(
-        std::chrono::microseconds(unshapedResponseLoopInterval));
+        std::chrono::microseconds(unshapedProcessLoopInterval));
 #endif
   }
 

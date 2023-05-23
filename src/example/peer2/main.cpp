@@ -104,7 +104,9 @@ int main(int argc, char *argv[]) {
     unshapedClient = new UnshapedClient{config.appName, config.maxPeers,
                                         config.maxStreamsPerPeer,
                                         config.logLevel,
-                                        config.shapedServer.sendingLoopInterval,
+                                        config.shapedServer.strategy == UNIFORM
+                                        ? config.shapedServer.sendingLoopInterval
+                                        : config.shapedServer.DPCreditorLoopInterval,
                                         config.unshapedClient};
     // Wait for signal to exit
     waitForSignal(false);

@@ -13,9 +13,10 @@
 #include <functional>
 #include "msquic.hpp"
 #include "../Common.h"
+#include "QUICBase.h"
 
 namespace QUIC {
-  class Server {
+  class Server : public QUICBase {
   public:
     /**
      * @brief Default constructor
@@ -49,14 +50,8 @@ namespace QUIC {
      */
     void stopListening();
 
-    /**
-     * @brief Send data on given stream
-     * @param stream The stream to send the data on
-     * @param data The buffer which holds the data to be sent
-     * @param length The length of the data to be sent
-     * @return
-     */
-    bool send(MsQuicStream *stream, uint8_t *data, size_t length);
+
+    bool send(MsQuicStream *stream, uint8_t *data, size_t length) override;
 
   private:
     MsQuicConfiguration *configuration;
@@ -70,32 +65,6 @@ namespace QUIC {
     // any streams from the peer.
     //
     const int maxPeerStreams;
-    const uint64_t idleTimeoutMs;
-
-    // Configuration parameters
-    inline static const QUIC_EXECUTION_PROFILE profile =
-        QUIC_EXECUTION_PROFILE_LOW_LATENCY;
-    inline static const bool autoCleanup = true;
-    inline static const std::string appName = "minesVPN";
-    const enum logLevels logLevel;
-
-    struct ctx {
-      QUIC_BUFFER *buffer = nullptr;
-#ifdef RECORD_STATS
-      std::chrono::time_point<std::chrono::steady_clock> start;
-#endif
-    };
-    // MsQuic is a shared library. Hence, register this application with it.
-    // The name has to be unique per application on a single machine
-    const MsQuicRegistration reg{appName.c_str(), profile,
-                                 autoCleanup};
-
-    // MsQuicAlpn is the "Application Layer Protocol Negotiation" string.
-    // Specifies which Application Protocol layers are available. See RFC 7301
-    // We set this to 'sample' to be compatible with the sample.c in
-    // msquic/src/tools/sample. But it could be any string.
-    // For IANA validated strings: https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#alpn-protocol-ids
-    const MsQuicAlpn alpn{"sample"};
 
     /**
      * @brief load the X.509 certificate and private file
@@ -130,22 +99,7 @@ namespace QUIC {
                                              void *context,
                                              QUIC_STREAM_EVENT *event);
 
-    /**
-     * @brief If log level set by user is equal or more verbose than the log
-     * level passed to this function, print the given string
-     * @param logLevel The log level of the given string
-     * @param log The string to be logged
-     */
-    void log(logLevels logLevel, const std::string &log);
-
-    /**
-     * @brief The function that is called on each buffer that is received
-     * @param stream The stream on which data was received
-     * @param buffer The byte-array that was received
-     * @param length The length of the data in buffer
-     */
-    std::function<void(MsQuicStream *stream, uint8_t *buffer, size_t length)>
-        onReceive;
+    void log(logLevels logLevel, const std::string &log) override;
   };
 }
 
