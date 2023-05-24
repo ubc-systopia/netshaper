@@ -284,6 +284,15 @@ namespace helpers {
                   sendingStrategy strategy, std::shared_mutex &mapLock,
                   std::vector<int> cores) {
     setCPUAffinity(cores);
+    unsigned int divisor;
+    switch (strategy) {
+      case BURST:
+        divisor = 1;
+        break;
+      case UNIFORM:
+        divisor = decisionInterval / sendingInterval;
+        break;
+    }
 #ifdef RECORD_STATS
     // 0 if we want to profile for these values
     auto maskDPDecisionUs = 500;
@@ -330,15 +339,6 @@ namespace helpers {
 #endif
       if (DPDecision != 0) {
         // Enqueue data for quic to send.
-        unsigned int divisor;
-        switch (strategy) {
-          case BURST:
-            divisor = 1;
-            break;
-          case UNIFORM:
-            divisor = decisionInterval / sendingInterval;
-            break;
-        }
         auto maxBytesToSend = DPDecision / divisor;
         for (unsigned int i = 0; i < divisor; i++) {
           sendingSleepUntil += std::chrono::microseconds(sendingInterval);
