@@ -324,20 +324,20 @@ namespace helpers {
       mapLock.unlock_shared();
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
       end = std::chrono::steady_clock::now();
-#ifdef RECORD_STATS
-      totalIter++;
-      timeDPDecisions.emplace_back(DPDecision, (end - start).count());
-#endif
       if (std::chrono::steady_clock::now() < mask)
         std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
-      else failedDPMask++;
+      else if (maskDPDecisionUs > 0) failedDPMask++;
 #endif
 
 #ifndef SHAPING
       DPDecision = aggregatedSize;
 #endif
       if (DPDecision != 0) {
+#ifdef RECORD_STATS
+        totalIter++;
+        timeDPDecisions.emplace_back(DPDecision, (end - start).count());
+#endif
         // Enqueue data for quic to send.
         auto maxBytesToSend = DPDecision / divisor;
         for (unsigned int i = 0; i < divisor; i++) {
@@ -358,7 +358,7 @@ namespace helpers {
           if (std::chrono::steady_clock::now() < mask)
             std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
-          else failedPrepMask++;
+          else if (maskPrepDurationUs > 0) failedPrepMask++;
 #endif
           int err = pthread_rwlock_wrlock(&quicSendLock);
           mask = std::chrono::steady_clock::now() +
@@ -379,7 +379,7 @@ namespace helpers {
             if (std::chrono::steady_clock::now() < mask)
               std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
-            else failedEnqueueMask++;
+            else if (maskEnqueueDurationUs > 0) failedEnqueueMask++;
 #endif
             pthread_rwlock_unlock(&quicSendLock);
           }
