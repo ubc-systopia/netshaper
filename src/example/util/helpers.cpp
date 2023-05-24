@@ -170,50 +170,53 @@ namespace helpers {
         shapedEval.close();
       }
     } else {
-      std::ofstream tcpSendLatencies;
-      tcpSendLatencies.open("tcpSend.csv");
-      unsigned long minRows = INT_MAX;
-      for (unsigned long i = 0; i < tcpSend.size(); i++) {
-        if (!tcpSend[i].empty()) {
-          tcpSendLatencies << "Socket " << i << ",";
-          if (minRows > tcpSend[i].size()) minRows = tcpSend[i].size();
-        }
-      }
-      tcpSendLatencies << "\n";
-      for (unsigned long j = 0; j < minRows; j++) {
-        for (const auto &column: tcpSend) {
-          if (!column.empty()) {
-            tcpSendLatencies << column[j] << ", ";
+      {
+        std::ofstream tcpSendLatencies;
+        tcpSendLatencies.open("tcpSend.csv");
+        unsigned long minRows = INT_MAX;
+        for (unsigned long i = 0; i < tcpSend.size(); i++) {
+          if (!tcpSend[i].empty()) {
+            tcpSendLatencies << "Socket " << i << ",";
+            if (minRows > tcpSend[i].size()) minRows = tcpSend[i].size();
           }
         }
         tcpSendLatencies << "\n";
-      }
-      tcpSendLatencies << std::endl;
-      tcpSendLatencies.close();
-
-      std::ofstream unshapedEval;
-      unshapedEval.open("unshaped.csv");
-      for (unsigned long i = 0; i < tcpIn.size(); i++) {
-        if (!tcpIn[i].empty()) {
-          unshapedEval << "tcpIn " << i << ",";
-          for (auto elem: tcpIn[i]) {
-            unshapedEval << elem.time_since_epoch().count() << ",";
+        for (unsigned long j = 0; j < minRows; j++) {
+          for (const auto &column: tcpSend) {
+            if (!column.empty()) {
+              tcpSendLatencies << column[j] << ", ";
+            }
           }
-          unshapedEval << "\n";
+          tcpSendLatencies << "\n";
         }
+        tcpSendLatencies << std::endl;
+        tcpSendLatencies.close();
       }
-      unshapedEval << "\n";
-      for (unsigned long i = 0; i < tcpOut.size(); i++) {
-        if (!tcpOut[i].empty()) {
-          unshapedEval << "tcpOut " << i << ",";
-          for (auto elem: tcpOut[i]) {
-            unshapedEval << elem.time_since_epoch().count() << ",";
+      {
+        std::ofstream unshapedEval;
+        unshapedEval.open("unshaped.csv");
+        for (unsigned long i = 0; i < tcpIn.size(); i++) {
+          if (!tcpIn[i].empty()) {
+            unshapedEval << "tcpIn " << i << ",";
+            for (auto elem: tcpIn[i]) {
+              unshapedEval << elem.time_since_epoch().count() << ",";
+            }
+            unshapedEval << "\n";
           }
-          unshapedEval << "\n";
         }
+        unshapedEval << "\n";
+        for (unsigned long i = 0; i < tcpOut.size(); i++) {
+          if (!tcpOut[i].empty()) {
+            unshapedEval << "tcpOut " << i << ",";
+            for (auto elem: tcpOut[i]) {
+              unshapedEval << elem.time_since_epoch().count() << ",";
+            }
+            unshapedEval << "\n";
+          }
+        }
+        unshapedEval << std::endl;
+        unshapedEval.close();
       }
-      unshapedEval << std::endl;
-      unshapedEval.close();
     }
   }
 
@@ -236,10 +239,10 @@ namespace helpers {
     else {
       pthread_rwlock_destroy(&quicSendLock);
       if (sigismember(&set, sig)) {
-        std::cout << "\nExiting with signal " << sig << std::endl;
 #ifdef RECORD_STATS
         printStats(isShapedProcess);
 #endif
+        std::cout << "\nExiting with SIG" << sigabbrev_np(sig) << std::endl;
         exit(0);
       }
     }
