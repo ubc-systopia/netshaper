@@ -243,14 +243,12 @@ namespace helpers {
     else {
       pthread_rwlock_destroy(&quicSendLock);
       if (sigismember(&set, sig)) {
-        std::cout << "\n";
-#ifdef RECORD_STATS
-        std::thread dumpStats(printStats, isShapedProcess);
-        dumpStats.detach();
-#endif
         std::cout << "\nReceived SIG" << sigabbrev_np(sig) << " on "
                   << (isShapedProcess ? "shaped" : "unshaped")
                   << " process. Writing stats..." << std::endl;
+#ifdef RECORD_STATS
+        printStats(isShapedProcess);
+#endif
       }
     }
   }

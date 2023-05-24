@@ -105,9 +105,6 @@ int main(int argc, char *argv[]) {
     // Child process - Unshaped Client
     if (!config.unshapedClient.cores.empty())
       setCPUAffinity(config.unshapedClient.cores);
-    // This process should get a SIGHUP when it's parent (the shaped
-    // server) dies
-    prctl(PR_SET_PDEATHSIG, SIGHUP);
 
     unshapedClient = new UnshapedClient{config.appName, config.maxPeers,
                                         config.maxStreamsPerPeer,
