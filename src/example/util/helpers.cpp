@@ -218,6 +218,10 @@ namespace helpers {
         unshapedEval.close();
       }
     }
+    std::cout << "Stats written. Exiting "
+              << (isShapedProcess ? "shaped" : "unshaped") << " process"
+              << std::endl;
+    exit(0);
   }
 
 #endif
@@ -239,11 +243,14 @@ namespace helpers {
     else {
       pthread_rwlock_destroy(&quicSendLock);
       if (sigismember(&set, sig)) {
+        std::cout << "\n";
 #ifdef RECORD_STATS
-        printStats(isShapedProcess);
+        std::thread dumpStats(printStats, isShapedProcess);
+        dumpStats.detach();
 #endif
-        std::cout << "\nExiting with SIG" << sigabbrev_np(sig) << std::endl;
-        exit(0);
+        std::cout << "\nReceived SIG" << sigabbrev_np(sig) << " on "
+                  << (isShapedProcess ? "shaped" : "unshaped")
+                  << " process. Writing stats..." << std::endl;
       }
     }
   }
