@@ -53,13 +53,20 @@ inline config::Peer1Config loadConfig(char *configFileName) {
   {
     auto DPLoopInterval = peer1Config.shapedClient.DPCreditorLoopInterval;
     auto sendingLoopInterval = peer1Config.shapedClient.sendingLoopInterval;
-    auto division = DPLoopInterval / sendingLoopInterval;
-    if (DPLoopInterval < sendingLoopInterval
-        || division * sendingLoopInterval != DPLoopInterval) {
-      std::cerr
-          << "DPCreditorLoopInterval should be a multiple of sendingLoopInterval"
-          << std::endl;
+    if (sendingLoopInterval == 0) {
+      if (peer1Config.shapedClient.strategy != BURST)
+        std::cerr << "sendingLoopInterval is 0 with strategy != BURST. This "
+                     "is not allowed!" << std::endl;
       exit(1);
+    } else {
+      auto division = DPLoopInterval / sendingLoopInterval;
+      if (DPLoopInterval < sendingLoopInterval
+          || division * sendingLoopInterval != DPLoopInterval) {
+        std::cerr
+            << "DPCreditorLoopInterval should be a multiple of sendingLoopInterval"
+            << std::endl;
+        exit(1);
+      }
     }
   }
   // Check that shaperCore and workerCore exist and are different
