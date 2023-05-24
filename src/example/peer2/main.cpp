@@ -45,10 +45,11 @@ inline config::Peer2Config loadConfig(char *configFileName) {
     auto DPLoopInterval = peer2Config.shapedServer.DPCreditorLoopInterval;
     auto sendingLoopInterval = peer2Config.shapedServer.sendingLoopInterval;
     if (sendingLoopInterval == 0) {
-      if (peer2Config.shapedServer.strategy != BURST)
+      if (peer2Config.shapedServer.strategy != BURST) {
         std::cerr << "sendingLoopInterval is 0 with strategy != BURST. This "
                      "is not allowed!" << std::endl;
-      exit(1);
+        exit(1);
+      }
     } else {
       auto division = DPLoopInterval / sendingLoopInterval;
       if (DPLoopInterval < sendingLoopInterval

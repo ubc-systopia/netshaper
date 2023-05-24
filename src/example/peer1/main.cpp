@@ -54,10 +54,11 @@ inline config::Peer1Config loadConfig(char *configFileName) {
     auto DPLoopInterval = peer1Config.shapedClient.DPCreditorLoopInterval;
     auto sendingLoopInterval = peer1Config.shapedClient.sendingLoopInterval;
     if (sendingLoopInterval == 0) {
-      if (peer1Config.shapedClient.strategy != BURST)
+      if (peer1Config.shapedClient.strategy != BURST) {
         std::cerr << "sendingLoopInterval is 0 with strategy != BURST. This "
                      "is not allowed!" << std::endl;
-      exit(1);
+        exit(1);
+      }
     } else {
       auto division = DPLoopInterval / sendingLoopInterval;
       if (DPLoopInterval < sendingLoopInterval
