@@ -18,6 +18,7 @@ protected:
   std::unordered_map<helpers::QueuePair, MsQuicStream *,
       helpers::QueuePairHash> *queuesToStream;
   std::unordered_map<MsQuicStream *, helpers::QueuePair> *streamToQueues;
+  std::unordered_map<MsQuicStream *, QUIC_UINT62> *streamToID;
 
   std::shared_mutex mapLock;
 

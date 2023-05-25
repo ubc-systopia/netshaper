@@ -21,6 +21,8 @@ ShapedServer::ShapedServer(std::string &appName, int maxPeers,
           MsQuicStream *, QueuePairHash>(maxStreamsPerPeer);
   streamToQueues =
       new std::unordered_map<MsQuicStream *, QueuePair>(maxStreamsPerPeer);
+  streamToID =
+      new std::unordered_map<MsQuicStream *, QUIC_UINT62>(maxStreamsPerPeer);
   pendingSignal =
       new std::unordered_map<uint64_t, connectionStatus>(maxStreamsPerPeer);
   unassignedQueues = new std::queue<QueuePair>{};
@@ -90,17 +92,13 @@ inline void ShapedServer::initialiseSHM(int numStreams) {
     auto queue2 =
         (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
 
-    // Data streams
-//    (*queuesToStream)[{queue1, queue2}] = nullptr;
     unassignedQueues->push({queue1, queue2});
   }
 }
 
 MsQuicStream *ShapedServer::findStreamByID(QUIC_UINT62 ID) {
-  for (const auto &[stream, queues]: *streamToQueues) {
-    if (stream != nullptr) {
-      if (stream->ID() == ID) return stream;
-    }
+  for (const auto &[stream, streamID]: *streamToID) {
+    if (streamID == ID) return stream;
   }
   return nullptr;
 }
@@ -160,8 +158,9 @@ inline bool ShapedServer::assignQueues(MsQuicStream *stream) {
   unassignedQueues->pop();
   (*streamToQueues)[stream] = queues;
   (*queuesToStream)[queues] = stream;
+  (*streamToID)[stream] = stream->ID();
 
-  QUIC_UINT62 streamID = stream->ID();
+  QUIC_UINT62 streamID = (*streamToID)[stream];
 #ifdef DEBUGGING
   log(DEBUG,
       "Assigning stream " + std::to_string(streamID) + " to queues {" +
@@ -195,7 +194,7 @@ inline void ShapedServer::eraseMapping(MsQuicStream *stream) {
   }
 #ifdef DEBUGGING
   log(DEBUG, "Clearing the mapping for the stream " +
-             std::to_string(stream->ID()) + " mapped to queues {" +
+             std::to_string((*streamToID)[stream]) + " mapped to queues {" +
              std::to_string(queues.fromShaped->ID) + "," +
              std::to_string(queues.toShaped->ID) + "}");
 #endif
@@ -335,7 +334,7 @@ std::vector<PreparedBuffer> ShapedServer::prepareData(size_t dataSize) {
         auto *message =
             reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
                 ControlMessage)));
-        message->streamID = stream->ID();
+        message->streamID = (*streamToID)[stream];
 #ifdef DEBUGGING
         log(DEBUG,
             "Sending FIN on stream " + std::to_string(message->streamID)

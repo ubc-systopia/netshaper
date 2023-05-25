@@ -19,6 +19,7 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
           MsQuicStream *, QueuePairHash>(maxClients);
   streamToQueues =
       new std::unordered_map<MsQuicStream *, QueuePair>(maxClients);
+  streamToID = new std::unordered_map<MsQuicStream *, QUIC_UINT62>(maxClients);
   pendingSignal =
       new std::unordered_map<uint64_t, connectionStatus>(maxClients);
 
@@ -89,9 +90,8 @@ QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {
 }
 
 MsQuicStream *ShapedClient::findStreamByID(QUIC_UINT62 ID) {
-  for (const auto &[stream, queues]: *streamToQueues) {
-    if (stream == nullptr) continue;
-    if (stream->ID() == ID) return stream;
+  for (const auto &[stream, streamID]: *streamToID) {
+    if (streamID == ID) return stream;
   }
   return nullptr;
 }
@@ -119,7 +119,8 @@ void ShapedClient::updateConnectionStatus(uint64_t ID,
         auto *message =
             reinterpret_cast<struct ControlMessage *>(malloc(
                 sizeof(struct ControlMessage)));
-        message->streamID = (*queuesToStream)[queues]->ID();
+        auto *stream = (*queuesToStream)[queues];
+        message->streamID = (*streamToID)[stream];
 #ifdef DEBUGGING
         log(DEBUG,
             "Sending SYN on stream " + std::to_string(message->streamID) +
@@ -172,14 +173,16 @@ inline void ShapedClient::initialiseSHM(int maxClients) {
     while (stream == nullptr) {
       stream = shapedClient->startStream();
     }
-#ifdef DEBUGGING
-    log(DEBUG, "Mapping stream " + std::to_string(stream->ID()) +
-               " to queues {" + std::to_string(queue1->ID) + "," +
-               std::to_string(queue2->ID) + "}");
-#endif
+
     // Data streams
     (*queuesToStream)[{queue1, queue2}] = stream;
     (*streamToQueues)[stream] = {queue1, queue2};
+    (*streamToID)[stream] = stream->ID();
+#ifdef DEBUGGING
+    log(DEBUG, "Mapping stream " + std::to_string((*streamToID)[stream]) +
+               " to queues {" + std::to_string(queue1->ID) + "," +
+               std::to_string(queue2->ID) + "}");
+#endif
   }
 }
 
@@ -195,7 +198,7 @@ std::vector<PreparedBuffer> ShapedClient::prepareData(size_t dataSize) {
         auto *message =
             reinterpret_cast<struct ControlMessage *>(malloc(sizeof(struct
                 ControlMessage)));
-        message->streamID = stream->ID();
+        message->streamID = (*streamToID)[stream];
 #ifdef DEBUGGING
         log(DEBUG,
             "Sending FIN on stream " + std::to_string(message->streamID) +
@@ -273,12 +276,12 @@ ShapedClient::receivedShapedData(MsQuicStream *stream, uint8_t *buffer,
   auto fromShaped = (*streamToQueues)[stream].fromShaped;
   if (fromShaped == nullptr) {
     log(ERROR, "Received data on unmapped stream " +
-               std::to_string(stream->ID()));
+               std::to_string((*streamToID)[stream]));
     return;
   }
   while (fromShaped->push(buffer, length) == -1) {
     log(WARNING, "(fromShaped) " + std::to_string(fromShaped->ID) +
-                 +" mapped to stream " + std::to_string(stream->ID()) +
+                 +" mapped to stream " + std::to_string((*streamToID)[stream]) +
                  " is full, waiting for it to be empty!");
 #ifdef SHAPING
     std::this_thread::sleep_for(
