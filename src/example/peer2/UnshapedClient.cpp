@@ -31,6 +31,9 @@ UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
   };
   std::thread checkQueuesLoop(checkQueuesFunc);
   checkQueuesLoop.detach();
+
+  std::thread updateQueueStatus([this]() { getUpdatedConnectionStatus(); });
+  updateQueueStatus.detach();
 }
 
 inline void UnshapedClient::initialiseSHM(int numStreams) {
@@ -85,7 +88,7 @@ void UnshapedClient::onResponse(TCP::Client *client,
 //        && queues.fromShaped->size() == 0) {
 //      eraseMapping(client);
 //    }
-    signalOtherProcess(queues.toShaped->ID, FIN);
+    updateConnectionStatus(queues.toShaped->ID, FIN);
   }
 }
 
@@ -111,20 +114,22 @@ QueuePair UnshapedClient::findQueuesByID(uint64_t queueID) {
   return {nullptr, nullptr};
 }
 
-void UnshapedClient::signalOtherProcess(uint64_t queueID,
-                                        connectionStatus connStatus) {
+void UnshapedClient::updateConnectionStatus(uint64_t queueID,
+                                            connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::toShaped, queueInfo);
 
   // Signal the other process (does not actually kill the shaped process)
-  kill(sigInfo->shaped, SIGUSR1);
+//  kill(sigInfo->shaped, SIGUSR1);
 }
 
-void UnshapedClient::handleQueueSignal(int signum) {
-  if (signum == SIGUSR1) {
-    std::scoped_lock lock(readLock);
-    struct SignalInfo::queueInfo queueInfo{};
+[[noreturn]] void UnshapedClient::getUpdatedConnectionStatus() {
+  struct SignalInfo::queueInfo queueInfo{};
+  auto sleepUntil = std::chrono::steady_clock::now();
+  while (true) {
+    sleepUntil = std::chrono::steady_clock::now() +
+                 std::chrono::milliseconds(1);
     while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
       auto queues = findQueuesByID(queueInfo.queueID);
       if (queueInfo.connStatus == SYN) {
@@ -154,6 +159,7 @@ void UnshapedClient::handleQueueSignal(int signum) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
+    std::this_thread::sleep_until(sleepUntil);
   }
 }
 

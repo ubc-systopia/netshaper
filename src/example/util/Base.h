@@ -35,8 +35,8 @@ protected:
    * @param queueID The queue to send the signal about
    * @param connStatus The connection status (should be FIN)
    */
-  virtual void signalOtherProcess(uint64_t queueID, connectionStatus
-  connStatus) = 0;
+  virtual void updateConnectionStatus(uint64_t queueID,
+                                      connectionStatus connStatus) = 0;
 
   /**
  * @brief Create numStreams number of shared memory streams and initialise
@@ -47,9 +47,8 @@ protected:
 public:
   /**
 * @brief Handle signal from the shaped process regarding a new client
-* @param signum The signal number of the signal (== SIGUSR1)
 */
-  virtual void handleQueueSignal(int signum) = 0;
+  virtual void getUpdatedConnectionStatus() = 0;
 
   Base() : logLevel(ERROR), pendingSignal(nullptr), sigInfo(nullptr) {};
 };

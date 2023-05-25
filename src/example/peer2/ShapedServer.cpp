@@ -66,6 +66,9 @@ ShapedServer::ShapedServer(std::string &appName, int maxPeers,
                                config.strategy, std::ref(mapLock),
                                config.shaperCores);
   senderLoopThread.detach();
+
+  std::thread updateQueueStatus([this]() { getUpdatedConnectionStatus(); });
+  updateQueueStatus.detach();
 }
 
 inline void ShapedServer::initialiseSHM(int numStreams) {
@@ -102,26 +105,29 @@ MsQuicStream *ShapedServer::findStreamByID(QUIC_UINT62 ID) {
   return nullptr;
 }
 
-void ShapedServer::handleQueueSignal(int signum) {
-  if (signum == SIGUSR1) {
-    std::scoped_lock lock(readLock);
-    struct SignalInfo::queueInfo queueInfo{};
+[[noreturn]] void ShapedServer::getUpdatedConnectionStatus() {
+  struct SignalInfo::queueInfo queueInfo{};
+  auto sleepUntil = std::chrono::steady_clock::now();
+  while (true) {
+    sleepUntil = std::chrono::steady_clock::now() +
+                 std::chrono::milliseconds(1);
     while (sigInfo->dequeue(SignalInfo::toShaped, queueInfo)) {
       if (queueInfo.connStatus == FIN) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
+    std::this_thread::sleep_until(sleepUntil);
   }
 }
 
-void ShapedServer::signalOtherProcess(uint64_t queueID,
-                                      connectionStatus connStatus) {
+void ShapedServer::updateConnectionStatus(uint64_t queueID,
+                                          connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
 
   // Signal the other process (does not actually kill the unshaped process)
-  kill(sigInfo->unshaped, SIGUSR1);
+//  kill(sigInfo->unshaped, SIGUSR1);
 }
 
 void ShapedServer::copyClientInfo(QueuePair queues,
@@ -171,8 +177,8 @@ inline bool ShapedServer::assignQueues(MsQuicStream *stream) {
 
   if (streamIDtoCtrlMsg.find(streamID) != streamIDtoCtrlMsg.end()) {
     copyClientInfo(queues, &streamIDtoCtrlMsg[streamID]);
-    signalOtherProcess((*streamToQueues)[stream].fromShaped->ID,
-                       SYN);
+    updateConnectionStatus((*streamToQueues)[stream].fromShaped->ID,
+                           SYN);
 
     streamIDtoCtrlMsg.erase(streamID);
 
@@ -232,7 +238,7 @@ void ShapedServer::handleControlMessages(MsQuicStream *ctrlStream,
             if (dataStream != nullptr) {
               queues = (*streamToQueues)[dataStream];
               copyClientInfo(queues, ctrlMsg);
-              signalOtherProcess(queues.fromShaped->ID, SYN);
+              updateConnectionStatus(queues.fromShaped->ID, SYN);
             } else {
               // Map from stream (which has not yet started) to client
               streamIDtoCtrlMsg[ctrlMsg->streamID] = *ctrlMsg;
@@ -249,7 +255,7 @@ void ShapedServer::handleControlMessages(MsQuicStream *ctrlStream,
                          std::to_string(queues.toShaped->ID) + "}");
 #endif
               queues.fromShaped->markedForDeletion = true;
-              signalOtherProcess(queues.fromShaped->ID, FIN);
+              updateConnectionStatus(queues.fromShaped->ID, FIN);
             }
             break;
           default:

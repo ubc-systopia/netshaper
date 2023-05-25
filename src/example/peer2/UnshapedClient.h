@@ -51,7 +51,8 @@ private:
   [[noreturn]] void checkQueuesForData(__useconds_t interval) override;
 
   void
-  signalOtherProcess(uint64_t queueID, connectionStatus connStatus) override;
+  updateConnectionStatus(uint64_t queueID,
+                         connectionStatus connStatus) override;
 
   void log(logLevels level, const std::string &log) override;
 
@@ -76,7 +77,7 @@ public:
                  __useconds_t shapedServerLoopInterval,
                  config::UnshapedClient &config);
 
-  void handleQueueSignal(int signum) override;
+  [[noreturn]] void getUpdatedConnectionStatus() override;
 };
 
 

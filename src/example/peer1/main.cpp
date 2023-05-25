@@ -19,25 +19,6 @@ ShapedClient *shapedClient = nullptr;
 // This needs to be here (on the heap)
 const MsQuicApi *MsQuic;
 
-void handleQueueSignal(int signum) {
-//  if (unshapedServer != nullptr && shapedClient == nullptr) {
-//    unshapedServer->handleQueueSignal(signum);
-//  } else
-  if (shapedClient != nullptr && unshapedServer == nullptr) {
-    shapedClient->handleQueueSignal(signum);
-  } else if (shapedClient == nullptr && unshapedServer != nullptr) {
-    unshapedServer->handleQueueSignal(signum);
-  } else {
-    if (unshapedServer != nullptr && shapedClient != nullptr)
-      std::cerr << "Peer1: Both pointers present! " << getpid() << std::endl;
-    else if (unshapedServer == nullptr && shapedClient == nullptr)
-      std::cerr << "Peer1: Neither pointers present! " << getpid() << std::endl;
-    else
-      std::cerr << "Peer1: Huh? " << getpid() << std::endl;
-    exit(1);
-  }
-}
-
 inline config::Peer1Config loadConfig(char *configFileName) {
   std::ifstream configFile(configFileName);
   json config;
@@ -107,7 +88,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   auto config = loadConfig(argv[1]);
-  std::signal(SIGUSR1, handleQueueSignal);
 
   if (fork() == 0) {
     // Child process - Unshaped Server

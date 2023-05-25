@@ -52,7 +52,7 @@ private:
  * @param queueID The ID of the queue whose status has changed
  * @param connStatus The changed status of the given queue
  */
-  void signalOtherProcess(uint64_t queueID, connectionStatus connStatus)
+  void updateConnectionStatus(uint64_t queueID, connectionStatus connStatus)
   override;
 
   /**
@@ -93,7 +93,7 @@ public:
                  __useconds_t shapedClientLoopInterval,
                  config::UnshapedServer &config);
 
-  void handleQueueSignal(int signum) override;
+  [[noreturn]] void getUpdatedConnectionStatus() override;
 
 };
 

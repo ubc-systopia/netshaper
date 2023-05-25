@@ -18,17 +18,6 @@ ShapedServer *shapedServer = nullptr;
 // This needs to be here (on the heap)
 const MsQuicApi *MsQuic;
 
-void handleQueueSignal(int signum) {
-  if (unshapedClient != nullptr && shapedServer == nullptr) {
-    unshapedClient->handleQueueSignal(signum);
-  } else if (unshapedClient == nullptr && shapedServer != nullptr) {
-    shapedServer->handleQueueSignal(signum);
-  } else {
-    std::cerr << "Peer2: Issue with handling queue signal!" << std::endl;
-    exit(1);
-  }
-}
-
 inline config::Peer2Config loadConfig(char *configFileName) {
   std::ifstream configFile(configFileName);
   json config;
@@ -99,7 +88,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   auto config = loadConfig(argv[1]);
-  std::signal(SIGUSR1, handleQueueSignal);
 
   if (fork() == 0) {
     // Child process - Unshaped Client

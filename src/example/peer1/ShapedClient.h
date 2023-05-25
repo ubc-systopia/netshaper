@@ -45,7 +45,8 @@ private:
 
   void initialiseSHM(int maxClients) override;
 
-  void signalOtherProcess(uint64_t ID, connectionStatus connStatus) override;
+  void
+  updateConnectionStatus(uint64_t ID, connectionStatus connStatus) override;
 
   void receivedShapedData(MsQuicStream *stream, uint8_t *buffer, size_t
   length) override;
@@ -76,7 +77,7 @@ public:
 
   std::vector<PreparedBuffer> prepareData(size_t dataSize) override;
 
-  void handleQueueSignal(int signum) override;
+  [[noreturn]] void getUpdatedConnectionStatus() override;
 
 };
 

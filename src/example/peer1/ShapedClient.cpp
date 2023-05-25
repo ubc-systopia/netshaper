@@ -74,6 +74,9 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
                                config.strategy, std::ref(mapLock),
                                config.shaperCores);
   senderLoopThread.detach();
+
+  std::thread updateQueueStatus([this]() { getUpdatedConnectionStatus(); });
+  updateQueueStatus.detach();
 }
 
 QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {
@@ -93,20 +96,23 @@ MsQuicStream *ShapedClient::findStreamByID(QUIC_UINT62 ID) {
   return nullptr;
 }
 
-void ShapedClient::signalOtherProcess(uint64_t ID,
-                                      connectionStatus connStatus) {
+void ShapedClient::updateConnectionStatus(uint64_t ID,
+                                          connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{ID, connStatus};
   sigInfo->enqueue(SignalInfo::fromShaped, queueInfo);
 
   // Signal the other process (does not actually kill the unshaped process)
-  kill(sigInfo->unshaped, SIGUSR1);
+//  kill(sigInfo->unshaped, SIGUSR1);
 }
 
-void ShapedClient::handleQueueSignal(int signum) {
-  if (signum == SIGUSR1) {
-    std::scoped_lock lock(readLock);
-    struct SignalInfo::queueInfo queueInfo{};
+[[noreturn]] void ShapedClient::getUpdatedConnectionStatus() {
+  struct SignalInfo::queueInfo queueInfo{};
+  auto sleepUntil = std::chrono::steady_clock::now();
+  while (true) {
+    sleepUntil = std::chrono::steady_clock::now() +
+                 std::chrono::milliseconds(1);
+//    std::scoped_lock lock(readLock);
     while (sigInfo->dequeue(SignalInfo::toShaped, queueInfo)) {
       auto queues = findQueuesByID(queueInfo.queueID);
       if (queueInfo.connStatus == SYN) {
@@ -140,6 +146,7 @@ void ShapedClient::handleQueueSignal(int signum) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
+    std::this_thread::sleep_until(sleepUntil);
   }
 }
 
@@ -237,7 +244,7 @@ void ShapedClient::handleControlMessages(MsQuicStream *ctrlStream,
         auto dataStream = findStreamByID(ctrlMsg->streamID);
         auto &queues = (*streamToQueues)[dataStream];
         queues.fromShaped->markedForDeletion = true;
-        signalOtherProcess(queues.fromShaped->ID, FIN);
+        updateConnectionStatus(queues.fromShaped->ID, FIN);
 #ifdef DEBUGGING
         log(DEBUG, "Received FIN from stream " +
                    std::to_string(ctrlMsg->streamID) + ", marking (fromShaped)"

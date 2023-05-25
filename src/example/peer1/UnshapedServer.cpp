@@ -43,7 +43,9 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
   });
   responseLoop.detach();
 
-//  std::signal(SIGUSR1, handleQueueSignal);
+  std::thread updateQueueStatus([this]() { getUpdatedConnectionStatus(); });
+  updateQueueStatus.detach();
+
 }
 
 [[noreturn]] void UnshapedServer::checkQueuesForData(__useconds_t interval) {
@@ -154,25 +156,28 @@ inline void UnshapedServer::eraseMapping(int socket) {
   mapLock.unlock();
 }
 
-void UnshapedServer::signalOtherProcess(uint64_t queueID,
-                                        connectionStatus connStatus) {
+void UnshapedServer::updateConnectionStatus(uint64_t queueID,
+                                            connectionStatus connStatus) {
   std::scoped_lock lock(writeLock);
   struct SignalInfo::queueInfo queueInfo{queueID, connStatus};
   sigInfo->enqueue(SignalInfo::toShaped, queueInfo);
 
   // Signal the other process (does not actually kill the shaped process)
-  kill(sigInfo->shaped, SIGUSR1);
+//  kill(sigInfo->shaped, SIGUSR1);
 }
 
-void UnshapedServer::handleQueueSignal(int signum) {
-  if (signum == SIGUSR1) {
-    std::scoped_lock lock(readLock);
-    struct SignalInfo::queueInfo queueInfo{};
+[[noreturn]] void UnshapedServer::getUpdatedConnectionStatus() {
+  struct SignalInfo::queueInfo queueInfo{};
+  auto sleepUntil = std::chrono::steady_clock::now();
+  while (true) {
+    sleepUntil = std::chrono::steady_clock::now() +
+                 std::chrono::milliseconds(1);
     while (sigInfo->dequeue(SignalInfo::fromShaped, queueInfo)) {
       if (queueInfo.connStatus == FIN) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
     }
+    std::this_thread::sleep_until(sleepUntil);
   }
 }
 
@@ -199,7 +204,7 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
                    std::to_string(queues.toShaped->ID) + "}");
       }
 #endif
-      signalOtherProcess(queues.toShaped->ID, SYN);
+      updateConnectionStatus(queues.toShaped->ID, SYN);
       return true;
     }
     case ONGOING: {
@@ -231,7 +236,7 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
                  std::to_string(queues.toShaped->ID) + "}");
 #endif
       queues.toShaped->markedForDeletion = true;
-      signalOtherProcess(queues.toShaped->ID, FIN);
+      updateConnectionStatus(queues.toShaped->ID, FIN);
       return true;
     }
 
