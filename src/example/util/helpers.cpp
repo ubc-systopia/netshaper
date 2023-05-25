@@ -307,9 +307,9 @@ namespace helpers {
     auto maskPrepDurationUs = 9000;
     auto maskEnqueueDurationUs = 250;
 #else
-    auto maskDPDecisionUs = 1000; // TODO: Replace this value
-    auto maskPrepDurationUs = 1000; // TODO: Replace this value
-    auto maskEnqueueDurationUs = 1000; // TODO: Replace this value
+    auto maskDPDecisionUs = 0; // TODO: Replace this value
+    auto maskPrepDurationUs = 0; // TODO: Replace this value
+    auto maskEnqueueDurationUs = 0; // TODO: Replace this value
 #endif
     auto mask = std::chrono::steady_clock::now();
     auto decisionSleepUntil = std::chrono::steady_clock::now();

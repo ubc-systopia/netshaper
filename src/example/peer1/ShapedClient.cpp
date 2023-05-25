@@ -236,26 +236,20 @@ void ShapedClient::handleControlMessages(MsQuicStream *ctrlStream,
                                          uint8_t *buffer,
                                          size_t length) {
   (void) (ctrlStream);
-  if (length % sizeof(ControlMessage) != 0) {
-    log(ERROR, "Received half a control message!");
-    return;
-  } else {
-    uint8_t messages = length / sizeof(ControlMessage);
-    for (uint8_t i = 0; i < messages; i++) {
-      auto ctrlMsg =
-          reinterpret_cast<struct ControlMessage *>
-          (buffer + (i * sizeof(ControlMessage)));
-      if (ctrlMsg->connStatus == FIN) {
-        auto dataStream = findStreamByID(ctrlMsg->streamID);
-        auto &queues = (*streamToQueues)[dataStream];
-        queues.fromShaped->markedForDeletion = true;
-        updateConnectionStatus(queues.fromShaped->ID, FIN);
+  auto ctrlMsgSize = sizeof(ControlMessage);
+  controlMessageQueue.push(buffer, length);
+  auto ctrlMsg = reinterpret_cast<ControlMessage *>(malloc(ctrlMsgSize));
+  while (controlMessageQueue.pop((uint8_t *) ctrlMsg, ctrlMsgSize) != -1) {
+    if (ctrlMsg->connStatus == FIN) {
+      auto dataStream = findStreamByID(ctrlMsg->streamID);
+      auto &queues = (*streamToQueues)[dataStream];
+      queues.fromShaped->markedForDeletion = true;
+      updateConnectionStatus(queues.fromShaped->ID, FIN);
 #ifdef DEBUGGING
-        log(DEBUG, "Received FIN from stream " +
-                   std::to_string(ctrlMsg->streamID) + ", marking (fromShaped)"
-                   + std::to_string(queues.fromShaped->ID) + " for deletion");
+      log(DEBUG, "Received FIN from stream " +
+                 std::to_string(ctrlMsg->streamID) + ", marking (fromShaped)"
+                 + std::to_string(queues.fromShaped->ID) + " for deletion");
 #endif
-      }
     }
   }
 }
@@ -324,7 +318,8 @@ inline void ShapedClient::startDummyStream() {
   log(DEBUG, "Dummy stream is at " +
              std::to_string(message->streamID));
 #endif
-
+  auto dummy = malloc(4096);
+  shapedClient->send(dummyStream, reinterpret_cast<uint8_t *>(dummy), 4096);
 }
 
 void ShapedClient::log(logLevels level, const std::string &log) {

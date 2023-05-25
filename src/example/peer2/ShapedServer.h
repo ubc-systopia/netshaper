@@ -23,7 +23,6 @@ using namespace helpers;
 class ShapedServer : Shaped {
 private:
   QUIC::Server *shapedServer;
-
   std::queue<QueuePair> *unassignedQueues;
 
   // Map that stores streamIDs for which client information is received (but
@@ -33,6 +32,8 @@ private:
   // dummyStreamID is needed because ctrlMsg of dummyStream is received
   // before the dummy stream begins.
   QUIC_UINT62 dummyStreamID;
+
+  LamportQueue controlMessageQueue{INT_MAX};
 
 
 /**

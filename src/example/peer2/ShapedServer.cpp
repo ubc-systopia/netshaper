@@ -207,16 +207,10 @@ inline void ShapedServer::eraseMapping(MsQuicStream *stream) {
 
 void ShapedServer::handleControlMessages(MsQuicStream *ctrlStream,
                                          uint8_t *buffer, size_t length) {
-  if (length % sizeof(ControlMessage) != 0) {
-    log(ERROR, "Received half a control message!");
-    return;
-  }
   auto ctrlMsgSize = sizeof(ControlMessage);
-  uint8_t msgCount = length / ctrlMsgSize;
-
-  for (uint8_t i = 0; i < msgCount; i++) {
-    auto ctrlMsg =
-        reinterpret_cast<ControlMessage *>(buffer + (i * ctrlMsgSize));
+  controlMessageQueue.push(buffer, length);
+  auto ctrlMsg = reinterpret_cast<ControlMessage *>(malloc(ctrlMsgSize));
+  while (controlMessageQueue.pop((uint8_t *) ctrlMsg, ctrlMsgSize) != -1) {
     switch (ctrlMsg->streamType) {
       case Dummy:
 #ifdef DEBUGGING
@@ -234,7 +228,9 @@ void ShapedServer::handleControlMessages(MsQuicStream *ctrlStream,
             log(DEBUG, "Received SYN on stream " +
                        std::to_string(ctrlMsg->streamID));
 #endif
-            if (dataStream != nullptr) {
+            if (dataStream != nullptr
+                &&
+                (*streamToQueues).find(dataStream) != (*streamToQueues).end()) {
               queues = (*streamToQueues)[dataStream];
               copyClientInfo(queues, ctrlMsg);
               updateConnectionStatus(queues.fromShaped->ID, SYN);
@@ -280,12 +276,12 @@ void ShapedServer::receivedShapedData(MsQuicStream *stream,
   }
 
   // Not a control stream... Check for other types
-  if (dummyStream == nullptr) {
+  if (dummyStream == nullptr || stream == dummyStream) {
     if (stream->ID() == dummyStreamID) {
       // Dummy Data
       if (dummyStream == nullptr) dummyStream = stream;
-      return;
     }
+    return;
   }
 
   // This is a data stream
