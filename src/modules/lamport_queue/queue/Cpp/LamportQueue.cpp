@@ -4,7 +4,8 @@
 
 #include "LamportQueue.hpp"
 
-LamportQueue::LamportQueue(uint64_t queueID) : ID(queueID) {
+LamportQueue::LamportQueue(uint64_t queueID, size_t queueSize)
+    : ID(queueID), bufferSize(queueSize) {
   front = 0;
   back = 0;
   cachedFront = 0;
@@ -16,8 +17,8 @@ LamportQueue::LamportQueue(uint64_t queueID) : ID(queueID) {
 // }
 
 int LamportQueue::push(uint8_t *buffer, size_t length) {
-  if (length > BUFFER_SIZE) return -1;
-
+  if (length > bufferSize) return -1;
+  uint8_t *queueStorage = reinterpret_cast<uint8_t *>(this) + offset;
   size_t b, f;
   b = this->back.load(std::memory_order_relaxed);
   f = this->cachedFront;
@@ -29,20 +30,21 @@ int LamportQueue::push(uint8_t *buffer, size_t length) {
   if (freeSpace < length) {
     return -1;
   }
-  if (b + length > BUFFER_SIZE) {
-    auto size1 = BUFFER_SIZE - b;
-    std::memcpy(this->queueStorage + b, buffer, size1);
-    std::memcpy(this->queueStorage, buffer + size1, length - size1);
+  if (b + length > bufferSize) {
+    auto size1 = bufferSize - b;
+    std::memcpy(queueStorage + b, buffer, size1);
+    std::memcpy(queueStorage + b, buffer, size1);
+    std::memcpy(queueStorage, buffer + size1, length - size1);
   } else {
-    std::memcpy(this->queueStorage + b, buffer, length);
+    std::memcpy(queueStorage + b, buffer, length);
   }
-  this->back.store((b + length) % BUFFER_SIZE, std::memory_order_release);
+  this->back.store((b + length) % bufferSize, std::memory_order_release);
   return 0;
 }
 
 int LamportQueue::pop(uint8_t *buffer, size_t length) {
-  if (length > BUFFER_SIZE) return -1;
-
+  if (length > bufferSize) return -1;
+  uint8_t *queueStorage = reinterpret_cast<uint8_t *>(this) + offset;
   size_t b, f;
   f = this->front.load(std::memory_order_relaxed);
   b = this->cachedBack;
@@ -54,14 +56,14 @@ int LamportQueue::pop(uint8_t *buffer, size_t length) {
   if (queueSize < length) {
     return -1;
   }
-  if (f + length > BUFFER_SIZE) {
-    auto size1 = BUFFER_SIZE - f;
-    std::memcpy(buffer, this->queueStorage + f, size1);
-    std::memcpy(buffer + size1, this->queueStorage, length - size1);
+  if (f + length > bufferSize) {
+    auto size1 = bufferSize - f;
+    std::memcpy(buffer, queueStorage + f, size1);
+    std::memcpy(buffer + size1, queueStorage, length - size1);
   } else {
-    std::memcpy(buffer, this->queueStorage + f, length);
+    std::memcpy(buffer, queueStorage + f, length);
   }
-  this->front.store((f + length) % BUFFER_SIZE, std::memory_order_release);
+  this->front.store((f + length) % bufferSize, std::memory_order_release);
   return 0;
 }
 
@@ -87,9 +89,9 @@ size_t LamportQueue::mod(ssize_t a, ssize_t b) {
 }
 
 size_t LamportQueue::getFreeSpaceLocal(size_t f, size_t b) {
-  return BUFFER_SIZE - this->mod(b - f, BUFFER_SIZE) - 1;
+  return bufferSize - this->mod(b - f, bufferSize) - 1;
 }
 
 size_t LamportQueue::getQueueSizeLocal(size_t f, size_t b) {
-  return this->mod(b - f, BUFFER_SIZE);
+  return this->mod(b - f, bufferSize);
 }

@@ -6,41 +6,48 @@
 #include <utility>
 #include <iomanip>
 
-ShapedServer::ShapedServer(std::string &appName, int maxPeers,
-                           int maxStreamsPerPeer, logLevels logLevel,
-                           __useconds_t unshapedClientLoopInterval,
-                           const config::ShapedServer &config) :
+ShapedServer::ShapedServer(config::Peer2Config &peer2Config) :
     dummyStreamID(QUIC_UINT62_MAX) {
   this->appName = appName;
   this->logLevel = logLevel;
-  unshapedProcessLoopInterval = unshapedClientLoopInterval;
+  unshapedProcessLoopInterval = peer2Config.unshapedClient.checkQueuesInterval;
   controlStream = dummyStream = nullptr;
-
+  size_t controlMessageQueueSize =
+      4 * peer2Config.maxPeers * peer2Config.maxStreamsPerPeer *
+      sizeof(ControlMessage);
+  controlMessageQueue =
+      reinterpret_cast<LamportQueue *>(malloc(sizeof(LamportQueue)
+                                              + controlMessageQueueSize));
+  new(controlMessageQueue) LamportQueue{INT_MAX, controlMessageQueueSize};
   queuesToStream =
       new std::unordered_map<QueuePair,
-          MsQuicStream *, QueuePairHash>(maxStreamsPerPeer);
+          MsQuicStream *, QueuePairHash>(peer2Config.maxStreamsPerPeer);
   streamToQueues =
-      new std::unordered_map<MsQuicStream *, QueuePair>(maxStreamsPerPeer);
+      new std::unordered_map<MsQuicStream *, QueuePair>(
+          peer2Config.maxStreamsPerPeer);
   streamToID =
-      new std::unordered_map<MsQuicStream *, QUIC_UINT62>(maxStreamsPerPeer);
+      new std::unordered_map<MsQuicStream *, QUIC_UINT62>(
+          peer2Config.maxStreamsPerPeer);
   pendingSignal =
-      new std::unordered_map<uint64_t, connectionStatus>(maxStreamsPerPeer);
+      new std::unordered_map<uint64_t, connectionStatus>(
+          peer2Config.maxStreamsPerPeer);
   unassignedQueues = new std::queue<QueuePair>{};
 
-  initialiseSHM(maxPeers * maxStreamsPerPeer);
+  initialiseSHM(peer2Config.maxPeers * peer2Config.maxStreamsPerPeer,
+                peer2Config.queueSize);
 
   auto receivedShapedDataFunc = [this](auto &&PH1, auto &&PH2, auto &&PH3) {
     receivedShapedData(std::forward<decltype(PH1)>(PH1),
                        std::forward<decltype(PH2)>(PH2),
                        std::forward<decltype(PH3)>(PH3));
   };
-
+  auto config = peer2Config.shapedServer;
   // Start listening for connections from the other middlebox
   // Add additional stream for dummy data
   shapedServer =
       new QUIC::Server{config.serverCert, config.serverKey,
                        config.listeningPort, receivedShapedDataFunc, logLevel,
-                       maxStreamsPerPeer + 2, config.idleTimeout};
+                       peer2Config.maxStreamsPerPeer + 2, config.idleTimeout};
   shapedServer->startListening();
 
   noiseGenerator = new NoiseGenerator{config.noiseMultiplier,
@@ -73,24 +80,22 @@ ShapedServer::ShapedServer(std::string &appName, int maxPeers,
   updateQueueStatus.detach();
 }
 
-inline void ShapedServer::initialiseSHM(int numStreams) {
-  auto shmAddr = helpers::initialiseSHM(numStreams, appName, true);
+inline void ShapedServer::initialiseSHM(int numStreams, size_t queueSize) {
+  auto shmAddr = helpers::initialiseSHM(numStreams, appName, queueSize, true);
 
   // The beginning of the SHM contains the signalStruct struct
   sigInfo = reinterpret_cast<class SignalInfo *>(shmAddr);
-  if (sigInfo->unshaped == 0) {
-    log(ERROR, "Unshaped process has not started yet!");
-    exit(1);
-  }
-  sigInfo->shaped = getpid();
 
   // The rest of the SHM contains the queues
-  shmAddr += sizeof(class SignalInfo);
+  shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
+              (4 * numStreams * sizeof(SignalInfo::queueInfo)));
   for (int i = 0; i < numStreams * 2; i += 2) {
     auto queue1 =
-        (LamportQueue *) (shmAddr + (i * sizeof(class LamportQueue)));
+        (LamportQueue *) (shmAddr +
+                          (i * (sizeof(class LamportQueue) + queueSize)));
     auto queue2 =
-        (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
+        (LamportQueue *) (shmAddr +
+                          ((i + 1) * (sizeof(class LamportQueue) + queueSize)));
 
     unassignedQueues->push({queue1, queue2});
   }
@@ -208,9 +213,9 @@ inline void ShapedServer::eraseMapping(MsQuicStream *stream) {
 void ShapedServer::handleControlMessages(MsQuicStream *ctrlStream,
                                          uint8_t *buffer, size_t length) {
   auto ctrlMsgSize = sizeof(ControlMessage);
-  controlMessageQueue.push(buffer, length);
+  controlMessageQueue->push(buffer, length);
   auto ctrlMsg = reinterpret_cast<ControlMessage *>(malloc(ctrlMsgSize));
-  while (controlMessageQueue.pop((uint8_t *) ctrlMsg, ctrlMsgSize) != -1) {
+  while (controlMessageQueue->pop((uint8_t *) ctrlMsg, ctrlMsgSize) != -1) {
     switch (ctrlMsg->streamType) {
       case Dummy:
 #ifdef DEBUGGING

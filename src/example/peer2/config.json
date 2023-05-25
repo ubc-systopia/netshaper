@@ -2,6 +2,7 @@
   "logLevel": "WARNING",
   "maxStreamsPerPeer": 40,
   "appName": "minesVPNPeer2",
+  "queueSize": 2097152,
   "shapedServer": {
     "serverCert": "server.cert",
     "serverKey": "server.key",

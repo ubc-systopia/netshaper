@@ -33,7 +33,7 @@ private:
   // before the dummy stream begins.
   QUIC_UINT62 dummyStreamID;
 
-  LamportQueue controlMessageQueue{INT_MAX};
+  LamportQueue *controlMessageQueue;
 
 
 /**
@@ -65,7 +65,7 @@ private:
    */
   inline void eraseMapping(MsQuicStream *stream);
 
-  void initialiseSHM(int numStreams) override;
+  void initialiseSHM(int numStreams, size_t queueSize) override;
 
   MsQuicStream *findStreamByID(QUIC_UINT62 ID) override;
 
@@ -85,21 +85,9 @@ public:
 
   /**
    * @brief Constructor for shapedServer
-   * @param appName The name of this application. Used as a key to initialise
-   * shared memory with the unshaped process
-   * @param maxPeers The maximum number of peers that should connect to this
-   * middlebox (more connections will be rejected)
-   * @param maxStreamsPerPeer The maximum number of TCP flows to support
-   * @param logLevel The level of logging you want (NOTE: For DEBUG logs, the
-   * code has to be compiled with the flag DEBUGGING)
-   * @param unshapedClientLoopInterval The interval (in microseconds) with which
-   * the queues will be read from the unshaped side (used for optimising wait
-   * time when queues are full)
-   * @param config The config struct that configures this instance
+   * @param peer2Config The config struct that configures this instance
    */
-  ShapedServer(std::string &appName, int maxPeers, int maxStreamsPerPeer,
-               logLevels logLevel, __useconds_t unshapedClientLoopInterval,
-               const config::ShapedServer &config);
+  explicit ShapedServer(config::Peer2Config &peer2Config);
 
   [[noreturn]] void getUpdatedConnectionStatus() override;
 };

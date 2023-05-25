@@ -72,26 +72,16 @@ private:
 
   [[noreturn]] void checkQueuesForData(__useconds_t interval) override;
 
-  void initialiseSHM(int maxClients) override;
+  void initialiseSHM(int maxClients, size_t queueSize) override;
 
   void log(logLevels level, const std::string &log) override;
 
 public:
   /**
    * @brief Constructor for the Unshaped Server
-   * @param appName The name of this application. Used as a key to initialise
-   * shared memory with the shaped process
-   * @param maxClients The maximum number of TCP flows to support
-   * @param logLevel The log level you want to use
-   * @param shapedClientLoopInterval The interval with which the shapedClient
-   * sends the data (used only for efficiently checking when the queue
-   * empties out in case it's full)
-   * @param config The config struct that configures this instance
+   * @param peer1Config The config struct that configures this instance
    */
-  UnshapedServer(std::string &appName, int maxClients,
-                 logLevels logLevel,
-                 __useconds_t shapedClientLoopInterval,
-                 config::UnshapedServer &config);
+  explicit UnshapedServer(config::Peer1Config &peer1Config);
 
   [[noreturn]] void getUpdatedConnectionStatus() override;
 

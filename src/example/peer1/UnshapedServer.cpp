@@ -6,24 +6,27 @@
 #include <utility>
 #include "UnshapedServer.h"
 
-UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
-                               logLevels logLevel,
-                               __useconds_t shapedClientLoopInterval,
-                               config::UnshapedServer &config) :
-    serverAddr(config.serverAddr) {
+UnshapedServer::UnshapedServer(config::Peer1Config &peer1Config) :
+    serverAddr(peer1Config.unshapedServer.serverAddr) {
   this->appName = appName;
   this->logLevel = logLevel;
-  this->shapedProcessLoopInterval = shapedClientLoopInterval;
+  this->shapedProcessLoopInterval =
+      peer1Config.shapedClient.strategy == UNIFORM
+      ? peer1Config.shapedClient.sendingLoopInterval
+      : peer1Config.shapedClient.DPCreditorLoopInterval;
 
-  socketToQueues = new std::unordered_map<int, QueuePair>(maxClients);
+  socketToQueues =
+      new std::unordered_map<int, QueuePair>(peer1Config.maxClients);
   queuesToSocket = new std::unordered_map<QueuePair,
-      int, QueuePairHash>(maxClients);
+      int, QueuePairHash>(peer1Config.maxClients);
   pendingSignal =
-      new std::unordered_map<uint64_t, connectionStatus>(maxClients);
+      new std::unordered_map<uint64_t, connectionStatus>(
+          peer1Config.maxClients);
   unassignedQueues = new std::queue<QueuePair>{};
 
-  initialiseSHM(maxClients);
+  initialiseSHM(peer1Config.maxClients, peer1Config.queueSize);
 
+  auto config = peer1Config.unshapedServer;
   // Start listening for unshaped traffic
   auto tcpReceiveFunc = [this](auto &&PH1, auto &&PH2, auto &&PH3, auto &&PH4,
                                auto &&PH5) {
@@ -56,7 +59,7 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
     std::this_thread::sleep_until(nextCheck);
 #else
-    while (true) {
+  while (true) {
 #endif
     mapLock.lock_shared();
     auto tempMap = *queuesToSocket;
@@ -68,10 +71,10 @@ UnshapedServer::UnshapedServer(std::string &appName, int maxClients,
         if ((*pendingSignal)[queues.fromShaped->ID] == FIN) {
 #ifdef DEBUGGING
           log(DEBUG,
-                "Sending FIN to socket " + std::to_string(socket) +
-                " mapped to queues {" +
-                std::to_string(queues.fromShaped->ID) + "," +
-                std::to_string(queues.toShaped->ID) + "}");
+              "Sending FIN to socket " + std::to_string(socket) +
+              " mapped to queues {" +
+              std::to_string(queues.fromShaped->ID) + "," +
+              std::to_string(queues.toShaped->ID) + "}");
 #endif
           TCP::Server::sendFIN(socket);
           (*pendingSignal).erase(queues.fromShaped->ID);
@@ -245,22 +248,24 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
   }
 }
 
-inline void UnshapedServer::initialiseSHM(int maxClients) {
-  auto shmAddr = helpers::initialiseSHM(maxClients, appName);
+inline void UnshapedServer::initialiseSHM(int maxClients, size_t queueSize) {
+  auto shmAddr = helpers::initialiseSHM(maxClients, appName, queueSize);
 
   // The beginning of the SHM contains the signalStruct struct
-  sigInfo = new(shmAddr) SignalInfo{};
-  sigInfo->unshaped = getpid();
+  sigInfo = new(shmAddr) SignalInfo{maxClients};
 
   // The rest of the SHM contains the queues
-  shmAddr += sizeof(class SignalInfo);
-  for (int i = 0; i < maxClients * 2; i += 2) {
+  shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
+              (4 * maxClients * sizeof(SignalInfo::queueInfo)));
+  for (unsigned long i = 0; i < maxClients * 2; i += 2) {
     // Initialise a queue class at that shared memory and put it in the maps
     auto queue1 =
-        new(shmAddr + (i * sizeof(class LamportQueue))) LamportQueue(i);
+        new(shmAddr +
+            (i * (sizeof(class LamportQueue) + queueSize)))
+            LamportQueue{i, queueSize};
     auto queue2 =
-        new(shmAddr + ((i + 1) * sizeof(class LamportQueue)))
-            LamportQueue(i + 1);
+        new(shmAddr + ((i + 1) * (sizeof(class LamportQueue) + queueSize)))
+            LamportQueue{i + 1, queueSize};
     unassignedQueues->push({queue1, queue2});
   }
 }

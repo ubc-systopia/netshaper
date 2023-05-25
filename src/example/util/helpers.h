@@ -43,12 +43,10 @@ namespace helpers {
    */
   class SignalInfo {
   private:
-    LamportQueue signalQueueToShaped{UINT64_MAX};
-    LamportQueue signalQueueFromShaped{UINT64_MAX};
+    size_t signalQueueToShapedOffset;
+    size_t signalQueueFromShapedOffset;
 
   public:
-    pid_t unshaped;
-    pid_t shaped;
     enum Direction {
       toShaped, fromShaped
     };
@@ -57,6 +55,17 @@ namespace helpers {
       uint64_t queueID; // The ID of the queue
       enum connectionStatus connStatus;
     };
+
+    explicit SignalInfo(int numStreams) {
+      signalQueueToShapedOffset = sizeof(SignalInfo);
+      signalQueueFromShapedOffset =
+          sizeof(SignalInfo) + sizeof(LamportQueue) +
+          (2 * numStreams * sizeof(queueInfo));
+      new((uint8_t *) this + signalQueueToShapedOffset)
+          LamportQueue{INT_MAX, (2 * numStreams * sizeof(queueInfo))};
+      new((uint8_t *) this + signalQueueFromShapedOffset)
+          LamportQueue{INT_MAX, (2 * numStreams * sizeof(queueInfo))};
+    }
 
     /**
      * @brief Dequeue the signal (SYN or FIN) from given direction (to or
@@ -132,7 +141,7 @@ namespace helpers {
    * @return pointer to the shared memory (uint8_t * is used so that C++
    * allows pointer arithmetic later)
    */
-  uint8_t *initialiseSHM(int numStreams, std::string &appName,
+  uint8_t *initialiseSHM(int numStreams, std::string &appName, size_t queueSize,
                          bool markForDeletion = false);
 
   /**

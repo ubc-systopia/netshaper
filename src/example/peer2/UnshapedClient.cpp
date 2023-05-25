@@ -7,27 +7,28 @@
 #include <utility>
 #include <iomanip>
 
-UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
-                               int maxStreamsPerPeer,
-                               logLevels logLevel,
-                               __useconds_t shapedServerLoopInterval,
-                               config::UnshapedClient &config) {
+UnshapedClient::UnshapedClient(config::Peer2Config &peer2Config) {
   this->appName = std::move(appName);
   this->logLevel = logLevel;
-  shapedProcessLoopInterval = shapedServerLoopInterval;
+  shapedProcessLoopInterval =
+      peer2Config.shapedServer.strategy == UNIFORM
+      ? peer2Config.shapedServer.sendingLoopInterval
+      : peer2Config.shapedServer.DPCreditorLoopInterval;
 
   queuesToClient =
       new std::unordered_map<QueuePair, TCP::Client *,
-          QueuePairHash>(maxStreamsPerPeer);
+          QueuePairHash>(peer2Config.maxStreamsPerPeer);
   pendingSignal =
-      new std::unordered_map<uint64_t, connectionStatus>(maxStreamsPerPeer);
+      new std::unordered_map<uint64_t, connectionStatus>(
+          peer2Config.maxStreamsPerPeer);
   clientToQueues =
       new std::unordered_map<TCP::Client *, QueuePair>();
 
-  initialiseSHM(maxPeers * maxStreamsPerPeer);
+  initialiseSHM(peer2Config.maxPeers * peer2Config.maxStreamsPerPeer,
+                peer2Config.queueSize);
 
   auto checkQueuesFunc = [=, this]() {
-    checkQueuesForData(config.checkQueuesInterval);
+    checkQueuesForData(peer2Config.unshapedClient.checkQueuesInterval);
   };
   std::thread checkQueuesLoop(checkQueuesFunc);
   checkQueuesLoop.detach();
@@ -36,21 +37,23 @@ UnshapedClient::UnshapedClient(std::string appName, int maxPeers,
   updateQueueStatus.detach();
 }
 
-inline void UnshapedClient::initialiseSHM(int numStreams) {
-  auto shmAddr = helpers::initialiseSHM(numStreams, appName);
+inline void UnshapedClient::initialiseSHM(int numStreams, size_t queueSize) {
+  auto shmAddr = helpers::initialiseSHM(numStreams, appName, queueSize);
 
   // The beginning of the SHM contains the signalStruct struct
-  sigInfo = new(shmAddr) SignalInfo{};
-  sigInfo->unshaped = getpid();
+  sigInfo = new(shmAddr) SignalInfo{numStreams};
 
   // The rest of the SHM contains the queues
-  shmAddr += sizeof(class SignalInfo);
-  for (int i = 0; i < numStreams * 2; i += 2) {
+  shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
+              (4 * numStreams * sizeof(SignalInfo::queueInfo)));
+  for (unsigned long i = 0; i < numStreams * 2; i += 2) {
     auto queue1 =
-        new(shmAddr + (i * sizeof(class LamportQueue))) LamportQueue(i);
+        new(shmAddr +
+            (i * (sizeof(class LamportQueue) + queueSize)))
+            LamportQueue{i, queueSize};
     auto queue2 =
-        new(shmAddr + ((i + 1) * sizeof(class LamportQueue)))
-            LamportQueue(i + 1);
+        new(shmAddr + ((i + 1) * (sizeof(class LamportQueue) + queueSize)))
+            LamportQueue{i + 1, queueSize};
     (*queuesToClient)[{queue1, queue2}] = nullptr;
   }
 }
@@ -60,8 +63,6 @@ void UnshapedClient::onResponse(TCP::Client *client,
                                 connectionStatus connStatus) {
   if (connStatus == ONGOING) {
     auto toShaped = (*clientToQueues)[client].toShaped;
-//    log(DEBUG, "Received response on client connected to (toShaped) " +
-//               std::to_string(toShaped->ID));
     while (toShaped->push(buffer, length) == -1) {
       log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
                    " is full, waiting for it to be empty!");

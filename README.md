@@ -60,6 +60,7 @@ parameter is not present in the config file
   "logLevel": "WARNING",
   "maxClients": 40,
   "appName": "minesVPNPeer1",
+  "queueSize": 2097152,
   "shapedClient": {
     "peer2Addr": "localhost",
     "peer2Port": 4567,
@@ -98,6 +99,8 @@ parameter is not present in the config file
   pairs.
 - `appName` is the name of this instance of the application (used as key for
   creating/accessing shared memory between the shaped and unshaped components)
+- `queueSize` is the size of the Lamport Queues (lockless SCSP queues)
+  between the shaped and unshaped components
 - `shapedClient` is a json object containing the parameters to configure the
   shapedClient component
 - `unshapedServer` is a json object containing the parameters to configure the
@@ -149,6 +152,7 @@ parameter is not present in the config file
   "logLevel": "WARNING",
   "maxStreamsPerPeer": 40,
   "appName": "minesVPNPeer2",
+  "queueSize": 2097152,
   "shapedServer": {
     "serverCert": "server.cert",
     "serverKey": "server.key",
@@ -185,6 +189,8 @@ parameter is not present in the config file
   queue pairs.
 - `appName` is the name of this instance of the application (used as key for
   creating/accessing shared memory between the shaped and unshaped components)
+- `queueSize` is the size of the Lamport Queues (lockless SCSP queues)
+  between the shaped and unshaped components
 - `shapedClient` is a json object containing the parameters to configure the
   shapedClient component
 - `unshapedServer` is a json object containing the parameters to configure the

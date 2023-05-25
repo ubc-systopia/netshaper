@@ -48,11 +48,14 @@ namespace helpers {
   bool SignalInfo::dequeue(Direction direction, SignalInfo::queueInfo &info) {
     switch (direction) {
       case toShaped:
-        return signalQueueToShaped.pop(reinterpret_cast<uint8_t *>(&info),
-                                       sizeof(info)) >= 0;
+        return ((LamportQueue *) ((uint8_t *) this + signalQueueToShapedOffset))
+                   ->pop(reinterpret_cast<uint8_t *>(&info),
+                         sizeof(info)) >= 0;
       case fromShaped:
-        return signalQueueFromShaped.pop(reinterpret_cast<uint8_t *>(&info),
-                                         sizeof(info)) >= 0;
+        return
+            ((LamportQueue *) ((uint8_t *) this + signalQueueFromShapedOffset))
+                ->pop(reinterpret_cast<uint8_t *>(&info),
+                      sizeof(info)) >= 0;
       default:
         return false;
     }
@@ -62,11 +65,14 @@ namespace helpers {
   SignalInfo::enqueue(Direction direction, SignalInfo::queueInfo &info) {
     switch (direction) {
       case toShaped:
-        return signalQueueToShaped.push(reinterpret_cast<uint8_t *>(&info),
-                                        sizeof(info));
+        return ((LamportQueue *) ((uint8_t *) this + signalQueueToShapedOffset))
+            ->push(reinterpret_cast<uint8_t *>(&info),
+                   sizeof(info));
       case fromShaped:
-        return signalQueueFromShaped.push(reinterpret_cast<uint8_t *>(&info),
-                                          sizeof(info));
+        return ((LamportQueue *) ((uint8_t *) this +
+                                  signalQueueFromShapedOffset))
+            ->push(reinterpret_cast<uint8_t *>(&info),
+                   sizeof(info));
       default:
         return false;
     }
@@ -253,11 +259,12 @@ namespace helpers {
     }
   }
 
-  uint8_t *initialiseSHM(int numStreams, std::string &appName,
+  uint8_t *initialiseSHM(int numStreams, std::string &appName, size_t queueSize,
                          bool markForDeletion) {
     size_t shmSize =
-        sizeof(class SignalInfo) +
-        numStreams * 2 * sizeof(class LamportQueue);
+        (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
+         (4 * numStreams * sizeof(SignalInfo::queueInfo))) +
+        (numStreams * 2 * (sizeof(class LamportQueue) + queueSize));
 
     int shmId = shmget((int) std::hash<std::string>()(appName),
                        shmSize,

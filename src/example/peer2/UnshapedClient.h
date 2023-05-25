@@ -46,7 +46,7 @@ private:
  */
   QueuePair findQueuesByID(uint64_t queueID);
 
-  inline void initialiseSHM(int numStreams) override;
+  inline void initialiseSHM(int numStreams, size_t queueSize) override;
 
   [[noreturn]] void checkQueuesForData(__useconds_t interval) override;
 
@@ -71,11 +71,7 @@ public:
    * @param logLevel The level of logs required
    * @param config The configuration for this instance
    */
-  UnshapedClient(std::string appName, int maxPeers,
-                 int maxStreamsPerPeer,
-                 logLevels logLevel,
-                 __useconds_t shapedServerLoopInterval,
-                 config::UnshapedClient &config);
+  explicit UnshapedClient(config::Peer2Config &peer2Config);
 
   [[noreturn]] void getUpdatedConnectionStatus() override;
 };

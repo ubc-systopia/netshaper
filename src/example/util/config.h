@@ -105,6 +105,7 @@ namespace config {
     logLevels logLevel = WARNING;
     int maxClients = 40;
     std::string appName = "minesVPNPeer1";
+    size_t queueSize = 2097152;
     struct UnshapedServer unshapedServer;
     struct ShapedClient shapedClient;
   };
@@ -170,6 +171,7 @@ namespace config {
     int maxPeers = 1;
     int maxStreamsPerPeer = 40;
     std::string appName = "minesVPNPeer2";
+    size_t queueSize = 2097152;
     struct ShapedServer shapedServer;
     struct UnshapedClient unshapedClient;
   };
@@ -184,6 +186,9 @@ namespace config {
     }
     if (j.contains("appName")) {
       config.appName = j["appName"].get<std::string>();
+    }
+    if (j.contains("queueSize")) {
+      config.queueSize = j["queueSize"].get<size_t>();
     }
     if (j.contains("shapedClient")) {
       const auto &shapedClientJson = j["shapedClient"];
@@ -231,7 +236,6 @@ namespace config {
             shapedClientJson["workerCores"].get<std::vector<int>>();
       }
     }
-
     if (j.contains("unshapedServer")) {
       const auto &unshapedServerJson = j["unshapedServer"];
       if (unshapedServerJson.contains("bindAddr")) {
@@ -270,6 +274,9 @@ namespace config {
     }
     if (j.contains("appName")) {
       config.appName = j["appName"].get<std::string>();
+    }
+    if (j.contains("queueSize")) {
+      config.queueSize = j["queueSize"].get<size_t>();
     }
     if (j.contains("shapedServer")) {
       const auto &shapedServerJson = j["shapedServer"];
@@ -370,6 +377,7 @@ namespace config {
     os << "Log Level: " << peer1Config.logLevel << "\n";
     os << "Max Clients: " << peer1Config.maxClients << "\n";
     os << "App Name: " << peer1Config.appName << "\n";
+    os << "Queue Size: " << peer1Config.queueSize << "\n";
     os << "\nUnshaped Server: \n" << peer1Config.unshapedServer << "\n";
     os << "\nShaped Client: \n" << peer1Config.shapedClient << "\n";
     return os;
@@ -410,6 +418,7 @@ namespace config {
     os << "Max Streams Per Peer: " << peer2Config.maxStreamsPerPeer
        << "\n";
     os << "App Name: " << peer2Config.appName << "\n";
+    os << "Queue Size: " << peer2Config.queueSize << "\n";
     os << "\nUnshaped Client: \n" << peer2Config.unshapedClient << "\n";
     os << "\nShaped Server: \n" << peer2Config.shapedServer << "\n";
     return os;

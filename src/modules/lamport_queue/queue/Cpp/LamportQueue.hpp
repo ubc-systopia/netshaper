@@ -13,14 +13,12 @@
 #include <cstring>
 #include "../../../Common.h"
 
-#define BUFFER_SIZE 2097152 // 2 MB
-
 class LamportQueue {
 public:
   /**
    * Default constructor
    */
-  explicit LamportQueue(uint64_t queueID);
+  explicit LamportQueue(uint64_t queueID, size_t queueSize);
 
   /**
    *
@@ -63,11 +61,12 @@ public:
   bool sentFIN = false;
 
 private:
+  const size_t bufferSize; // 2 MB
   std::atomic<size_t> front;
   std::atomic<size_t> back;
   size_t cachedFront;
   size_t cachedBack;
-  uint8_t queueStorage[BUFFER_SIZE]{};
+  size_t offset = sizeof(LamportQueue);
 
   static size_t mod(ssize_t a, ssize_t b);
 

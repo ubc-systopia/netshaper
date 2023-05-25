@@ -5,24 +5,30 @@
 #include <iomanip>
 #include "ShapedClient.h"
 
-ShapedClient::ShapedClient(std::string &appName, int maxClients,
-                           logLevels logLevel,
-                           __useconds_t unshapedResponseLoopInterval,
-                           config::ShapedClient &config) {
+ShapedClient::ShapedClient(config::Peer1Config &peer1Config) {
   this->appName = appName;
   this->logLevel = logLevel;
-  unshapedProcessLoopInterval = unshapedResponseLoopInterval;
+  unshapedProcessLoopInterval =
+      peer1Config.unshapedServer.checkQueuesInterval;
   dummyStream = controlStream = nullptr;
-
+  size_t controlMessageQueueSize =
+      4 * peer1Config.maxClients * sizeof(ControlMessage);
+  controlMessageQueue =
+      reinterpret_cast<LamportQueue *>(malloc(sizeof(LamportQueue)
+                                              + controlMessageQueueSize));
+  new(controlMessageQueue) LamportQueue{INT_MAX, controlMessageQueueSize};
   queuesToStream =
       new std::unordered_map<QueuePair,
-          MsQuicStream *, QueuePairHash>(maxClients);
+          MsQuicStream *, QueuePairHash>(peer1Config.maxClients);
   streamToQueues =
-      new std::unordered_map<MsQuicStream *, QueuePair>(maxClients);
-  streamToID = new std::unordered_map<MsQuicStream *, QUIC_UINT62>(maxClients);
+      new std::unordered_map<MsQuicStream *, QueuePair>(peer1Config.maxClients);
+  streamToID = new std::unordered_map<MsQuicStream *, QUIC_UINT62>(
+      peer1Config.maxClients);
   pendingSignal =
-      new std::unordered_map<uint64_t, connectionStatus>(maxClients);
+      new std::unordered_map<uint64_t, connectionStatus>(
+          peer1Config.maxClients);
 
+  auto config = peer1Config.shapedClient;
   noiseGenerator = new NoiseGenerator{config.noiseMultiplier,
                                       config.sensitivity,
                                       config.maxDecisionSize,
@@ -46,7 +52,7 @@ ShapedClient::ShapedClient(std::string &appName, int maxClients,
 
   // We map a pair of queues over the shared memory region to every stream
   // CAUTION: we assume the shared queues are already initialized in unshaped process
-  initialiseSHM(maxClients);
+  initialiseSHM(peer1Config.maxClients, peer1Config.queueSize);
 
   // Start the control stream
   startControlStream();
@@ -151,24 +157,22 @@ void ShapedClient::updateConnectionStatus(uint64_t ID,
   }
 }
 
-inline void ShapedClient::initialiseSHM(int maxClients) {
-  auto shmAddr = helpers::initialiseSHM(maxClients, appName, true);
+inline void ShapedClient::initialiseSHM(int maxClients, size_t queueSize) {
+  auto shmAddr = helpers::initialiseSHM(maxClients, appName, queueSize, true);
 
   // The beginning of the SHM contains the signalStruct struct
   sigInfo = reinterpret_cast<class SignalInfo *>(shmAddr);
-  if (sigInfo->unshaped == 0) {
-    log(ERROR, "Unshaped Process has not yet started!");
-    exit(1);
-  }
-  sigInfo->shaped = getpid();
 
   // The rest of the SHM contains the queues
-  shmAddr += sizeof(class SignalInfo);
+  shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
+              (4 * maxClients * sizeof(SignalInfo::queueInfo)));
   for (int i = 0; i < maxClients * 2; i += 2) {
     auto queue1 =
-        (LamportQueue *) (shmAddr + (i * sizeof(class LamportQueue)));
+        (LamportQueue *) (shmAddr +
+                          (i * (sizeof(class LamportQueue) + queueSize)));
     auto queue2 =
-        (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
+        (LamportQueue *) (shmAddr +
+                          ((i + 1) * (sizeof(class LamportQueue) + queueSize)));
     MsQuicStream *stream = nullptr;
     while (stream == nullptr) {
       stream = shapedClient->startStream();
@@ -237,9 +241,9 @@ void ShapedClient::handleControlMessages(MsQuicStream *ctrlStream,
                                          size_t length) {
   (void) (ctrlStream);
   auto ctrlMsgSize = sizeof(ControlMessage);
-  controlMessageQueue.push(buffer, length);
+  controlMessageQueue->push(buffer, length);
   auto ctrlMsg = reinterpret_cast<ControlMessage *>(malloc(ctrlMsgSize));
-  while (controlMessageQueue.pop((uint8_t *) ctrlMsg, ctrlMsgSize) != -1) {
+  while (controlMessageQueue->pop((uint8_t *) ctrlMsg, ctrlMsgSize) != -1) {
     if (ctrlMsg->connStatus == FIN) {
       auto dataStream = findStreamByID(ctrlMsg->streamID);
       auto &queues = (*streamToQueues)[dataStream];

@@ -42,7 +42,7 @@ protected:
  * @brief Create numStreams number of shared memory streams and initialise
  * Lamport Queues for each stream
  */
-  virtual void initialiseSHM(int numStreams) = 0;
+  virtual void initialiseSHM(int numStreams, size_t queueSize) = 0;
 
 public:
   /**

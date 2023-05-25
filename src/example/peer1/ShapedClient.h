@@ -22,7 +22,7 @@ using namespace helpers;
 class ShapedClient : Shaped {
 private:
   QUIC::Client *shapedClient;
-  LamportQueue controlMessageQueue{INT_MAX};
+  LamportQueue *controlMessageQueue;
 
   /**
  * @brief Find a queue pair by the ID of it's "toShaped" queue
@@ -44,7 +44,7 @@ private:
 
   MsQuicStream *findStreamByID(QUIC_UINT62 ID) override;
 
-  void initialiseSHM(int maxClients) override;
+  void initialiseSHM(int maxClients, size_t queueSize) override;
 
   void
   updateConnectionStatus(uint64_t ID, connectionStatus connStatus) override;
@@ -60,19 +60,9 @@ private:
 public:
   /**
    * @brief Constructor for the Shaped Client
-   * @param appName The name of this application. Used as a key to initialise
-   * shared memory with the unshaped process
-   * @param maxClients The maximum number of TCP flows to support
-   * @param logLevel The level of logging you want (NOTE: For DEBUG logs, the
-   * code has to be compiled with the flag DEBUGGING)
-   * @param unshapedResponseLoopInterval The interval (in microseconds) with which the
-   * queues will be read from the unshaped side (used for optimising wait
-   * time when queues are full)
-   * @param config The configuration for this instance
+   * @param peer1Config The configuration for this instance
    */
-  ShapedClient(std::string &appName, int maxClients,
-               logLevels logLevel, __useconds_t unshapedResponseLoopInterval,
-               config::ShapedClient &config);
+  explicit ShapedClient(config::Peer1Config &peer1Config);
 
   PreparedBuffer prepareDummy(size_t dummySize) override;
 

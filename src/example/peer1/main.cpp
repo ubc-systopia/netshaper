@@ -94,12 +94,7 @@ int main(int argc, char *argv[]) {
     if (!config.unshapedServer.cores.empty())
       setCPUAffinity(config.unshapedServer.cores);
 
-    unshapedServer = new UnshapedServer{config.appName, config.maxClients,
-                                        config.logLevel,
-                                        config.shapedClient.strategy == UNIFORM
-                                        ? config.shapedClient.sendingLoopInterval
-                                        : config.shapedClient.DPCreditorLoopInterval,
-                                        config.unshapedServer};
+    unshapedServer = new UnshapedServer{config};
     // Wait for signal to exit
     waitForSignal(false);
   } else {
@@ -110,11 +105,7 @@ int main(int argc, char *argv[]) {
     setCPUAffinity(config.shapedClient.workerCores);
     sleep(2); // Wait for unshapedServer to initialise
     MsQuic = new MsQuicApi{};
-    shapedClient = new ShapedClient{config.appName, config.maxClients,
-                                    config.logLevel,
-                                    config.unshapedServer
-                                        .checkQueuesInterval,
-                                    config.shapedClient};
+    shapedClient = new ShapedClient{config};
     sleep(2);
     std::cout << "Peer is ready!" << std::endl;
     // Wait for signal to exit
