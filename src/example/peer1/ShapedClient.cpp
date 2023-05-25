@@ -168,8 +168,10 @@ inline void ShapedClient::initialiseSHM(int maxClients) {
         (LamportQueue *) (shmAddr + (i * sizeof(class LamportQueue)));
     auto queue2 =
         (LamportQueue *) (shmAddr + ((i + 1) * sizeof(class LamportQueue)));
-    auto stream = shapedClient->startStream();
-
+    MsQuicStream *stream = nullptr;
+    while (stream == nullptr) {
+      stream = shapedClient->startStream();
+    }
 #ifdef DEBUGGING
     log(DEBUG, "Mapping stream " + std::to_string(stream->ID()) +
                " to queues {" + std::to_string(queue1->ID) + "," +
@@ -287,7 +289,9 @@ ShapedClient::receivedShapedData(MsQuicStream *stream, uint8_t *buffer,
 }
 
 inline void ShapedClient::startControlStream() {
-  controlStream = shapedClient->startStream();
+  while (controlStream == nullptr) {
+    controlStream = shapedClient->startStream();
+  }
   auto *message =
       reinterpret_cast<struct ControlMessage *>(calloc(1, sizeof(struct
           ControlMessage)));
@@ -302,7 +306,9 @@ inline void ShapedClient::startControlStream() {
 }
 
 inline void ShapedClient::startDummyStream() {
-  dummyStream = shapedClient->startStream();
+  while (dummyStream == nullptr) {
+    dummyStream = shapedClient->startStream();
+  }
   auto *message =
       reinterpret_cast<struct ControlMessage *>(calloc(1, sizeof(struct
           ControlMessage)));

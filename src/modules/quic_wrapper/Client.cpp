@@ -277,11 +277,16 @@ namespace QUIC {
   MsQuicStream *Client::startStream() {
     std::unique_lock<std::mutex> lock(connectionLock);
     connected.wait(lock, [this]() { return isConnected; });
-    MsQuicStream *stream;
-    stream = new MsQuicStream{*connection, QUIC_STREAM_OPEN_FLAG_NONE,
-                              autoCleanup ? CleanUpAutoDelete : CleanUpManual,
-                              streamCallbackHandler, this
-    };
+    auto *stream = new MsQuicStream{*connection, QUIC_STREAM_OPEN_FLAG_NONE,
+                                    autoCleanup ? CleanUpAutoDelete
+                                                : CleanUpManual,
+                                    streamCallbackHandler, this};
+    if (stream->Handle == nullptr) {
+      free(stream);
+      stream = nullptr;
+    } else {
+      stream->ID(); // Fetch the ID now, so we don't fetch it later
+    }
     // variables
     if (QUIC_FAILED(stream->Start())) {
       log(ERROR, "Stream could not be started");
