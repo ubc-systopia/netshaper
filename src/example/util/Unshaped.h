@@ -16,7 +16,8 @@ protected:
  * @brief Check queues for data periodically and send it to corresponding socket
  * @param interval The interval at which the queues are checked
  */
-  [[noreturn]] virtual void checkQueuesForData(__useconds_t interval) = 0;
+  [[noreturn]] virtual void checkQueuesForData(__useconds_t interval,
+                                               size_t queueSize) = 0;
 };
 
 

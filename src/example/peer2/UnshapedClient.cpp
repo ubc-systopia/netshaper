@@ -28,7 +28,8 @@ UnshapedClient::UnshapedClient(config::Peer2Config &peer2Config) {
                 peer2Config.queueSize);
 
   auto checkQueuesFunc = [=, this]() {
-    checkQueuesForData(peer2Config.unshapedClient.checkQueuesInterval);
+    checkQueuesForData(peer2Config.unshapedClient.checkQueuesInterval,
+                       peer2Config.queueSize);
   };
   std::thread checkQueuesLoop(checkQueuesFunc);
   checkQueuesLoop.detach();
@@ -164,7 +165,9 @@ void UnshapedClient::updateConnectionStatus(uint64_t queueID,
   }
 }
 
-[[noreturn]] void UnshapedClient::checkQueuesForData(__useconds_t interval) {
+[[noreturn]] void UnshapedClient::checkQueuesForData(__useconds_t interval,
+                                                     size_t queueSize) {
+  auto buffer = reinterpret_cast<uint8_t *>(malloc(queueSize));
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
 
@@ -194,13 +197,8 @@ void UnshapedClient::updateConnectionStatus(uint64_t queueID,
           eraseMapping(client);
         }
       } else {
-        auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         queues.fromShaped->pop(buffer, size);
-        auto sentBytes = client->sendData(buffer, size);
-        if ((unsigned long) sentBytes == size) {
-          free(buffer);
-        }
-
+        client->sendData(buffer, size);
       }
     }
   }

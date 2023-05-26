@@ -70,7 +70,8 @@ private:
                             uint8_t *buffer, size_t length, enum
                                 connectionStatus connStatus);
 
-  [[noreturn]] void checkQueuesForData(__useconds_t interval) override;
+  [[noreturn]] void checkQueuesForData(__useconds_t interval,
+                                       size_t queueSize) override;
 
   void initialiseSHM(int maxClients, size_t queueSize) override;
 

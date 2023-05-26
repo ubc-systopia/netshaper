@@ -22,7 +22,6 @@ using namespace helpers;
 class ShapedClient : Shaped {
 private:
   QUIC::Client *shapedClient;
-  LamportQueue *controlMessageQueue;
 
   /**
  * @brief Find a queue pair by the ID of it's "toShaped" queue

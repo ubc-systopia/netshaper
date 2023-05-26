@@ -26,6 +26,7 @@ protected:
   MsQuicStream *dummyStream;
 
   NoiseGenerator *noiseGenerator;
+  LamportQueue *controlMessageQueue;
 
   /**
    * @brief Send dummy of given size on the dummy stream

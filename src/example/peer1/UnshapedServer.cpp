@@ -42,7 +42,7 @@ UnshapedServer::UnshapedServer(config::Peer1Config &peer1Config) :
   unshapedServer->startListening();
 
   std::thread responseLoop([=, this]() {
-    checkQueuesForData(config.checkQueuesInterval);
+    checkQueuesForData(config.checkQueuesInterval, peer1Config.queueSize);
   });
   responseLoop.detach();
 
@@ -51,7 +51,9 @@ UnshapedServer::UnshapedServer(config::Peer1Config &peer1Config) :
 
 }
 
-[[noreturn]] void UnshapedServer::checkQueuesForData(__useconds_t interval) {
+[[noreturn]] void UnshapedServer::checkQueuesForData(__useconds_t interval,
+                                                     size_t queueSize) {
+  auto buffer = reinterpret_cast<uint8_t *>(malloc(queueSize));
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
   while (true) {
@@ -87,11 +89,8 @@ UnshapedServer::UnshapedServer(config::Peer1Config &peer1Config) :
         }
       }
       if (size > 0) {
-        auto buffer = reinterpret_cast<uint8_t *>(malloc(size));
         queues.fromShaped->pop(buffer, size);
-        auto sentBytes =
-            unshapedServer->sendData(socket, buffer, size);
-        if (sentBytes > 0 && (size_t) sentBytes == size) free(buffer);
+        unshapedServer->sendData(socket, buffer, size);
       }
     }
   }
@@ -196,9 +195,6 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
         log(ERROR, "More clients than configured for!");
         return false;
       }
-//      mapLock.lock_shared();
-//      queues = (*socketToQueues)[fromSocket];
-//      mapLock.unlock_shared();
 #ifdef DEBUGGING
       {
         log(DEBUG, "Received SYN from socket " + std::to_string(fromSocket)

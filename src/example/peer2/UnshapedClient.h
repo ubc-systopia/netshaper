@@ -48,7 +48,8 @@ private:
 
   inline void initialiseSHM(int numStreams, size_t queueSize) override;
 
-  [[noreturn]] void checkQueuesForData(__useconds_t interval) override;
+  [[noreturn]] void checkQueuesForData(__useconds_t interval,
+                                       size_t queueSize) override;
 
   void
   updateConnectionStatus(uint64_t queueID,

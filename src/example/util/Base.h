@@ -20,7 +20,6 @@ protected:
 
   class helpers::SignalInfo *sigInfo;
 
-  std::mutex readLock;
   std::mutex writeLock;
 
   /**

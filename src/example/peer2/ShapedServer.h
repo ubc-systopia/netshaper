@@ -33,9 +33,6 @@ private:
   // before the dummy stream begins.
   QUIC_UINT62 dummyStreamID;
 
-  LamportQueue *controlMessageQueue;
-
-
 /**
  * @brief Signal the shaped process on change of queue status
  * @param queueID The ID of the queue whose status has changed
