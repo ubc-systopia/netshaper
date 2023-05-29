@@ -66,6 +66,7 @@ UnshapedServer::UnshapedServer(config::Peer1Config &peer1Config) :
     mapLock.lock_shared();
     auto tempMap = *queuesToSocket;
     mapLock.unlock_shared();
+    dummyQueues.fromShaped->pop(buffer, dummyQueues.fromShaped->size());
     for (const auto &[queues, socket]: tempMap) {
 //      if (socket == 0) continue;
       auto size = queues.fromShaped->size();
@@ -253,7 +254,7 @@ inline void UnshapedServer::initialiseSHM(int maxClients, size_t queueSize) {
   // The rest of the SHM contains the queues
   shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
               (4 * maxClients * sizeof(SignalInfo::queueInfo)));
-  for (unsigned long i = 0; i < maxClients * 2; i += 2) {
+  for (unsigned long i = 0; i <= maxClients * 2; i += 2) {
     // Initialise a queue class at that shared memory and put it in the maps
     auto queue1 =
         new(shmAddr +
@@ -262,7 +263,8 @@ inline void UnshapedServer::initialiseSHM(int maxClients, size_t queueSize) {
     auto queue2 =
         new(shmAddr + ((i + 1) * (sizeof(class LamportQueue) + queueSize)))
             LamportQueue{i + 1, queueSize};
-    unassignedQueues->push({queue1, queue2});
+    if (i > 0) unassignedQueues->push({queue1, queue2});
+    else dummyQueues = {queue1, queue2};
   }
 }
 

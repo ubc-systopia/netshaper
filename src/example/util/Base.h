@@ -22,6 +22,8 @@ protected:
 
   std::mutex writeLock;
 
+  helpers::QueuePair dummyQueues = {nullptr, nullptr};
+
   /**
    * @brief Log the comments passed by various functions
    * @param level The level of the comment passed by the function

@@ -166,27 +166,31 @@ inline void ShapedClient::initialiseSHM(int maxClients, size_t queueSize) {
   // The rest of the SHM contains the queues
   shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
               (4 * maxClients * sizeof(SignalInfo::queueInfo)));
-  for (int i = 0; i < maxClients * 2; i += 2) {
+  for (int i = 0; i <= maxClients * 2; i += 2) {
     auto queue1 =
         (LamportQueue *) (shmAddr +
                           (i * (sizeof(class LamportQueue) + queueSize)));
     auto queue2 =
         (LamportQueue *) (shmAddr +
                           ((i + 1) * (sizeof(class LamportQueue) + queueSize)));
-    MsQuicStream *stream = nullptr;
-    while (stream == nullptr) {
-      stream = shapedClient->startStream();
-    }
+    if (i > 0) {
+      MsQuicStream *stream = nullptr;
+      while (stream == nullptr) {
+        stream = shapedClient->startStream();
+      }
 
-    // Data streams
-    (*queuesToStream)[{queue1, queue2}] = stream;
-    (*streamToQueues)[stream] = {queue1, queue2};
-    (*streamToID)[stream] = stream->ID();
+      // Data streams
+      (*queuesToStream)[{queue1, queue2}] = stream;
+      (*streamToQueues)[stream] = {queue1, queue2};
+      (*streamToID)[stream] = stream->ID();
 #ifdef DEBUGGING
-    log(DEBUG, "Mapping stream " + std::to_string((*streamToID)[stream]) +
-               " to queues {" + std::to_string(queue1->ID) + "," +
-               std::to_string(queue2->ID) + "}");
+      log(DEBUG, "Mapping stream " + std::to_string((*streamToID)[stream]) +
+                 " to queues {" + std::to_string(queue1->ID) + "," +
+                 std::to_string(queue2->ID) + "}");
 #endif
+    } else {
+      dummyQueues = {queue1, queue2};
+    }
   }
 }
 
@@ -223,6 +227,7 @@ std::vector<PreparedBuffer> ShapedClient::prepareData(size_t dataSize) {
     if (dataSize == 0) break;
     auto sizeToSend = std::min(dataSize, queueSize);
     auto buffer = reinterpret_cast<uint8_t *>(malloc(sizeToSend));
+    if (buffer == nullptr) continue;
     queues.toShaped->pop(buffer, sizeToSend);
     preparedBuffers.push_back({stream, buffer, sizeToSend});
     dataSize -= sizeToSend;
@@ -266,7 +271,7 @@ ShapedClient::receivedShapedData(MsQuicStream *stream, uint8_t *buffer,
     return;
   }
   if (stream == dummyStream) {
-    // Dummy received. Do nothing
+    dummyQueues.fromShaped->push(buffer, length);
     return;
   }
 
@@ -286,7 +291,6 @@ ShapedClient::receivedShapedData(MsQuicStream *stream, uint8_t *buffer,
         std::chrono::microseconds(unshapedProcessLoopInterval));
 #endif
   }
-
 }
 
 inline void ShapedClient::startControlStream() {

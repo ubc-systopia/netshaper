@@ -47,7 +47,7 @@ inline void UnshapedClient::initialiseSHM(int numStreams, size_t queueSize) {
   // The rest of the SHM contains the queues
   shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
               (4 * numStreams * sizeof(SignalInfo::queueInfo)));
-  for (unsigned long i = 0; i < numStreams * 2; i += 2) {
+  for (unsigned long i = 0; i <= numStreams * 2; i += 2) {
     auto queue1 =
         new(shmAddr +
             (i * (sizeof(class LamportQueue) + queueSize)))
@@ -55,7 +55,8 @@ inline void UnshapedClient::initialiseSHM(int numStreams, size_t queueSize) {
     auto queue2 =
         new(shmAddr + ((i + 1) * (sizeof(class LamportQueue) + queueSize)))
             LamportQueue{i + 1, queueSize};
-    (*queuesToClient)[{queue1, queue2}] = nullptr;
+    if (i > 0) (*queuesToClient)[{queue1, queue2}] = nullptr;
+    else dummyQueues = {queue1, queue2};
   }
 }
 
@@ -176,8 +177,13 @@ void UnshapedClient::updateConnectionStatus(uint64_t queueID,
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
     std::this_thread::sleep_until(nextCheck);
 #else
-  while (true) {
+    while (true) {
 #endif
+    auto size = dummyQueues.fromShaped->size();
+    if (size > 0)
+      std::cout << "Popping dummies of size: "
+                << dummyQueues.fromShaped->size() << std::endl;
+    dummyQueues.fromShaped->pop(buffer, dummyQueues.fromShaped->size());
     for (const auto &[queues, client]: *queuesToClient) {
       if (client == nullptr) continue;
       auto size = queues.fromShaped->size();

@@ -89,7 +89,7 @@ inline void ShapedServer::initialiseSHM(int numStreams, size_t queueSize) {
   // The rest of the SHM contains the queues
   shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
               (4 * numStreams * sizeof(SignalInfo::queueInfo)));
-  for (int i = 0; i < numStreams * 2; i += 2) {
+  for (int i = 0; i <= numStreams * 2; i += 2) {
     auto queue1 =
         (LamportQueue *) (shmAddr +
                           (i * (sizeof(class LamportQueue) + queueSize)));
@@ -97,7 +97,8 @@ inline void ShapedServer::initialiseSHM(int numStreams, size_t queueSize) {
         (LamportQueue *) (shmAddr +
                           ((i + 1) * (sizeof(class LamportQueue) + queueSize)));
 
-    unassignedQueues->push({queue1, queue2});
+    if (i > 0) unassignedQueues->push({queue1, queue2});
+    else dummyQueues = {queue1, queue2};
   }
 }
 
@@ -283,8 +284,8 @@ void ShapedServer::receivedShapedData(MsQuicStream *stream,
   // Not a control stream... Check for other types
   if (dummyStream == nullptr || stream == dummyStream) {
     if (stream->ID() == dummyStreamID) {
-      // Dummy Data
       if (dummyStream == nullptr) dummyStream = stream;
+      dummyQueues.fromShaped->push(buffer, length);
     }
     return;
   }
@@ -364,7 +365,7 @@ std::vector<PreparedBuffer> ShapedServer::prepareData(size_t dataSize) {
     auto sizeToSendFromQueue = std::min(queueSize, dataSize);
     auto buffer =
         reinterpret_cast<uint8_t *>(malloc(sizeToSendFromQueue + 1));
-
+    if (buffer == nullptr) continue;
     queues.toShaped->pop(buffer, sizeToSendFromQueue);
     preparedBuffers.push_back({stream, buffer, sizeToSendFromQueue});
   }
