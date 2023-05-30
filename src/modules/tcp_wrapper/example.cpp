@@ -5,34 +5,57 @@
 #include "Client.h"
 #include "Server.h"
 #include <cstring>
+#include <shared_mutex>
+
+ssize_t clientCallback(TCP::Client *client,
+                       uint8_t *buffer, size_t length,
+                       connectionStatus connStatus);
 
 TCP::Server *server;
-TCP::Client *client;
+std::string remoteHost;
+int remotePort = 0;
 
-int clientSocket;
+std::unordered_map<int, TCP::Client *> socketToClient{};
+std::unordered_map<TCP::Client *, int> clientToSocket{};
+
+std::shared_mutex mapLock;
 
 bool serverCallback(int fromSocket, std::string &clientAddress,
                     uint8_t *buffer, size_t length, enum
                         connectionStatus connStatus) {
   (void) (clientAddress);
-  clientSocket = fromSocket;
-  if (connStatus != ONGOING) return true;
-  std::cout << "Server callback..." << std::endl;
-  return client->sendData(buffer, length) > 0;
+  if (connStatus == SYN) {
+    // A new client joined...
+    auto client = new TCP::Client{remoteHost, remotePort, clientCallback};
+    mapLock.lock();
+    socketToClient[fromSocket] = client;
+    clientToSocket[client] = fromSocket;
+    mapLock.unlock();
+    return true;
+  } else if (connStatus == FIN) {
+    mapLock.lock();
+    auto client = socketToClient[fromSocket];
+    clientToSocket.erase(client);
+    socketToClient.erase(fromSocket);
+    client->sendFIN();
+    mapLock.unlock();
+    return true;
+  } else {
+    return socketToClient[fromSocket]->sendData(buffer, length) > 0;
+  }
 }
 
-ssize_t clientCallback(TCP::Client *receivedResponseFrom,
+ssize_t clientCallback(TCP::Client *client,
                        uint8_t *buffer, size_t length,
                        connectionStatus connStatus) {
   (void) (connStatus);
-  (void) (receivedResponseFrom);
-  return server->sendData(clientSocket, buffer, length);
+  mapLock.lock_shared();
+  auto retVal = server->sendData(clientToSocket[client], buffer, length);
+  mapLock.unlock_shared();
+  return retVal;
 }
 
 int main() {
-  std::string remoteHost;
-  int remotePort;
-
   std::cout << "Enter the IP address of the remote Host you want to proxy " <<
             "to:" << std::endl;
   std::cin >> remoteHost;
@@ -43,7 +66,6 @@ int main() {
 
 
   server = new TCP::Server{"", 8000, serverCallback};
-  client = new TCP::Client{remoteHost, remotePort, clientCallback};
 
   server->startListening();
 
