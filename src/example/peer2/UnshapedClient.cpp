@@ -179,10 +179,6 @@ void UnshapedClient::updateConnectionStatus(uint64_t queueID,
 #else
     while (true) {
 #endif
-    auto size = dummyQueues.fromShaped->size();
-    if (size > 0)
-      std::cout << "Popping dummies of size: "
-                << dummyQueues.fromShaped->size() << std::endl;
     dummyQueues.fromShaped->pop(buffer, dummyQueues.fromShaped->size());
     for (const auto &[queues, client]: *queuesToClient) {
       if (client == nullptr) continue;

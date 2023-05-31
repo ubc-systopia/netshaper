@@ -22,9 +22,11 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicOut;
 extern std::vector<std::vector<uint64_t>> tcpSend;
 extern std::vector<std::vector<uint64_t>> quicSend;
-extern std::vector<std::pair<uint64_t, uint64_t>> timeDPDecisions;
-extern std::vector<std::pair<uint64_t, uint64_t>> timeDataPrep;
-extern std::vector<std::pair<uint64_t, uint64_t>> timeDataEnqueue;
+std::vector<std::pair<uint64_t, uint64_t>> timeDPDecisions{}; // size, time
+std::vector<std::pair<uint64_t, uint64_t>> timeDataPrep{}; // size, time
+std::vector<std::pair<uint64_t, uint64_t>> timeDecisionAndPrep{}; // size, time
+std::vector<std::pair<uint64_t, uint64_t>> timeDataEnqueue{}; // size, time
+std::vector<std::pair<uint64_t, uint64_t>> timeLoop{}; // size, time
 static std::atomic<int> totalIter = 0;
 static std::atomic<int> failedDPMask = 0;
 static std::atomic<int> failedPrepMask = 0;
@@ -101,8 +103,9 @@ namespace helpers {
       {
         std::ofstream maskDurations;
         maskDurations.open("maskDurations.csv");
-        maskDurations <<
-                      "Data size, DP Decision Time, Prep Time, Enqueue Time\n";
+        maskDurations
+            << "Data size, DP Decision Time, Prep Time, Enqueue Time, "
+            << "Decision + Prep Time, Loop Time\n";
         auto length = std::min(timeDPDecisions.size(),
                                std::min(timeDataPrep.size(),
                                         timeDataEnqueue.size()));
@@ -110,8 +113,9 @@ namespace helpers {
           maskDurations << timeDataPrep[i].first << ", "
                         << timeDPDecisions[i].second << ", "
                         << timeDataPrep[i].second << ", "
-                        << timeDataEnqueue[i].second
-                        << "\n";
+                        << timeDataEnqueue[i].second << ", "
+                        << timeDecisionAndPrep[i].second << ", "
+                        << timeLoop[i].second << "\n";
         }
         maskDurations << std::endl;
         maskDurations.close();
@@ -330,6 +334,7 @@ namespace helpers {
       decisionSleepUntil = std::chrono::steady_clock::now() +
                            std::chrono::microseconds(decisionInterval);
 #endif
+      auto loopStart = std::chrono::steady_clock::now();
       // Masked DP Decision Time
       mask = std::chrono::steady_clock::now() +
              std::chrono::microseconds(maskDPDecisionUs);
@@ -369,6 +374,8 @@ namespace helpers {
           end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
           timeDataPrep.emplace_back(aggregatedSize, (end - start).count());
+          timeDecisionAndPrep
+              .emplace_back(aggregatedSize, (end - loopStart).count());
 #endif
           if (std::chrono::steady_clock::now() < mask)
             std::this_thread::sleep_until(mask);
@@ -407,6 +414,11 @@ namespace helpers {
       if (std::chrono::steady_clock::now() < decisionSleepUntil) {
         std::this_thread::sleep_until(decisionSleepUntil);
       }
+      auto loopEnd = std::chrono::steady_clock::now();
+#ifdef RECORD_STATS
+      if (DPDecision > 0)
+        timeLoop.emplace_back(aggregatedSize, (loopEnd - loopStart).count());
+#endif
     }
   }
 }
