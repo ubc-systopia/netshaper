@@ -20,6 +20,7 @@ using namespace helpers;
 
 class UnshapedServer : public Unshaped {
 private:
+  config::Peer1Config peer1Config;
   std::string serverAddr;
 
   std::unordered_map<int, QueuePair> *socketToQueues;

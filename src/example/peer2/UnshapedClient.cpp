@@ -7,7 +7,8 @@
 #include <utility>
 #include <iomanip>
 
-UnshapedClient::UnshapedClient(config::Peer2Config &peer2Config) {
+UnshapedClient::UnshapedClient(config::Peer2Config &peer2Config) :
+    peer2Config(peer2Config) {
   this->appName = std::move(appName);
   this->logLevel = logLevel;
   shapedProcessLoopInterval =
@@ -168,6 +169,9 @@ void UnshapedClient::updateConnectionStatus(uint64_t queueID,
 
 [[noreturn]] void UnshapedClient::checkQueuesForData(__useconds_t interval,
                                                      size_t queueSize) {
+  if (!peer2Config.unshapedClient.cores.empty())
+    setCPUAffinity(peer2Config.unshapedClient.cores);
+
   auto buffer = reinterpret_cast<uint8_t *>(malloc(queueSize));
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();
@@ -177,7 +181,7 @@ void UnshapedClient::updateConnectionStatus(uint64_t queueID,
 //    std::this_thread::sleep_for(std::chrono::microseconds(interval));
     std::this_thread::sleep_until(nextCheck);
 #else
-    while (true) {
+  while (true) {
 #endif
     dummyQueues.fromShaped->pop(buffer, dummyQueues.fromShaped->size());
     for (const auto &[queues, client]: *queuesToClient) {

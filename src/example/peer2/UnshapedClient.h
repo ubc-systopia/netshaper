@@ -23,6 +23,8 @@ private:
   // the sending socket
   std::unordered_map<TCP::Client *, QueuePair> *clientToQueues;
 
+  config::Peer2Config peer2Config;
+
 
   /**
  * @brief Handle responses received on the sockets

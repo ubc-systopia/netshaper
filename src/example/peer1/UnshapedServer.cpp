@@ -7,6 +7,7 @@
 #include "UnshapedServer.h"
 
 UnshapedServer::UnshapedServer(config::Peer1Config &peer1Config) :
+    peer1Config(peer1Config),
     serverAddr(peer1Config.unshapedServer.serverAddr) {
   this->appName = appName;
   this->logLevel = logLevel;
@@ -53,6 +54,8 @@ UnshapedServer::UnshapedServer(config::Peer1Config &peer1Config) :
 
 [[noreturn]] void UnshapedServer::checkQueuesForData(__useconds_t interval,
                                                      size_t queueSize) {
+  if (!peer1Config.unshapedServer.cores.empty())
+    setCPUAffinity(peer1Config.unshapedServer.cores);
   auto buffer = reinterpret_cast<uint8_t *>(malloc(queueSize));
 #ifdef SHAPING
   auto nextCheck = std::chrono::steady_clock::now();

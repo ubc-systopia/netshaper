@@ -91,9 +91,6 @@ int main(int argc, char *argv[]) {
 
   if (fork() == 0) {
     // Child process - Unshaped Client
-    if (!config.unshapedClient.cores.empty())
-      setCPUAffinity(config.unshapedClient.cores);
-
     unshapedClient = new UnshapedClient{config};
     // Wait for signal to exit
     waitForSignal(false);
