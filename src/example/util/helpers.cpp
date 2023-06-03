@@ -196,7 +196,8 @@ namespace helpers {
                   __useconds_t sendingInterval, __useconds_t decisionInterval,
                   sendingStrategy strategy, std::shared_mutex &mapLock,
                   std::vector<int> cores) {
-    setCPUAffinity(cores);
+    if (!cores.empty())
+      setCPUAffinity(cores);
     unsigned int divisor;
     switch (strategy) {
       case BURST:

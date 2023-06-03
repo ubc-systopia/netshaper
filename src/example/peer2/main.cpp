@@ -52,24 +52,25 @@ inline config::Peer2Config loadConfig(char *configFileName) {
   {
     if (peer2Config.shapedServer.shaperCores.empty()
         || peer2Config.shapedServer.workerCores.empty()) {
-      std::cerr << "shaperCores and workerCores should not be empty !"
+      std::cerr << "Shaper and Worker should ideally be on different cores!"
                 << std::endl;
-      exit(1);
-    }
-    std::vector<int> commonElements(peer2Config.shapedServer.shaperCores.size()
-                                    +
-                                    peer2Config.shapedServer.workerCores.size());
-    auto end =
-        std::set_intersection(peer2Config.shapedServer.shaperCores.begin(),
-                              peer2Config.shapedServer.shaperCores.end(),
-                              peer2Config.shapedServer.workerCores.begin(),
-                              peer2Config.shapedServer.workerCores.end(),
-                              commonElements.begin());
+    } else if (!peer2Config.shapedServer.shaperCores.empty()
+               && !peer2Config.shapedServer.workerCores.empty()) {
+      std::vector<int> commonElements(
+          peer2Config.shapedServer.shaperCores.size() +
+          peer2Config.shapedServer.workerCores.size());
+      auto end =
+          std::set_intersection(peer2Config.shapedServer.shaperCores.begin(),
+                                peer2Config.shapedServer.shaperCores.end(),
+                                peer2Config.shapedServer.workerCores.begin(),
+                                peer2Config.shapedServer.workerCores.end(),
+                                commonElements.begin());
 
-    if (end != commonElements.begin()) {
-      std::cerr << "shaperCores and workerCores should not be the same!"
-                << std::endl;
-      exit(1);
+      if (end != commonElements.begin()) {
+        std::cerr << "shaperCores and workerCores should not be the same!"
+                  << std::endl;
+        exit(1);
+      }
     }
   }
   std::cout << "Config:" << peer2Config << std::endl;
@@ -97,7 +98,8 @@ int main(int argc, char *argv[]) {
     // Set CPU affinity of this process to worker cores.
     // The instantiation of ShapedServer will set the shaper thread affinity
     // separately
-    setCPUAffinity(config.shapedServer.workerCores);
+    if (!config.shapedServer.workerCores.empty())
+      setCPUAffinity(config.shapedServer.workerCores);
     sleep(2); // Wait for unshapedClient to initialise
     MsQuic = new MsQuicApi{};
     shapedServer = new ShapedServer{config};

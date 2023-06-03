@@ -54,24 +54,24 @@ inline config::Peer1Config loadConfig(char *configFileName) {
   {
     if (peer1Config.shapedClient.shaperCores.empty()
         || peer1Config.shapedClient.workerCores.empty()) {
-      std::cerr << "shaperCores and workerCores should not be !" << std::endl;
-      exit(1);
-    }
-    std::vector<int> commonElements(peer1Config.shapedClient.shaperCores.size()
-                                    +
-                                    peer1Config.shapedClient.workerCores.size());
-    auto end =
-        std::set_intersection(peer1Config.shapedClient.shaperCores.begin(),
-                              peer1Config.shapedClient.shaperCores.end(),
-                              peer1Config.shapedClient.workerCores.begin(),
-                              peer1Config.shapedClient.workerCores.end(),
-                              commonElements.begin());
-    if (end != commonElements.begin()) {
-      std::cerr << "shaperCores and workerCores should not be the same!"
+      std::cerr << "Shaper and Worker should ideally be on different cores!"
                 << std::endl;
-      exit(1);
+    } else if (!peer1Config.shapedClient.shaperCores.empty()
+               && !peer1Config.shapedClient.workerCores.empty()) {
+      std::vector<int> commonElements(
+          peer1Config.shapedClient.shaperCores.size() +
+          peer1Config.shapedClient.workerCores.size());
+      auto end =
+          std::set_intersection(peer1Config.shapedClient.shaperCores.begin(),
+                                peer1Config.shapedClient.shaperCores.end(),
+                                peer1Config.shapedClient.workerCores.begin(),
+                                peer1Config.shapedClient.workerCores.end(),
+                                commonElements.begin());
+      if (end != commonElements.begin()) {
+        std::cerr << "shaperCores and workerCores should not be the same!"
+                  << std::endl;
+      }
     }
-
   }
   std::cout << "Config:" << peer1Config << std::endl;
   return peer1Config;
@@ -98,7 +98,8 @@ int main(int argc, char *argv[]) {
     // Set CPU affinity of this process to worker cores.
     // The instantiation of ShapedClient will set the shaper thread affinity
     // separately
-    setCPUAffinity(config.shapedClient.workerCores);
+    if (!config.shapedClient.workerCores.empty())
+      setCPUAffinity(config.shapedClient.workerCores);
     sleep(2); // Wait for unshapedServer to initialise
     MsQuic = new MsQuicApi{};
     shapedClient = new ShapedClient{config};

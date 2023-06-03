@@ -91,8 +91,8 @@ namespace config {
     __useconds_t sendingLoopInterval = 50000;
     sendingStrategy strategy = BURST;
     uint64_t idleTimeout = 100000;
-    std::vector<int> shaperCores{2};
-    std::vector<int> workerCores{3};
+    std::vector<int> shaperCores{};
+    std::vector<int> workerCores{};
   };
   /**
    * @param logLevel The level of logging required. For DEBUG, the program
@@ -145,8 +145,8 @@ namespace config {
     __useconds_t sendingLoopInterval = 50000;
     sendingStrategy strategy = BURST;
     uint64_t idleTimeout = 100000;
-    std::vector<int> shaperCores{2};
-    std::vector<int> workerCores{3};
+    std::vector<int> shaperCores{};
+    std::vector<int> workerCores{};
   };
   /**
    * @param checkQueuesInterval The interval with which to check the queues
