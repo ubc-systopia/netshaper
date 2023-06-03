@@ -60,17 +60,6 @@ operator<<(std::ostream &os, const statElem &elem) {
   return os;
 }
 
-std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    tcpIn(128);
-std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicIn(128);
-std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    tcpOut(128);
-std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicOut(128);
-std::vector<std::vector<uint64_t>> tcpSend(128);
-std::vector<std::vector<uint64_t>> quicSend(128);
-
 #endif  //MINESVPN_PERFEVAL_H
 
 #endif

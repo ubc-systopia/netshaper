@@ -9,14 +9,6 @@
 #include <ctime>
 #include <iomanip>
 
-#ifdef RECORD_STATS
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicIn;
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    quicOut;
-extern std::vector<std::vector<uint64_t>> quicSend;
-#endif
-
 namespace QUIC {
   void Client::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
@@ -70,9 +62,6 @@ namespace QUIC {
         break;
 
       case QUIC_STREAM_EVENT_RECEIVE: {
-#ifdef RECORD_STATS
-        quicIn[stream->ID() / 4].push_back(std::chrono::steady_clock::now());
-#endif
         auto bufferCount = event->RECEIVE.BufferCount;
 #ifdef DEBUGGING
         ss << "Received data from peer: ";
@@ -94,10 +83,6 @@ namespace QUIC {
       case QUIC_STREAM_EVENT_SEND_COMPLETE: {
         ctx *contextPtr =
             reinterpret_cast<ctx *>(event->SEND_COMPLETE.ClientContext);
-#ifdef RECORD_STATS
-        auto end = std::chrono::steady_clock::now();
-        quicSend[stream->ID() / 4].push_back((end - contextPtr->start).count());
-#endif
         free(contextPtr->buffer->Buffer); // The data that was sent
         free(contextPtr->buffer); // The QUIC_BUFFER struct
         free(contextPtr); // The ctx struct
@@ -307,10 +292,6 @@ namespace QUIC {
     SendBuffer->Length = length;
     ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
     context->buffer = SendBuffer;
-#ifdef RECORD_STATS
-    context->start = std::chrono::steady_clock::now();
-    quicOut[stream->ID() / 4].push_back(std::chrono::steady_clock::now());
-#endif
     if (QUIC_FAILED(
         stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
       std::stringstream ss;

@@ -30,9 +30,6 @@ namespace QUIC {
     uint64_t idleTimeoutMs;
     struct ctx {
       QUIC_BUFFER *buffer = nullptr;
-#ifdef RECORD_STATS
-      std::chrono::time_point<std::chrono::steady_clock> start;
-#endif
     };
 
     MsQuicRegistration *reg;

@@ -4,9 +4,7 @@
 
 #include "UnshapedClient.h"
 #include "ShapedServer.h"
-#include <sys/prctl.h>
 #include <fstream>
-#include "../../modules/PerfEval.h"
 #include "../../../msquic/src/inc/external_sync.h"
 
 pthread_rwlock_t quicSendLock;

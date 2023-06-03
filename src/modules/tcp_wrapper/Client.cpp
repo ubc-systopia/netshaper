@@ -13,14 +13,6 @@
 #include <cstring>
 #include <iomanip>
 
-#ifdef RECORD_STATS
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    tcpIn;
-extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
-    tcpOut;
-extern std::vector<std::vector<uint64_t>>  tcpSend;
-#endif
-
 namespace TCP {
   Client::Client(const std::string &remoteHost, int remotePort,
                  std::function<void(TCP::Client *,
@@ -113,9 +105,6 @@ namespace TCP {
 
     // Read from fromSocket and send to toSocket
     while ((bytesReceived = recv(remoteSocket, buffer, BUF_SIZE, 0)) > 0) {
-#ifdef RECORD_STATS
-      tcpIn[remoteSocket].push_back(std::chrono::steady_clock::now());
-#endif
 #ifdef DEBUGGING
       std::stringstream ss;
       ss << "Received data on socket: " << remoteSocket;
@@ -138,15 +127,7 @@ namespace TCP {
     ss << "Sending data to socket: " << remoteSocket;
     log(DEBUG, ss.str());
 #endif
-#ifdef RECORD_STATS
-    tcpOut[remoteSocket].push_back(std::chrono::steady_clock::now());
-    auto start = std::chrono::steady_clock::now();
     auto bytesSent = send(remoteSocket, buffer, length, 0);
-    auto end = std::chrono::steady_clock::now();
-    tcpSend[remoteSocket].push_back((end - start).count());
-#else
-    auto bytesSent = send(remoteSocket, buffer, length, 0);
-#endif
     return bytesSent;
   }
 

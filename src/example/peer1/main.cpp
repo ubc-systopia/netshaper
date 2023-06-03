@@ -7,7 +7,6 @@
 #include "ShapedClient.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
-#include "../../modules/PerfEval.h"
 #include "../../../msquic/src/inc/external_sync.h"
 
 pthread_rwlock_t quicSendLock;
