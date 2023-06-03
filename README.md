@@ -72,12 +72,8 @@ parameter is not present in the config file
     "sendingLoopInterval": 50000,
     "sendingStrategy": "BURST",
     "idleTimeout": 100000,
-    "shaperCores": [
-      2
-    ],
-    "workerCores": [
-      3
-    ]
+    "shaperCores": [],
+    "workerCores": []
   },
   "unshapedServer": {
     "bindAddr": "",
@@ -165,12 +161,8 @@ parameter is not present in the config file
     "sendingLoopInterval": 50000,
     "sendingStrategy": "BURST",
     "idleTimeout": 100000,
-    "shaperCores": [
-      2
-    ],
-    "workerCores": [
-      3
-    ]
+    "shaperCores": [],
+    "workerCores": []
   },
   "unshapedClient": {
     "checkQueuesInterval": 50000,
