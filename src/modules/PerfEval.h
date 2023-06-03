@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <vector>
+#include <cmath>
 
 #ifndef MINESVPN_PERFEVAL_H
 #define MINESVPN_PERFEVAL_H
@@ -33,7 +34,7 @@ operator<<(std::ostream &os, const shaperStats &stats) {
   os << "\"maxIndex\": " << stats.maxIndex << ",\n";
   os << "\"count\": " << stats.count << ",\n";
   os << "\"average\": " << stats.average << ",\n";
-  os << "\"variance\": " << stats.variance << ",\n";
+  os << "\"stdev\": " << sqrt(stats.variance) << ",\n";
   os << "},\n";
   return os;
 }
