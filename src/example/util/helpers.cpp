@@ -12,6 +12,56 @@
 
 extern pthread_rwlock_t quicSendLock;
 #ifdef RECORD_STATS
+struct shaperStats {
+  uint64_t min = UINT64_MAX;
+  uint64_t minIndex = 0;
+  uint64_t maxIndex = 0;
+  uint64_t max = 0;
+  uint64_t count = 0;
+  double average = 0;
+  double variance = 0;
+  double M2 = 0.0;
+};
+enum statElem {
+  DECISION, PREP, ENQUEUE, DECISION_PREP, LOOP
+};
+
+inline std::ostream &
+operator<<(std::ostream &os, const shaperStats &stats) {
+  os << "{\n";
+  os << "\"min\": " << stats.min << ",\n";
+  os << "\"max\": " << stats.max << ",\n";
+  os << "\"minIndex\": " << stats.minIndex << ",\n";
+  os << "\"maxIndex\": " << stats.maxIndex << ",\n";
+  os << "\"count\": " << stats.count << ",\n";
+  os << "\"average\": " << stats.average << ",\n";
+  os << "\"stdev\": " << sqrt(stats.variance) << ",\n";
+  os << "},\n";
+  return os;
+}
+
+inline std::ostream &
+operator<<(std::ostream &os, const statElem &elem) {
+  switch (elem) {
+    case DECISION:
+      os << "\"Decision\": ";
+      break;
+    case PREP:
+      os << "\"Prep\": ";
+      break;
+    case ENQUEUE:
+      os << "\"Enqueue\": ";
+      break;
+    case DECISION_PREP:
+      os << "\"Decision + Prep\": ";
+      break;
+    case LOOP:
+      os << "\"Loop\": ";
+      break;
+  }
+  return os;
+}
+
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
     tcpIn;
 extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock>>>
@@ -22,11 +72,7 @@ extern std::vector<std::vector<std::chrono::time_point<std::chrono::steady_clock
     quicOut;
 extern std::vector<std::vector<uint64_t>> tcpSend;
 extern std::vector<std::vector<uint64_t>> quicSend;
-std::vector<std::pair<uint64_t, uint64_t>> timeDPDecisions{}; // size, time
-std::vector<std::pair<uint64_t, uint64_t>> timeDataPrep{}; // size, time
-std::vector<std::pair<uint64_t, uint64_t>> timeDecisionAndPrep{}; // size, time
-std::vector<std::pair<uint64_t, uint64_t>> timeDataEnqueue{}; // size, time
-std::vector<std::pair<uint64_t, uint64_t>> timeLoop{}; // size, time
+std::unordered_map<statElem, shaperStats *> shaperStatsMap{5};
 static std::atomic<int> totalIter = 0;
 static std::atomic<int> failedDPMask = 0;
 static std::atomic<int> failedPrepMask = 0;
@@ -91,6 +137,29 @@ namespace helpers {
 
 #ifdef RECORD_STATS
 
+  void updateStats(statElem elem, uint64_t val) {
+    auto *stats = shaperStatsMap[elem];
+    if (stats->min > val) {
+      stats->min = val;
+      stats->minIndex = stats->count;
+    }
+    if (stats->max < val) {
+      stats->max = val;
+      stats->maxIndex = stats->count;
+    }
+    double delta = (double) val - stats->average;
+    {
+      // Calculate mean
+      stats->average =
+          (stats->average) * (double) stats->count /
+          (double) (stats->count + 1);
+    }
+    // Calculate variance
+    stats->M2 += delta * ((double) val - stats->average);
+    stats->variance = stats->M2 / (double) (stats->count + 1);
+    stats->count++;
+  }
+
   void printStats(bool isShapedProcess) {
     if (isShapedProcess) {
       {
@@ -102,21 +171,12 @@ namespace helpers {
       }
       {
         std::ofstream maskDurations;
-        maskDurations.open("maskDurations.csv");
-        maskDurations
-            << "Data size, DP Decision Time, Prep Time, Enqueue Time, "
-            << "Decision + Prep Time, Loop Time\n";
-        auto length = std::min(timeDPDecisions.size(),
-                               std::min(timeDataPrep.size(),
-                                        timeDataEnqueue.size()));
-        for (unsigned long i = 0; i < length; i++) {
-          maskDurations << timeDataPrep[i].first << ", "
-                        << timeDPDecisions[i].second << ", "
-                        << timeDataPrep[i].second << ", "
-                        << timeDataEnqueue[i].second << ", "
-                        << timeDecisionAndPrep[i].second << ", "
-                        << timeLoop[i].second << "\n";
+        maskDurations.open("maskDurations.json");
+        maskDurations << "{\n";
+        for (auto &[elem, stats]: shaperStatsMap) {
+          maskDurations << elem << *stats;
         }
+        maskDurations << "\n}";
         maskDurations << std::endl;
         maskDurations.close();
       }
@@ -314,9 +374,13 @@ namespace helpers {
     }
 #ifdef RECORD_STATS
     // 0 if we want to profile for these values
-    auto maskDPDecisionUs = 500;
-    auto maskPrepDurationUs = 9000;
-    auto maskEnqueueDurationUs = 250;
+    auto maskDPDecisionUs = 0;
+    auto maskPrepDurationUs = 0;
+    auto maskEnqueueDurationUs = 0;
+    for (auto i = 0; i < 5; i++) {
+      shaperStatsMap[(statElem) i] = (shaperStats *) malloc(
+          sizeof(shaperStats));
+    }
 #else
     auto maskDPDecisionUs = 0; // TODO: Replace this value
     auto maskPrepDurationUs = 0; // TODO: Replace this value
@@ -356,7 +420,7 @@ namespace helpers {
       if (DPDecision != 0) {
 #ifdef RECORD_STATS
         totalIter++;
-        timeDPDecisions.emplace_back(DPDecision, (end - start).count());
+        updateStats(DECISION, (end - start).count() / 1000);
 #endif
         // Enqueue data for quic to send.
         auto maxBytesToSend = DPDecision / divisor;
@@ -373,9 +437,8 @@ namespace helpers {
           preparedBuffers.push_back(prepareDummy(dummySize));
           end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
-          timeDataPrep.emplace_back(aggregatedSize, (end - start).count());
-          timeDecisionAndPrep
-              .emplace_back(aggregatedSize, (end - loopStart).count());
+          updateStats(PREP, (end - start).count() / 1000);
+          updateStats(DECISION_PREP, (end - loopStart).count() / 1000);
 #endif
           if (std::chrono::steady_clock::now() < mask)
             std::this_thread::sleep_until(mask);
@@ -396,7 +459,7 @@ namespace helpers {
             }
             end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
-            timeDataEnqueue.emplace_back(aggregatedSize, (end - start).count());
+            updateStats(ENQUEUE, (end - start).count() / 1000);
 #endif
             if (std::chrono::steady_clock::now() < mask)
               std::this_thread::sleep_until(mask);
@@ -411,14 +474,14 @@ namespace helpers {
       } else {
         prepareData(0); // For state management of client who disconnected
       }
-      if (std::chrono::steady_clock::now() < decisionSleepUntil) {
-        std::this_thread::sleep_until(decisionSleepUntil);
-      }
       auto loopEnd = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
       if (DPDecision > 0)
-        timeLoop.emplace_back(aggregatedSize, (loopEnd - loopStart).count());
+        updateStats(LOOP, (loopEnd - loopStart).count() / 1000);
 #endif
+      if (std::chrono::steady_clock::now() < decisionSleepUntil) {
+        std::this_thread::sleep_until(decisionSleepUntil);
+      }
     }
   }
 }
