@@ -315,7 +315,7 @@ void ShapedServer::receivedShapedData(MsQuicStream *stream,
 
 PreparedBuffer ShapedServer::prepareDummy(size_t dummySize) {
   // We do not have dummy stream yet
-  if (dummyStream == nullptr) return {};
+  if (dummyStream == nullptr) return {nullptr, nullptr, 0};
   auto buffer = reinterpret_cast<uint8_t *>(malloc(dummySize));
   memset(buffer, 0, dummySize);
   return {dummyStream, buffer, dummySize};
