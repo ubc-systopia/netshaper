@@ -6,8 +6,8 @@
 #include "ShapedClient.h"
 
 ShapedClient::ShapedClient(config::Peer1Config &peer1Config) {
-  this->appName = appName;
-  this->logLevel = logLevel;
+  this->appName = peer1Config.appName;
+  this->logLevel = peer1Config.logLevel;
   unshapedProcessLoopInterval =
       peer1Config.unshapedServer.checkQueuesInterval;
   dummyStream = controlStream = nullptr;

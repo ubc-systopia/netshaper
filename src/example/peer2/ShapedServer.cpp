@@ -8,8 +8,8 @@
 
 ShapedServer::ShapedServer(config::Peer2Config &peer2Config) :
     dummyStreamID(QUIC_UINT62_MAX) {
-  this->appName = appName;
-  this->logLevel = logLevel;
+  this->appName = peer2Config.appName;
+  this->logLevel = peer2Config.logLevel;
   unshapedProcessLoopInterval = peer2Config.unshapedClient.checkQueuesInterval;
   controlStream = dummyStream = nullptr;
   size_t controlMessageQueueSize =

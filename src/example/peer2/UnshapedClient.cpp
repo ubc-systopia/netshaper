@@ -9,8 +9,8 @@
 
 UnshapedClient::UnshapedClient(config::Peer2Config &peer2Config) :
     peer2Config(peer2Config) {
-  this->appName = std::move(appName);
-  this->logLevel = logLevel;
+  this->appName = peer2Config.appName;
+  this->logLevel = peer2Config.logLevel;
   shapedProcessLoopInterval =
       peer2Config.shapedServer.strategy == UNIFORM
       ? peer2Config.shapedServer.sendingLoopInterval

@@ -9,8 +9,8 @@
 UnshapedServer::UnshapedServer(config::Peer1Config &peer1Config) :
     peer1Config(peer1Config),
     serverAddr(peer1Config.unshapedServer.serverAddr) {
-  this->appName = appName;
-  this->logLevel = logLevel;
+  this->appName = peer1Config.appName;
+  this->logLevel = peer1Config.logLevel;
   this->shapedProcessLoopInterval =
       peer1Config.shapedClient.strategy == UNIFORM
       ? peer1Config.shapedClient.sendingLoopInterval
