@@ -48,7 +48,7 @@ inline void UnshapedClient::initialiseSHM(int numStreams, size_t queueSize) {
   // The rest of the SHM contains the queues
   shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
               (4 * numStreams * sizeof(SignalInfo::queueInfo)));
-  for (unsigned long i = 0; i <= numStreams * 2; i += 2) {
+  for (unsigned long i = 0; i < numStreams * 2 + 2; i += 2) {
     auto queue1 =
         new(shmAddr +
             (i * (sizeof(class LamportQueue) + queueSize)))

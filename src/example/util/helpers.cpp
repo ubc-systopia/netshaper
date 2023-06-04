@@ -162,7 +162,7 @@ namespace helpers {
     size_t shmSize =
         (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
          (4 * numStreams * sizeof(SignalInfo::queueInfo))) +
-        ((numStreams * 2 + 1) * (sizeof(class LamportQueue) + queueSize));
+        ((numStreams * 2 + 2) * (sizeof(class LamportQueue) + queueSize));
 
     int shmId = shmget((int) std::hash<std::string>()(appName),
                        shmSize,

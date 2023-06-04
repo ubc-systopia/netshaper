@@ -89,7 +89,7 @@ inline void ShapedServer::initialiseSHM(int numStreams, size_t queueSize) {
   // The rest of the SHM contains the queues
   shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
               (4 * numStreams * sizeof(SignalInfo::queueInfo)));
-  for (int i = 0; i <= numStreams * 2; i += 2) {
+  for (int i = 0; i < numStreams * 2 + 2; i += 2) {
     auto queue1 =
         (LamportQueue *) (shmAddr +
                           (i * (sizeof(class LamportQueue) + queueSize)));
@@ -159,7 +159,6 @@ void ShapedServer::copyClientInfo(QueuePair queues,
 
 inline bool ShapedServer::assignQueues(MsQuicStream *stream) {
   if (unassignedQueues->empty()) return false;
-//  mapLock.lock();
   auto queues = unassignedQueues->front();
   unassignedQueues->pop();
   (*streamToQueues)[stream] = queues;
@@ -188,7 +187,6 @@ inline bool ShapedServer::assignQueues(MsQuicStream *stream) {
     streamIDtoCtrlMsg.erase(streamID);
 
   }
-//  mapLock.unlock();
   return true;
 }
 

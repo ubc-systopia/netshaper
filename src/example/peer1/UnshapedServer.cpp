@@ -116,7 +116,6 @@ UnshapedServer::assignQueue(int clientSocket, std::string &clientAddress,
   // No socket attached to this queue pair
   (*socketToQueues)[clientSocket] = queues;
   (*queuesToSocket)[queues] = clientSocket;
-  mapLock.unlock();
   // Set client of queue to the new client
   auto address = clientAddress.substr(0, clientAddress.find(':'));
   auto port = clientAddress.substr(address.size() + 1);
@@ -125,6 +124,7 @@ UnshapedServer::assignQueue(int clientSocket, std::string &clientAddress,
   queues.toShaped->sentFIN = queues.fromShaped->sentFIN = false;
   queues.toShaped->clear();
   queues.fromShaped->clear();
+  mapLock.unlock();
 
   std::strcpy(queues.fromShaped->addrPair.clientAddress, address.c_str());
   std::strcpy(queues.fromShaped->addrPair.clientPort, port.c_str());
@@ -257,7 +257,7 @@ inline void UnshapedServer::initialiseSHM(int maxClients, size_t queueSize) {
   // The rest of the SHM contains the queues
   shmAddr += (sizeof(SignalInfo) + (2 * sizeof(LamportQueue)) +
               (4 * maxClients * sizeof(SignalInfo::queueInfo)));
-  for (unsigned long i = 0; i <= maxClients * 2; i += 2) {
+  for (unsigned long i = 0; i < maxClients * 2 + 2; i += 2) {
     // Initialise a queue class at that shared memory and put it in the maps
     auto queue1 =
         new(shmAddr +
