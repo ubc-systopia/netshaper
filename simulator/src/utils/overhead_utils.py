@@ -3,6 +3,26 @@ import numpy as np
 from scipy.stats import wasserstein_distance
 
 
+
+def get_pacer_web_overhead(original_df):
+    # Dropping label column
+    original_df = original_df.drop(columns=['label'])
+
+    # Getting trace sizes
+    trace_sizes = original_df.sum(axis=1).to_numpy()
+    
+    # Getting the maximum trace sizes
+    max_trace_size = np.max(trace_sizes)
+
+    # The overhead of each trace if it was reshaped to maximum trace size
+    overheads = max_trace_size - trace_sizes
+    
+    overheads = overheads / trace_sizes
+
+   
+    return np.mean(overheads), np.std(overheads)
+       
+
 def get_fpa_failure_rate(original_df, fpa_df):
     # Iterating over the rows of the original df
     diff   = fpa_df.sum(axis=1) - original_df.sum(axis=1) 

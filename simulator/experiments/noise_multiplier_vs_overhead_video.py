@@ -35,13 +35,15 @@ def noise_multiplier_vs_overhead_video(config: configlib.Config, filtered_data):
     # Baseline: Constant Rate
     filtered_data_pruned = filtered_data.drop(columns=['video_name'])
     original_data, shaped_data_constant_rate = NonDP_transport(filtered_data_pruned, config.app_time_resolution_us, config.data_time_resolution_us, method="constant-rate") 
+    constant_rate_max = shaped_data_constant_rate.max().max() 
+    
     average_aggregated_overhead_constant_rate, std_aggregated_overhead_constant_rate = norm_overhead(original_data, shaped_data_constant_rate)
     baseline_results['average_aggregated_overhead_constant_rate'].append(average_aggregated_overhead_constant_rate)
     baseline_results['std_aggregated_overhead_constant_rate'].append(std_aggregated_overhead_constant_rate)
     
     
     # Baseline: Pacer
-    original_data, shaped_data_pacer = NonDP_transport(filtered_data, config.app_time_resolution_us, config.data_time_resolution_us, method="pacer")
+    original_data, shaped_data_pacer = NonDP_transport(filtered_data, config.app_time_resolution_us, config.data_time_resolution_us, method="pacer_video")
     average_aggregated_overhead_pacer, std_aggregated_overhead_pacer = norm_overhead(original_data, shaped_data_pacer)
     baseline_results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
     baseline_results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
@@ -63,7 +65,7 @@ def noise_multiplier_vs_overhead_video(config: configlib.Config, filtered_data):
     with tqdm(total=len(noise_multipliers) ) as pbar:
         for noise_multiplier in noise_multipliers:
             # Calculate the noise multiplier based on the privacy loss
-            max_dp_decision = 2.33 * config.sensitivity * noise_multiplier
+            max_dp_decision = constant_rate_max
             original_data, DP_data, dummy_data = DP_transport(filtered_data_pruned, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier, min_DP_size=config.min_dp_decision, max_DP_size=max_dp_decision) 
 
             # Calculating the total privacy loss
