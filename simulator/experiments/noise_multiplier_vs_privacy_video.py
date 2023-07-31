@@ -58,19 +58,19 @@ def noise_multiplier_vs_privacy_video(config: configlib.Config, filtered_data):
                         'unshaped_BandB_recall': [],
                         'num_of_unique_traces': []
                         }
-    # print("Calculating the baseline privacy")
-    # unshaped_TCN_accuracy, unshaped_TCN_precision, unshaped_TCN_recall = attack_accuracy(config, TCN_attack, filtered_data)
+    print("Calculating the baseline privacy")
+    unshaped_TCN_accuracy, unshaped_TCN_precision, unshaped_TCN_recall = attack_accuracy(config, TCN_attack, filtered_data)
 
-    # unshaped_BandB_accuracy, unshaped_BandB_precision, unshaped_BandB_recall = attack_accuracy(config, BandB_attack, filtered_data)
+    unshaped_BandB_accuracy, unshaped_BandB_precision, unshaped_BandB_recall = attack_accuracy(config, BandB_attack, filtered_data)
     
-    # baseline_results['unshaped_TCN_accuracy'].append(unshaped_TCN_accuracy)
-    # baseline_results['unshaped_TCN_precision'].append(unshaped_TCN_precision)
-    # baseline_results['unshaped_TCN_recall'].append(unshaped_TCN_recall)
-    # print("Baseline privacy calculated")
+    baseline_results['unshaped_TCN_accuracy'].append(unshaped_TCN_accuracy)
+    baseline_results['unshaped_TCN_precision'].append(unshaped_TCN_precision)
+    baseline_results['unshaped_TCN_recall'].append(unshaped_TCN_recall)
+    print("Baseline privacy calculated")
             
-    # baseline_results['unshaped_BandB_accuracy'].append(unshaped_BandB_accuracy)
-    # baseline_results['unshaped_BandB_precision'].append(unshaped_BandB_precision)
-    # baseline_results['unshaped_BandB_recall'].append(unshaped_BandB_recall)
+    baseline_results['unshaped_BandB_accuracy'].append(unshaped_BandB_accuracy)
+    baseline_results['unshaped_BandB_precision'].append(unshaped_BandB_precision)
+    baseline_results['unshaped_BandB_recall'].append(unshaped_BandB_recall)
 
     
     results = {'noise_multiplier': [],

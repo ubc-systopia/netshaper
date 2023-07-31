@@ -9,7 +9,7 @@ from experiments.noise_multiplier_vs_privacy_video import noise_multiplier_vs_pr
 from experiments.number_of_traces_vs_overhead_video import number_of_traces_vs_overhead_video
 from experiments.noise_multiplier_vs_overhead_web import noise_multiplier_vs_overhead_web
 from experiments.number_of_traces_vs_overhead_web import number_of_traces_vs_overhead_web
-
+# from experiments.noise_multiplier_vs_privacy_web import noise_multiplier_vs_privacy_web
 
 
 def get_experiment_function(config: configlib.Config):
@@ -33,6 +33,9 @@ def get_experiment_function(config: configlib.Config):
         return number_of_traces_vs_overhead_video
     elif (config.experiment == "noise_multiplier_vs_overhead_web"):
         return noise_multiplier_vs_overhead_web
+    elif (config.experiment == "noise_multiplier_vs_privacy_web"):
+        return noise_multiplier_vs_privacy_video
+        return  
     else:
         raise NotImplementedError
     

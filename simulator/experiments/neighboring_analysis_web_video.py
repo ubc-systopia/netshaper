@@ -133,6 +133,9 @@ def neighboring_analysis(config:configlib, df):
     plt.figure()
     # For every trace, get all distances from all other videos 
     arr_all = convert_df_to_array(df)
+    traces_sizes = np.sum(arr_all, axis=1)
+    print("max trace size (in KB)", max(traces_sizes)/1e3)
+ 
     dists_traces = []
     with tqdm(total=arr_all.shape[0], desc="Calculating Trace and Queue Distances: ") as pbar:
         for i in range(arr_all.shape[0]):

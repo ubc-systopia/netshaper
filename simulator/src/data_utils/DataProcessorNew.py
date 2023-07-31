@@ -78,6 +78,14 @@ class DataProcessorNew():
         colnames = ['pkt_time', 'pkt_size']
         df = pd.read_csv(dataset_name, delimiter = "\t", names = colnames, header=None)
         df.fillna(0, inplace=True)
+        remove_request = True
+        if remove_request:
+            for i in range(len(df)):
+                # print(df.iloc[i, 1])
+                if (df.iloc[i, 1] != 0): 
+                    break
+            df = df.drop(range(i))    
+        # print(df.head)
         return df
     
     def burst_in_window_pattern_simple(self, df, window_size):

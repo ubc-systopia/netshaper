@@ -5,7 +5,7 @@ import configlib
 
 
 from src.transport import DP_transport, NonDP_transport
-from src.utils.overhead_utils import norm_overhead, wasserstein_overhead, get_fpa_failure_rate
+from src.utils.overhead_utils import norm_overhead, wasserstein_overhead, get_fpa_failure_rate, get_pacer_web_overhead
 from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
 
 
@@ -26,7 +26,9 @@ def noise_multiplier_vs_overhead_web(config: configlib.Config, filtered_data):
 
     # Baseline overheads 
     baseline_results = {'average_aggregated_overhead_constant_rate': [],
-                        'std_aggregated_overhead_constant_rate': []}
+                        'std_aggregated_overhead_constant_rate': [],
+                        'average_aggregegated_overhead_pacer': [],
+                        'std_aggregated_overhead_pacer': []}
 
     
     # Baseline: Constant Rate

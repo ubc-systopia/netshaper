@@ -43,8 +43,9 @@ def NonDP_transport(data, app_time_resolution_us, data_time_resolution_us, metho
         reshaped_data = [[max_value] * len(app_data.columns)] * len(app_data)
         reshaped_data = pd.DataFrame(reshaped_data) 
         reshaped_df = pd.concat([reshaped_data, app_labels], axis=1)
+        print(reshaped_data.head)
         return app_df, reshaped_df
-    elif (method == "pacer"):
+    elif (method == "pacer_video"):
         # Getting the set of video names that are important for us
         video_names = data['video_name'].unique() 
         video_names = [ x[x.index('mpd-')+4:x.index('.csv')] for x in video_names]
@@ -75,5 +76,7 @@ def NonDP_transport(data, app_time_resolution_us, data_time_resolution_us, metho
         pacer_sum = pacer_data.sum(axis=1).sum()
         reshaped_sum = reshaped_df.sum(axis=1).sum()
         print("overhead is: " + str(reshaped_sum/pacer_sum))
-
         return pacer_data, reshaped_df
+    elif (method == "pacer_web"):
+        pass
+        

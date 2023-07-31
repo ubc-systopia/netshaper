@@ -10,7 +10,7 @@ from src.utils.overhead_utils import norm_overhead, wasserstein_overhead, get_fp
 from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
 
 
-def get_parallel_dataframe(df, video_num):
+def get_parallel_dataframe(df, video_num, max_video_per_experiment):
     df = df.drop(columns=['label'])
     df = df.sample(frac=1).reset_index(drop=True)
     # Create the dataframe of parallel traces
@@ -22,6 +22,7 @@ def get_parallel_dataframe(df, video_num):
     parallel_df = pd.concat(parallel_traces_list, axis=1).transpose()
     # Add the label column as numbers between 0 and parallel_df.shape[0]
     parallel_df['label'] = np.arange(parallel_df.shape[0]) 
+    parallel_df.sample(n=max_video_per_experiment, random_state=1)
     return parallel_df
 
 
@@ -40,8 +41,11 @@ def number_of_traces_vs_overhead_video(config: configlib.Config, filtered_data):
     
     video_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int)
     
-    baseline_results = {'average_aggregated_overhead_constant_rate':[],
-                        'std_aggregated_overhead_constant_rate': [],
+    baseline_results = {'average_aggregated_overhead_constant_rate_dynamic':[],
+                        'std_aggregated_overhead_constant_rate_dynamic': [],
+                        'average_aggregated_overhead_constant_rate_anonymized':[],
+                        'std_aggregated_overhead_constant_rate_anonymized':[],
+                        'std_aggregated_overhead_dynamic_shaping': [],
                         'average_aggregated_overhead_pacer':[],
                         'std_aggregated_overhead_pacer': [],
                         'video_num': []} 
@@ -49,10 +53,13 @@ def number_of_traces_vs_overhead_video(config: configlib.Config, filtered_data):
 
     filtered_data_pruned = filtered_data.drop(columns=['video_name'])
     original_data, shaped_data_constant_rate = NonDP_transport(filtered_data_pruned, config.app_time_resolution_us, config.data_time_resolution_us, method="constant-rate") 
-    
-    average_aggregated_overhead_constant_rate, std_aggregated_overhead_constant_rate = norm_overhead(original_data, shaped_data_constant_rate)
-    
-    original_data, shaped_data_pacer = NonDP_transport(filtered_data, config.app_time_resolution_us, config.data_time_resolution_us, method="pacer")
+    constant_rate_max = shaped_data_constant_rate.max().max()
+    print("max burst size: ", constant_rate_max)
+    average_aggregated_overhead_constant_rate_dynamic, std_aggregated_overhead_constant_rate_dynamic = norm_overhead(original_data, shaped_data_constant_rate)
+
+    average_aggregated_overhead_constant_rate_anonymized = average_aggregated_overhead_constant_rate_dynamic * config.max_video_num 
+    std_aggregated_overhead_constant_rate_anonymized = std_aggregated_overhead_constant_rate_dynamic * config.max_video_num 
+    original_data, shaped_data_pacer = NonDP_transport(filtered_data, config.app_time_resolution_us, config.data_time_resolution_us, method="pacer_video")
 
     average_aggregated_overhead_pacer, std_aggregated_overhead_pacer = norm_overhead(original_data, shaped_data_pacer)
      
@@ -64,7 +71,8 @@ def number_of_traces_vs_overhead_video(config: configlib.Config, filtered_data):
                'average_aggregated_overhead': [],
                'std_aggregated_overhead': [],
                'alpha': [],
-               'video_num': []}
+               'video_num': [],
+               'dp_interval_us': []}
     
     privacy_losses = config.privacy_losses
 
@@ -72,10 +80,11 @@ def number_of_traces_vs_overhead_video(config: configlib.Config, filtered_data):
     with tqdm(total=len(video_nums_list)*len(noise_multipliers)) as pbar:
         for noise_multiplier in noise_multipliers:
             for video_num in video_nums_list:
-                max_dp_decision = video_num * 1e6 + 2.33 * (noise_multiplier * config.sensitivity)
-                filtered_data_pruned_parallelized = get_parallel_dataframe(filtered_data_pruned, video_num)
+                max_dp_decision = video_num * constant_rate_max
+                print("max_dp_decision: ", max_dp_decision)
+                filtered_data_pruned_parallelized = get_parallel_dataframe(filtered_data_pruned, video_num, config.max_videos_per_single_experiment)
                 original_data, DP_data, dummy_data = DP_transport(filtered_data_pruned_parallelized, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier, min_DP_size=config.min_dp_decision, max_DP_size=max_dp_decision) 
-    
+
                 # Calculate the privacy loss
                 aggregated_eps, best_alpha = calculate_privacy_loss(num_of_queries, alphas, noise_multiplier, config.delta) 
                 per_query_eps, best_alpha = calculate_privacy_loss(1, alphas, noise_multiplier, config.delta)
@@ -90,9 +99,12 @@ def number_of_traces_vs_overhead_video(config: configlib.Config, filtered_data):
                 results['std_aggregated_overhead'].append(std_aggregated_overhead)
                 results['alpha'].append(best_alpha)
                 results['video_num'].append(video_num)
-                
-                baseline_results['average_aggregated_overhead_constant_rate'].append(average_aggregated_overhead_constant_rate)
-                baseline_results['std_aggregated_overhead_constant_rate'].append(std_aggregated_overhead_constant_rate)
+                results['dp_interval_us'].append(config.data_time_resolution_us) 
+
+                baseline_results['average_aggregated_overhead_constant_rate_dynamic'].append(average_aggregated_overhead_constant_rate_dynamic)
+                baseline_results['std_aggregated_overhead_constant_rate_dynamic'].append(std_aggregated_overhead_constant_rate_dynamic)
+                baseline_results['average_aggregated_overhead_constant_rate_anonymized'].append(average_aggregated_overhead_constant_rate_anonymized/ video_num)
+                baseline_results['std_aggregated_overhead_constant_rate_anonymized'].append(std_aggregated_overhead_constant_rate_anonymized/video_num)
                 baseline_results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
                 baseline_results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
                 baseline_results['video_num'].append(video_num)
