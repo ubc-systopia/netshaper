@@ -15,9 +15,9 @@ def get_attack_fn(config: configlib.Config):
     else:
         raise NotImplementedError("The attack model is not implemented")
 
-def privacy_loss_vs_attacker_accuracy(config: configlib.Config, filtered_data):
+def privacy_loss_vs_attacker_accuracy(config: configlib.Config, filtered_datasets):
 
-
+    filtered_data = filtered_datasets[0]
     ## Initializing parameters
     if(config.middlebox_period_us % config.app_time_resolution_us != 0):
         print("The middlebox period must be a multiple of the application time resolution.")

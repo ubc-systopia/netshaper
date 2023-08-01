@@ -32,8 +32,8 @@ def attack_accuracy(config:configlib.Config, attack_fn, DP_data):
     return accs, precs, recals
 
 
-def noise_multiplier_vs_privacy_video(config: configlib.Config, filtered_data):
-    
+def noise_multiplier_vs_privacy_video(config: configlib.Config, filtered_datasets):
+    filtered_data = filtered_datasets[0] 
     ## Initializing parameters
     if(config.middlebox_period_us % config.app_time_resolution_us != 0):
         print("The middlebox period must be a multiple of the application time resolution.")
