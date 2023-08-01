@@ -1,17 +1,17 @@
 {
   "run_type": "analysis",
   "analysis_type": "privacy",
-  "data_root_dir": "/home/ubuntu/data/testbed_data",
-  "max_num_of_unique_streams": 11,
+  "data_root_dir": "/home/minesvpn/workspace/minesvpn-testbed/experiments/parallel/csvs",
+  "max_num_of_unique_streams": 10,
   "privacy_window_length_s": 300,
   "delta": 1e-4,
-  "results_dir" : "/home/ubuntu/results/",
-  "max_num_of_traces_per_stream": 50,
+  "results_dir" : "/home/minesvpn/results/",
+  "max_num_of_traces_per_stream": 10,
   "data_time_resolution_us": 1e6,
   "attack_num_of_repeats": 5,
-  "attack_batch_size": 20,
+  "attack_batch_size": 10,
   "attack_epoch_num": 50,
-  "num_of_unique_streams": 11
+  "num_of_unique_streams": 10
 
    
 
