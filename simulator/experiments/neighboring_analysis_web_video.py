@@ -124,11 +124,9 @@ def cdf_from_dict(data):
     return cdf
 
 
-def neighboring_analysis(config:configlib, df):
+def neighboring_analysis(config:configlib, dfs):
+    df = dfs[0]
     df = data_filter_deterministic(config, df)
- 
-
-
 
     plt.figure()
     # For every trace, get all distances from all other videos 

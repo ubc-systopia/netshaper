@@ -34,8 +34,8 @@ def attack_accuracy(config:configlib.Config, attack_fn, DP_data):
     return accs, precs, recals
 
 
-def BandB_vs_TCN(config: configlib.Config, data: pd.DataFrame):
-
+def BandB_vs_TCN(config: configlib.Config, datasets: pd.DataFrame):
+    data = datasets[0]
     ## Initializing parameters
     if(config.middlebox_period_us % config.app_time_resolution_us != 0):
         print("The middlebox period must be a multiple of the application time resolution.")

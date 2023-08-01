@@ -10,7 +10,7 @@ from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
 
 
 
-
+# OBSOLETE
 def privacy_loss_vs_overhead(config: configlib.Config, filtered_data):
     
     ## Initializing parameters
