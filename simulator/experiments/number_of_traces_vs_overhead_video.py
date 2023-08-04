@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import configlib
 
 from src.transport import DP_transport, NonDP_transport
-from src.utils.overhead_utils import overhead, overhead_aggregation, wasserstein_overhead, get_fpa_failure_rate
+from src.utils.overhead_utils import overhead, overhead_aggregation, wasserstein_overhead, get_fpa_failure_rate, get_pacer_web_overhead
 from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
 
 
@@ -142,7 +142,7 @@ def number_of_traces_vs_overhead_video_unidirectional(config: configlib.Config, 
                 baseline_results['std_aggregated_overhead_constant_rate_anonymized'].append(std_aggregated_overhead_constant_rate_anonymized/video_num)
                 # TODO: needs modification
                 baseline_results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
-                baseline_results['average_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
+                baseline_results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
 
                 pbar.update(1)
 
@@ -166,12 +166,18 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
         
     privacy_window_size_s_to_c_us = config.privacy_window_size_server_to_client_s * 1e6
     num_of_queries_s_to_c = int(privacy_window_size_s_to_c_us / config.middlebox_period_s_to_c_us)
-    
+
     filtered_data_pruned_s_to_c = filtered_data_s_to_c.drop(columns=['video_name'])
+
+    # Baseline overhead from server to client 
     original_data_s_to_c, shaped_data_constant_rate_s_to_c = NonDP_transport(filtered_data_pruned_s_to_c, config.app_time_resolution_s_to_c_us, config.data_time_resolution_s_to_c_us, method="constant-rate") 
     constant_rate_max_s_to_c = shaped_data_constant_rate_s_to_c.max().max()
-    # TODO: needs modification
     overhead_constant_rate_dynamic_s_to_c = overhead(original_data_s_to_c, shaped_data_constant_rate_s_to_c) 
+
+    # Pacer overhead from server to client
+    original_data_s_to_c, shaped_data_pacer_s_to_c = NonDP_transport(filtered_data_s_to_c, config.app_time_resolution_s_to_c_us, config.data_time_resolution_s_to_c_us, method="pacer_video")
+    overhead_pacer_s_to_c = overhead(original_data_s_to_c, shaped_data_pacer_s_to_c) 
+    
     
     noise_multipliers_s_to_c = [get_noise_multiplier(privacy_loss, num_of_queries_s_to_c, alphas, config.delta_s_to_c) for privacy_loss in config.privacy_losses_s_to_c]  
 
@@ -189,13 +195,20 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
     num_of_queries_c_to_s = int(privacy_window_size_c_to_s_us / config.middlebox_period_c_to_s_us)
         
     filtered_data_pruned_c_to_s = filtered_data_c_to_s.drop(columns=['video_name'])
+
+    # Baseline overhead from client to server
     original_data_c_to_s, shaped_data_constant_rate_c_to_s = NonDP_transport(filtered_data_pruned_c_to_s, config.app_time_resolution_c_to_s, config.data_time_resolution_c_to_s_us, method="constant-rate") 
     constant_rate_max_c_to_s = shaped_data_constant_rate_c_to_s.max().max()
-    # TODO: needs modification
     overhead_constant_rate_dynamic_c_to_s = overhead(original_data_c_to_s, shaped_data_constant_rate_c_to_s)  
 
+    # Pacer overhead from client to server
+    overhead_pacer_c_to_s = get_pacer_web_overhead(filtered_data_pruned_c_to_s)
+    
 
-    # aggregation of overhead for baseline in both directions
+    noise_multipliers_c_to_s = [get_noise_multiplier(privacy_loss, num_of_queries_c_to_s, alphas, config.delta_c_to_s) for privacy_loss in config.privacy_losses_c_to_s]  
+
+
+    # Aggregation of overhead for baseline in both directions
     average_aggregated_overhead_constant_rate_dynamic, std_aggregated_overhead_constant_rate_dynamic = overhead_aggregation(overhead_df_server_to_client=overhead_constant_rate_dynamic_s_to_c,
     overhead_df_client_to_server=overhead_constant_rate_dynamic_c_to_s) 
     
@@ -204,8 +217,10 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
     std_aggregated_overhead_constant_rate_anonymized = std_aggregated_overhead_constant_rate_dynamic * config.max_video_num
 
 
+    # Aggregation of overhead for pacer shaping in both directions
+    average_aggregated_overhead_pacer, std_aggregated_overhead_pacer = overhead_aggregation(overhead_df_server_to_client=overhead_pacer_s_to_c,
+                         overhead_df_client_to_server=overhead_pacer_c_to_s)
 
-    noise_multipliers_c_to_s = [get_noise_multiplier(privacy_loss, num_of_queries_c_to_s, alphas, config.delta_c_to_s) for privacy_loss in config.privacy_losses_c_to_s]  
 
 
     baseline_results = {'average_aggregated_overhead_constant_rate_dynamic':[],
@@ -295,7 +310,7 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
                 baseline_results['std_aggregated_overhead_constant_rate_anonymized'].append(std_aggregated_overhead_constant_rate_anonymized/video_num)
                 # TODO: needs modification
                 baseline_results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
-                baseline_results['average_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
+                baseline_results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
                 
                 
                 
