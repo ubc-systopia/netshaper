@@ -10,7 +10,8 @@ from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
 
 # TODO: needs modification
 def noise_multiplier_vs_overhead_video(config: configlib.Config, filtered_data):
-    
+    # DISABLE FUNCTION NOW
+    raise NotImplementedError("This function needs modification")
     ## Initializing parameters
     if(config.middlebox_period_us % config.app_time_resolution_us != 0):
         print("The middlebox period must be a multiple of the application time resolution.")
