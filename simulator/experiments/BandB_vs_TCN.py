@@ -8,7 +8,7 @@ from src.transport import DP_transport
 from src.utils.DL_utils_PT import train_test_and_report_acc as BandB_attack
 from src.utils.DP_utils import calculate_privacy_loss, get_noise_multiplier
 from src.utils.TCN_utils import train_test_and_report_acc as TCN_attack
-from src.data_utils.data_loader import data_filter_deterministic
+from src.data_utils.utils import data_filter_deterministic
 
 
 def get_attack_fn(config: configlib.Config):
