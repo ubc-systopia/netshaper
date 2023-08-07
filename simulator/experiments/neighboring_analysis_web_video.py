@@ -3,7 +3,7 @@ from tqdm import tqdm
 import configlib
 import matplotlib.pyplot as plt
 
-from src.data_utils.data_loader import data_filter_deterministic 
+from src.data_utils.utils import data_filter_deterministic 
 
 
 def get_distance_from_all_elemnts_stats(element, arr, prev_m, v, k):
