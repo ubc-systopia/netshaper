@@ -143,6 +143,7 @@ def number_of_traces_vs_overhead_video_unidirectional(config: configlib.Config, 
                 # TODO: needs modification
                 baseline_results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
                 baseline_results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
+                baseline_results['video_num'].append(video_num)
 
                 pbar.update(1)
 
@@ -311,6 +312,7 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
                 # TODO: needs modification
                 baseline_results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
                 baseline_results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
+                baseline_results['video_num'].append(video_num)
                 
                 
                 

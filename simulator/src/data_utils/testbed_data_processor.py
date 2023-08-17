@@ -119,7 +119,15 @@ def get_exp_info(peer1_config_json, peer2_config_json):
     exp['peer2_maxDecisionSize'] = peer2_config_json['shapedReceiver']['maxDecisionSize'] 
     exp['peer2_minDecisionSize'] = peer2_config_json['shapedReceiver']['minDecisionSize'] 
     return exp
+
+
+def get_aggregated_data_list_parallel_streams(config: configlib.Config):
+    data = []
+    filtered_data_dirs = filter_data_dirs_based_params(config.data_root_dir, config.max_num_of_unique_streams, config.max_num_of_traces_per_stream)
+    print(filtered_data_dirs)
     
+    return None 
+     
 def get_aggregated_data_list(config: configlib.Config):
     
     data = []
@@ -254,6 +262,9 @@ def get_aggregated_RTTs(config: configlib.Config):
         RTTs_list.append(exp)
     return RTTs_list
 
+
+
+
 def get_data_aggregator_function(config: configlib.Config):
     if config.analysis_type == "privacy":
         return get_aggregated_data_list
@@ -263,5 +274,7 @@ def get_data_aggregator_function(config: configlib.Config):
         return get_aggregated_sizes_dp_decisions
     elif config.analysis_type == "latency":
         return get_aggregated_RTTs 
+    elif config.analysis_type == "number_of_traces_vs_overhead":
+        return get_aggregated_data_list_parallel_streams
     else: 
         raise Exception("Invalid analysis type, please specify analysis_type in the config file")
