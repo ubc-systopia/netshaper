@@ -80,12 +80,16 @@ class DataProcessorNew():
         df.fillna(0, inplace=True)
         remove_request = True
         if remove_request:
+            remove_indices = []
             for i in range(len(df)):
-                # print(df.iloc[i, 1])
+                remove_indices.append(i)
                 if (df.iloc[i, 1] != 0): 
                     break
-            df = df.drop(range(i))    
-        # print(df.head)
+            # for i in range(len(df)-1, 1, -1):
+            #     remove_indices.append(i)
+            #     if (df.iloc[i, 1] != 0):
+            #         break
+            df = df.drop(remove_indices)    
         return df
     
     def burst_in_window_pattern_simple(self, df, window_size):
@@ -97,7 +101,6 @@ class DataProcessorNew():
 
         # Sort the dataframe based on packet time
         df = df.sort_values(by=['pkt_time'])      
-
         stream_start_time = df.iloc[0, pkt_time_column_indx]
         stream_end_time = df.iloc[-1, pkt_time_column_indx]
         window_num = int(math.ceil((stream_end_time - stream_start_time)/window_size)) 
@@ -117,7 +120,6 @@ class DataProcessorNew():
    
     def process_data(self, ds, key, time_resolution_us, index):
         df = self.get_dataframe(ds)
-        
         windowed_df = self.burst_in_window_pattern_simple(df, time_resolution_us).drop(columns=['window time'])
         sample = (windowed_df.T).reset_index()
         sample['label'] = int(key)
@@ -156,7 +158,6 @@ class DataProcessorNew():
         self.all_data_size += df['pkt_size'].sum()
         
     def aggregated_dataframe(self, time_resolution_us):
-        print(time_resolution_us)
         ds_name_dict = self.get_label_filename_mapping()
         flag = True
         keys = list(ds_name_dict.keys())
@@ -201,7 +202,6 @@ class DataProcessorNew():
         #         df = self.get_dataframe(trace)
         #         print(df.tail(10))
         #         break        
-        print(ad.head(10))
         
     
         

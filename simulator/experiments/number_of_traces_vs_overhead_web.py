@@ -37,15 +37,15 @@ def number_of_traces_vs_overhead_web_unidirectional(config: configlib.Config, fi
     if(config.middlebox_period_server_to_client_us % config.app_time_resolution_server_to_client_us != 0):
         raise ValueError("The middlebox period must be a multiple of the application time resolution.")
     else:
-        DP_step_s_to_c = int(config.middlebox_period_server_to_client_us / config.app_time_resolution_us_server_to_client_us) 
+        DP_step_s_to_c = int(config.middlebox_period_server_to_client_us / config.app_time_resolution_server_to_client_us) 
     
        
         
     privacy_window_size_s_to_c_us = config.privacy_window_size_server_to_client_s * 1e6
-    num_of_queries_s_to_c = int(privacy_window_size_s_to_c_us / config.middlebox_period_s_to_c_us)
+    num_of_queries_s_to_c = int(privacy_window_size_s_to_c_us / config.middlebox_period_server_to_client_us)
     
     # Constant-rate shaping and overheads
-    original_data_s_to_c, shaped_data_constant_rate_s_to_c = NonDP_transport(filtered_data_s_to_c, config.app_time_resolution_s_to_c_us, config.data_time_resolution_s_to_c_us, method="constant-rate") 
+    original_data_s_to_c, shaped_data_constant_rate_s_to_c = NonDP_transport(filtered_data_s_to_c, config.app_time_resolution_server_to_client_us, config.data_time_resolution_server_to_client_us, method="constant-rate") 
     constant_rate_max_s_to_c = shaped_data_constant_rate_s_to_c.max().max()
     overhead_constant_rate_dynamic_s_to_c = overhead(original_data_s_to_c, shaped_data_constant_rate_s_to_c) 
     
@@ -53,8 +53,8 @@ def number_of_traces_vs_overhead_web_unidirectional(config: configlib.Config, fi
     average_aggregated_overhead_constant_rate_dynamic, std_aggregated_overhead_constant_rate_dynamic = overhead_aggregation(overhead_server_to_client=overhead_constant_rate_dynamic_s_to_c,
      overhead_df_client_to_server=None) 
 
-    average_aggregated_overhead_constant_rate_anonymized = average_aggregated_overhead_constant_rate_dynamic * config.max_web_num
-    std_aggregated_overhead_constant_rate_anonymized = std_aggregated_overhead_constant_rate_dynamic * config.max_web_num
+    average_aggregated_overhead_constant_rate_anonymized = average_aggregated_overhead_constant_rate_dynamic * config.max_webpage_num
+    std_aggregated_overhead_constant_rate_anonymized = std_aggregated_overhead_constant_rate_dynamic * config.max_webpage_num
 
 
     # Pacer shaping and overheads
@@ -65,7 +65,7 @@ def number_of_traces_vs_overhead_web_unidirectional(config: configlib.Config, fi
     
 
 
-    noise_multipliers_s_to_c = [get_noise_multiplier(privacy_loss, num_of_queries_s_to_c, alphas, config.delta_s_to_c) for privacy_loss in config.privacy_losses_s_to_c] 
+    noise_multipliers_s_to_c = [get_noise_multiplier(privacy_loss, num_of_queries_s_to_c, alphas, config.delta_server_to_client) for privacy_loss in config.privacy_losses_server_to_client] 
     
     
     baseline_results = {'average_aggregated_overhead_constant_rate_dynamic':[],
@@ -143,7 +143,7 @@ def number_of_traces_vs_overhead_web_unidirectional(config: configlib.Config, fi
 
                 pbar.update(1)
 
-    return results, baseline_results
+    return baseline_results, results
 
 
 
@@ -157,15 +157,15 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
     if(config.middlebox_period_server_to_client_us % config.app_time_resolution_server_to_client_us != 0):
         raise ValueError("The middlebox period must be a multiple of the application time resolution.")
     else:
-        DP_step_s_to_c = int(config.middlebox_period_server_to_client_us / config.app_time_resolution_us_server_to_client_us) 
+        DP_step_s_to_c = int(config.middlebox_period_server_to_client_us / config.app_time_resolution_server_to_client_us) 
     
        
         
     privacy_window_size_s_to_c_us = config.privacy_window_size_server_to_client_s * 1e6
-    num_of_queries_s_to_c = int(privacy_window_size_s_to_c_us / config.middlebox_period_s_to_c_us)
+    num_of_queries_s_to_c = int(privacy_window_size_s_to_c_us / config.middlebox_period_server_to_client_us)
     
     # Baseline from server to client  
-    original_data_s_to_c, shaped_data_constant_rate_s_to_c = NonDP_transport(filtered_data_s_to_c, config.app_time_resolution_s_to_c_us, config.data_time_resolution_s_to_c_us, method="constant-rate") 
+    original_data_s_to_c, shaped_data_constant_rate_s_to_c = NonDP_transport(filtered_data_s_to_c, config.app_time_resolution_server_to_client_us, config.data_time_resolution_server_to_client_us, method="constant-rate") 
     constant_rate_max_s_to_c = shaped_data_constant_rate_s_to_c.max().max()
     overhead_constant_rate_dynamic_s_to_c = overhead(original_data_s_to_c, shaped_data_constant_rate_s_to_c) 
     
@@ -176,23 +176,23 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
     
 
      
-    noise_multipliers_s_to_c = [get_noise_multiplier(privacy_loss, num_of_queries_s_to_c, alphas, config.delta_s_to_c) for privacy_loss in config.privacy_losses_s_to_c]  
+    noise_multipliers_s_to_c = [get_noise_multiplier(privacy_loss, num_of_queries_s_to_c, alphas, config.delta_server_to_client) for privacy_loss in config.privacy_losses_server_to_client]  
 
 
     # From client to server data and parameters (if bidirectional) 
     filtered_data_c_to_s = filtered_data[1]
 
-    if(config.middlebox_period_c_to_s_us % config.app_time_resolution_c_to_s_us != 0): 
+    if(config.middlebox_period_client_to_server_us % config.app_time_resolution_client_to_server_us != 0): 
         raise ValueError("The middlebox period must be a multiple of the application time resolution.")
     else: 
         DP_step_c_to_s = int(config.middlebox_period_client_to_server_us / config.app_time_resolution_client_to_server_us)
         
     
-    privacy_window_size_c_to_s_us = config.privacy_window_size_c_to_s_s * 1e6
-    num_of_queries_c_to_s = int(privacy_window_size_c_to_s_us / config.middlebox_period_c_to_s_us)
+    privacy_window_size_c_to_s_us = config.privacy_window_size_client_to_server_s * 1e6
+    num_of_queries_c_to_s = int(privacy_window_size_c_to_s_us / config.middlebox_period_client_to_server_us)
     
     # Baseline from client to server        
-    original_data_c_to_s, shaped_data_constant_rate_c_to_s = NonDP_transport(filtered_data_c_to_s, config.app_time_resolution_c_to_s, config.data_time_resolution_c_to_s_us, method="constant-rate") 
+    original_data_c_to_s, shaped_data_constant_rate_c_to_s = NonDP_transport(filtered_data_c_to_s, config.app_time_resolution_client_to_server_us, config.data_time_resolution_client_to_server_us, method="constant-rate") 
     constant_rate_max_c_to_s = shaped_data_constant_rate_c_to_s.max().max()
     overhead_constant_rate_dynamic_c_to_s = overhead(original_data_c_to_s, shaped_data_constant_rate_c_to_s)  
 
@@ -204,9 +204,9 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
     average_aggregated_overhead_constant_rate_dynamic, std_aggregated_overhead_constant_rate_dynamic = overhead_aggregation(overhead_df_server_to_client=overhead_constant_rate_dynamic_s_to_c,
     overhead_df_client_to_server=overhead_constant_rate_dynamic_c_to_s) 
     
-    average_aggregated_overhead_constant_rate_anonymized = average_aggregated_overhead_constant_rate_dynamic * config.max_web_num
+    average_aggregated_overhead_constant_rate_anonymized = average_aggregated_overhead_constant_rate_dynamic * config.max_webpage_num
 
-    std_aggregated_overhead_constant_rate_anonymized = std_aggregated_overhead_constant_rate_dynamic * config.max_web_num
+    std_aggregated_overhead_constant_rate_anonymized = std_aggregated_overhead_constant_rate_dynamic * config.max_webpage_num
 
 
     # aggregation of overhead for pacer in both directions
@@ -215,7 +215,7 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
     
     
 
-    noise_multipliers_c_to_s = [get_noise_multiplier(privacy_loss, num_of_queries_c_to_s, alphas, config.delta_c_to_s) for privacy_loss in config.privacy_losses_c_to_s]  
+    noise_multipliers_c_to_s = [get_noise_multiplier(privacy_loss, num_of_queries_c_to_s, alphas, config.delta_client_to_server) for privacy_loss in config.privacy_losses_client_to_server]  
 
 
     baseline_results = {'average_aggregated_overhead_constant_rate_dynamic':[],
@@ -259,7 +259,7 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
                 
                 original_data_s_to_c, DP_data_s_to_c, dummy_data_s_to_c = DP_transport(filtered_data_parallelized_s_to_c, config.app_time_resolution_server_to_client_us, config.transport_type, config.DP_mechanism, config.sensitivity_server_to_client, DP_step_s_to_c, config.data_time_resolution_server_to_client_us, noise_multiplier=nm_s_to_c, min_DP_size=config.min_dp_decision_server_to_client, max_DP_size=max_dp_decision_s_to_c)
                 
-                original_data_c_to_s, DP_data_c_to_s, dummy_data_c_to_s = DP_transport(filtered_data_parallelized_c_to_s, config.app_time_resolution_client_to_server_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step_c_to_s, config.data_time_resolution_client_to_server_us, noise_multiplier=nm_c_to_s, min_DP_size=config.min_dp_decision_client_to_server, max_DP_size=max_dp_decision_c_to_s)
+                original_data_c_to_s, DP_data_c_to_s, dummy_data_c_to_s = DP_transport(filtered_data_parallelized_c_to_s, config.app_time_resolution_client_to_server_us, config.transport_type, config.DP_mechanism, config.sensitivity_client_to_server, DP_step_c_to_s, config.data_time_resolution_client_to_server_us, noise_multiplier=nm_c_to_s, min_DP_size=config.min_dp_decision_client_to_server, max_DP_size=max_dp_decision_c_to_s)
 
 
                 # Calculating the total privacy
@@ -293,7 +293,7 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
                 results['std_aggregated_overhead'].append(total_overhead_std)
                 results['alpha_server_to_client'].append(best_alpha_s_to_c)
                 results['alpha_client_to_server'].append(best_alpha_c_to_s)
-                results['web_num'].append(webpage_num)
+                results['webpage_num'].append(webpage_num)
                 results['dp_interval_client_to_server_us'].append(config.middlebox_period_client_to_server_us)
                 results['dp_interval_server_to_client_us'].append(config.middlebox_period_server_to_client_us)
                 
@@ -306,11 +306,12 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
                 # TODO: needs modification
                 baseline_results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
                 baseline_results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
+                baseline_results['webpage_num'].append(webpage_num)
                 
                 
                 
                 pbar.update(1)
-    return results, baseline_results 
+    return baseline_results, results
                 
                 
                 

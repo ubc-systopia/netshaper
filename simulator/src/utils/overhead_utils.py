@@ -17,10 +17,10 @@ def get_pacer_web_overhead(original_df):
     # The overhead of each trace if it was reshaped to maximum trace size
     overheads = max_trace_size - trace_sizes
     
-    overheads = overheads / trace_sizes
 
+    overhead_df = pd.DataFrame({'sum_diff': overheads, 'sum_original': trace_sizes},)
    
-    return np.mean(overheads), np.std(overheads)
+    return overhead_df
        
 
 def get_fpa_failure_rate(original_df, fpa_df):
@@ -41,7 +41,28 @@ def df_zero_padding_row(original_df, remapped_df):
   padded_df = pd.concat([original_df.T, padding_df]).reset_index()
   padded_df = padded_df.drop(columns=['index']).T
   return padded_df
-  
+ 
+
+
+def overhead_aggregation(overhead_df_server_to_client, overhead_df_client_to_server):
+    if overhead_df_client_to_server is None:
+        total_overhead = overhead_df_server_to_client
+    else:
+        total_overhead = overhead_df_client_to_server + overhead_df_server_to_client
+
+    relative_overhead = total_overhead['sum_diff'] / total_overhead['sum_original']
+    return relative_overhead.mean(), relative_overhead.std()
+
+def overhead(original_df, remapped_df): 
+    if (original_df.shape != remapped_df.shape):
+        original_df = df_zero_padding_row(original_df, remapped_df)   
+
+    diff_df = remapped_df - original_df
+    # create a data frame with first column as the sum of the differences and the second column as the sum of the original df
+    overhead_df = pd.DataFrame({'sum_diff': diff_df.sum(axis=1), 'sum_original': original_df.sum(axis=1)}) 
+    return overhead_df
+
+
 def norm_overhead(original_df, remapped_df):
   if (original_df.shape != remapped_df.shape):
     original_df = df_zero_padding_row(original_df, remapped_df) 
