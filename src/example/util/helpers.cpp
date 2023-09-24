@@ -92,7 +92,7 @@ namespace helpers {
     {
       // Calculate mean
       stats->average =
-          (stats->average) * (double) stats->count /
+          (((stats->average) * (double) stats->count) + (double) val) /
           (double) (stats->count + 1);
     }
     // Calculate variance
@@ -213,8 +213,8 @@ namespace helpers {
     auto maskPrepDurationUs = 0;
     auto maskEnqueueDurationUs = 0;
     for (auto i = 0; i < 5; i++) {
-      shaperStatsMap[(statElem) i] = (shaperStats *) malloc(
-          sizeof(shaperStats));
+      auto shaperStat = new shaperStats{};
+      shaperStatsMap[(statElem) i] = shaperStat;
     }
 #else
     auto maskDPDecisionUs = 0; // TODO: Replace this value
