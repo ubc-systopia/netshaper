@@ -8,7 +8,7 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 OFF='\033[0m'
 
-BUILD_TYPE=Debug # Release
+BUILD_TYPE=Release # Debug
 
 # Build the proxy application
 cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -G Ninja -S $(pwd) -B $(pwd)/build

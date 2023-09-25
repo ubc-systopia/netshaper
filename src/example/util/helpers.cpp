@@ -217,9 +217,9 @@ namespace helpers {
       shaperStatsMap[(statElem) i] = shaperStat;
     }
 #else
-    auto maskDPDecisionUs = 0; // TODO: Replace this value
-    auto maskPrepDurationUs = 0; // TODO: Replace this value
-    auto maskEnqueueDurationUs = 0; // TODO: Replace this value
+    auto maskDPDecisionUs = 0;
+    auto maskPrepDurationUs = 6000;
+    auto maskEnqueueDurationUs = 1000;
 #endif
     auto mask = std::chrono::steady_clock::now();
     auto decisionSleepUntil = std::chrono::steady_clock::now();
