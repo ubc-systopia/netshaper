@@ -10,7 +10,12 @@ import configlib
 
 def data_loader(config:configlib.Config):
     if config.communication_type == "unidirectional":
-        return (data_loader_unidirectional(config.load_data_dir_server_to_client, config), None)
+        return (data_loader_unidirectional(
+                                       config.load_data_dir_server_to_client, config.data_source,
+                                       config.setup_version,
+                                       config.data_time_resolution_server_to_client_us,
+                                       config.max_num_of_unique_streams,
+                                       config.max_num_of_traces_per_stream), None)
     elif config.communication_type == "bidirectional":
         return (
             data_loader_unidirectional(config.load_data_dir_server_to_client,
@@ -102,6 +107,7 @@ def data_filter_stochastic(config: configlib.Config, df):
     return filtered_df
 
 def data_filter_deterministic(config: configlib.Config, data):
+
     num_of_unique_streams = config.num_of_unique_streams
     max_num_of_unique_streams = config.max_num_of_unique_streams
     num_of_traces_per_stream = config.num_of_traces_per_stream
@@ -111,24 +117,34 @@ def data_filter_deterministic(config: configlib.Config, data):
     # print(type(df['label'][0])) 
 
     server_to_client_df = data[0]
-    client_to_server_df = data[1] 
-    
-    filtered_server_to_client_df= server_to_client_df[server_to_client_df['label'] < num_of_unique_streams] 
-    filtered_client_to_server_df= client_to_server_df[client_to_server_df['label'] < num_of_unique_streams]
-    
-     
-    # From every unique label, select a num_of_traces_per_stream number of traces
-    # print(num_of_traces_per_stream)
-    filtered_server_to_client_df = filtered_server_to_client_df.groupby('label').apply(lambda x: x.sample(n=num_of_traces_per_stream, replace=False))
-    filtered_client_to_server_df = filtered_client_to_server_df.groupby('label').apply(lambda x: x.sample(n=num_of_traces_per_stream, replace=False)) 
-    
-    
-     
-    # map the labels to the new labels
-    # print(filtered_df.head)
-    filtered_server_to_client_df = filtered_server_to_client_df.reset_index(drop=True)
-    filtered_client_to_server_df = filtered_client_to_server_df.reset_index(drop=True)
 
+    # print(type(server_to_client_df))
+    filtered_server_to_client_df= server_to_client_df[server_to_client_df['label'] < num_of_unique_streams] 
+
+    filtered_server_to_client_df = filtered_server_to_client_df.groupby('label').apply(lambda x: x.sample(n=num_of_traces_per_stream, replace=False))
+
+
+    filtered_server_to_client_df = filtered_server_to_client_df.reset_index(drop=True)
+
+
+    if config.communication_type == "bidirectional":
+        client_to_server_df = data[1] 
+    
+    
+        filtered_client_to_server_df= client_to_server_df[client_to_server_df['label'] < num_of_unique_streams]
+    
+     
+        filtered_client_to_server_df = filtered_client_to_server_df.groupby('label').apply(lambda x: x.sample(n=num_of_traces_per_stream, replace=False)) 
+    
+    
+     
+        # map the labels to the new labels
+        # print(filtered_df.head)
+        filtered_client_to_server_df = filtered_client_to_server_df.reset_index(drop=True)
+
+    else:  
+        filtered_client_to_server_df = None 
+        
     return (filtered_server_to_client_df, filtered_client_to_server_df)
 
 
@@ -185,6 +201,10 @@ def prune_data(config: configlib.Config, data):
    if (config.experiment == "noise_multiplier_vs_overhead_video" or config.experiment == "number_of_traces_vs_overhead_video"):
        return data
    else:
-       server_to_client_data = data[0]
-       client_to_server_data = data[1]
-       return (server_to_client_data.drop(columns = ['video_name']), client_to_server_data.drop(columns = ['video_name'])) 
+
+        server_to_client_data = data[0]
+        client_to_server_data = data[1]
+        if config.communication_type == "bidirectional":
+            return (server_to_client_data.drop(columns = ['video_name']), client_to_server_data.drop(columns = ['video_name'])) 
+        elif config.communication_type == "unidirectional":
+            return (server_to_client_data.drop(columns = ['video_name']), None) 
