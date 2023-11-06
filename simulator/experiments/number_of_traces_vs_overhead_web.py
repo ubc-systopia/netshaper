@@ -182,6 +182,9 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
     # From client to server data and parameters (if bidirectional) 
     filtered_data_c_to_s = filtered_data[1]
 
+    
+    
+    
     if(config.middlebox_period_client_to_server_us % config.app_time_resolution_client_to_server_us != 0): 
         raise ValueError("The middlebox period must be a multiple of the application time resolution.")
     else: 
@@ -241,15 +244,16 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
                'dp_interval_server_to_client_us': [],
                'dp_interval_client_to_server_us': []}
     
+    print(f"max burst size: {constant_rate_max_s_to_c}") 
     webpage_nums_list = np.linspace(config.min_webpage_num, config.max_webpage_num, config.num_of_webpage_nums, dtype=int)
-
+    # webpage_nums_list = [1, 16, 128]
     with tqdm(total=len(webpage_nums_list)*len(noise_multipliers_s_to_c)) as pbar:
         for nm_s_to_c, nm_c_to_s in zip(noise_multipliers_s_to_c, noise_multipliers_c_to_s):
             for webpage_num in webpage_nums_list:
 
-                max_dp_decision_s_to_c = webpage_num * constant_rate_max_s_to_c
+                max_dp_decision_s_to_c = 1000 * constant_rate_max_s_to_c
 
-                max_dp_decision_c_to_s = webpage_num * constant_rate_max_c_to_s
+                max_dp_decision_c_to_s = 1000 * constant_rate_max_c_to_s
 
                 
                 filtered_data_parallelized_s_to_c = get_parallel_dataframe(filtered_data_s_to_c, webpage_num, config.max_videos_per_single_experiment)
@@ -297,7 +301,17 @@ def number_of_traces_vs_overhead_web_bidirectional(config: configlib.Config, fil
                 results['dp_interval_client_to_server_us'].append(config.middlebox_period_client_to_server_us)
                 results['dp_interval_server_to_client_us'].append(config.middlebox_period_server_to_client_us)
                 
-               
+                
+                # Printing some results
+                print_results = True
+                if print_results:
+                    print(f"DP interval {config.app_time_resolution_server_to_client_us}")
+                    print(f"Aggregated privacy loss from server to client: {aggregated_eps_s_to_c}") 
+                    print(f"Number of parallel traces from server to client: {webpage_num}") 
+                    print(f"Average aggregated overhead from server to client: {total_overhead_mean}")
+                    print(f"Standard deviation of aggregated overhead from server to client: {total_overhead_std}") 
+                
+                 
                 # Baseline results
                 baseline_results['average_aggregated_overhead_constant_rate_dynamic'].append(average_aggregated_overhead_constant_rate_dynamic)
                 baseline_results['std_aggregated_overhead_constant_rate_dynamic'].append(std_aggregated_overhead_constant_rate_dynamic)

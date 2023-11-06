@@ -37,7 +37,7 @@ def number_of_traces_vs_overhead_video_unidirectional(config: configlib.Config, 
     if(config.middlebox_period_server_to_client_us % config.app_time_resolution_server_to_client_us != 0):
         raise ValueError("The middlebox period must be a multiple of the application time resolution.")
     else:
-        DP_step_s_to_c = int(config.middlebox_period_server_to_client_us / config.app_time_resolution_us_server_to_client_us) 
+        DP_step_s_to_c = int(config.middlebox_period_server_to_client_us / config.app_time_resolution_server_to_client_us) 
     
        
         
@@ -51,7 +51,7 @@ def number_of_traces_vs_overhead_video_unidirectional(config: configlib.Config, 
     overhead_constant_rate_dynamic_s_to_c = overhead(original_data_s_to_c, shaped_data_constant_rate_s_to_c) 
     
     # Aggregation of overhead for constant-rate shaping in one direction    
-    average_aggregated_overhead_constant_rate_dynamic, std_aggregated_overhead_constant_rate_dynamic = overhead_aggregation(overhead_server_to_client=overhead_constant_rate_dynamic_s_to_c,
+    average_aggregated_overhead_constant_rate_dynamic, std_aggregated_overhead_constant_rate_dynamic = overhead_aggregation(overhead_df_server_to_client=overhead_constant_rate_dynamic_s_to_c,
      overhead_df_client_to_server=None) 
 
     average_aggregated_overhead_constant_rate_anonymized = average_aggregated_overhead_constant_rate_dynamic * config.max_video_num
@@ -94,13 +94,13 @@ def number_of_traces_vs_overhead_video_unidirectional(config: configlib.Config, 
                'dp_interval_server_to_client_us': [],
                'dp_interval_client_to_server_us': None}
     
+    print(f"Max burst size it {constant_rate_max_s_to_c}")
     video_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int)
-
+    # video_nums_list = [1, 16, 128]
     with tqdm(total=len(video_nums_list)*len(noise_multipliers_s_to_c)) as pbar:
         for nm_s_to_c in noise_multipliers_s_to_c:
             for video_num in video_nums_list:
                 max_dp_decision_s_to_c = video_num * constant_rate_max_s_to_c
-
                 
                 filtered_data_parallelized_s_to_c = get_parallel_dataframe(filtered_data_pruned_s_to_c, video_num, config.max_videos_per_single_experiment)
 
@@ -133,7 +133,13 @@ def number_of_traces_vs_overhead_video_unidirectional(config: configlib.Config, 
                 results['alpha_server_to_client'].append(best_alpha_s_to_c)
                 results['video_num'].append(video_num)
                 results['dp_interval_server_to_client_us'].append(config.middlebox_period_server_to_client_us)
-                
+                              # Printing some results
+                print_results = True
+                if print_results:
+                    print(f"Aggregated privacy loss from server to client: {aggregated_eps_s_to_c}") 
+                    print(f"Number of parallel traces from server to client: {video_num}") 
+                    print(f"Average aggregated overhead from server to client: {total_overhead_mean}")
+                    print(f"Standard deviation of aggregated overhead from server to client: {total_overhead_std}")  
                
                 # Baseline results
                 baseline_results['average_aggregated_overhead_constant_rate_dynamic'].append(average_aggregated_overhead_constant_rate_dynamic)
@@ -157,6 +163,7 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
     
     # From server to client data and parameters
     filtered_data_s_to_c = filtered_data[0]
+    print(f"Sum of rows of filtered_data_s_to_c (max): {filtered_data_s_to_c.sum(axis=1).max()}")
 
     if(config.middlebox_period_server_to_client_us % config.app_time_resolution_server_to_client_us != 0):
         raise ValueError("The middlebox period must be a multiple of the application time resolution.")
@@ -185,7 +192,9 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
 
     # From client to server data and parameters (if bidirectional) 
     filtered_data_c_to_s = filtered_data[1]
-
+    # Print sum of rows of filtered_data_c_to_s
+    print(f"Sum of rows of filtered_data_c_to_s (max): {filtered_data_c_to_s.sum(axis=1).max()}")
+    
     if(config.middlebox_period_client_to_server_us % config.app_time_resolution_client_to_server_us != 0): 
         raise ValueError("The middlebox period must be a multiple of the application time resolution.")
     else: 
@@ -247,15 +256,16 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
                'dp_interval_server_to_client_us': [],
                'dp_interval_client_to_server_us': []}
     
-    video_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int)
-
+    # print(f"Max burst size is {constant_rate_max_s_to_c}")
+    # video_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int)
+    video_nums_list = [1, 16, 128]
     with tqdm(total=len(video_nums_list)*len(noise_multipliers_s_to_c)) as pbar:
         for nm_s_to_c, nm_c_to_s in zip(noise_multipliers_s_to_c, noise_multipliers_c_to_s):
             for video_num in video_nums_list:
 
-                max_dp_decision_s_to_c = video_num * constant_rate_max_s_to_c
+                max_dp_decision_s_to_c = 1000 * constant_rate_max_s_to_c
 
-                max_dp_decision_c_to_s = video_num * constant_rate_max_c_to_s
+                max_dp_decision_c_to_s = 1000 * constant_rate_max_c_to_s
 
                 
                 filtered_data_parallelized_s_to_c = get_parallel_dataframe(filtered_data_pruned_s_to_c, video_num, config.max_videos_per_single_experiment)
@@ -302,6 +312,18 @@ def number_of_traces_vs_overhead_video_bidirectional(config: configlib.Config, f
                 results['video_num'].append(video_num)
                 results['dp_interval_client_to_server_us'].append(config.middlebox_period_client_to_server_us)
                 results['dp_interval_server_to_client_us'].append(config.middlebox_period_server_to_client_us)
+               
+               
+                # Printing some results
+                print_results = True
+                if print_results:
+                    print(f"DP interval {config.app_time_resolution_server_to_client_us}")
+                    print(f"Aggregated privacy loss from server to client: {aggregated_eps_s_to_c}") 
+                    print(f"Number of parallel traces from server to client: {video_num}") 
+                    print(f"Average aggregated overhead from server to client: {total_overhead_mean}")
+                    print(f"Standard deviation of aggregated overhead from server to client: {total_overhead_std}")
+               
+               
                 
                
                 # Baseline results

@@ -2,19 +2,21 @@
 
   "experiment" : "neighboring_analysis_web",
   "run_type" : "experiment",
+  "setup_version": "v2",
+  "communication_type": "unidirectional",
   "setup" : "realistic",
   "results_dir" : "/home/ubuntu/results/",
   "num_of_unique_streams" : 96,
   "num_of_traces_per_stream" : 100,
   "filtering_type" : "deterministic",
 
-  "app_time_resolution_us" :  20e3,
-  "middlebox_period_us" : 20e3 ,
-  "privacy_window_size_s" : 300,
+  "data_time_resolution_server_to_client_us" : 10e3,
+  "app_time_resolution_server_to_client_us" :  10e3,
+  "middlebox_period_server_to_client_us" : 10e3 ,
+  "privacy_window_size_server_to_client_s" : 1,
 
   "data_source" : "memory",
-  "load_data_dir": "/home/ubuntu/csvs_web/cache",
+  "load_data_dir_server_to_client": "/home/ubuntu/csvs_web/cache/",
   "max_num_of_unique_streams" : 96,
-  "max_num_of_traces_per_stream" : 100,
-  "data_time_resolution_us" : 20e3
+  "max_num_of_traces_per_stream" : 100
 }
