@@ -10,6 +10,18 @@ parser = argparse.ArgumentParser(description="parsing simulator configs", argume
 p = parser.add_argument_group('configs')
 p.add_argument('--load_json', type=str, metavar='PATH', help='Path to the json file containing the configs')
 
+p.add_argument('--experiment',
+               type=str,
+               default=None,
+               choices=[
+                   "number_of_traces_vs_overhead_video",
+                   "number_of_traces_vs_overhead_web",
+                   "BandB_vs_TCN",
+                   "dp_interval_vs_overhead_video",
+                   "dp_interval_vs_overhead_web"
+               ],
+               help='Name of the experiment')
+
 
 # With this class, instead of accessing members of dict with dict['key'], we can use dict.key to access them.
 
@@ -40,9 +52,17 @@ def parse(config: Config = None, save_fname: str = "") -> Dict[str, Any]:
         # Load json config if there is one.
         with open(args.load_json, 'rt') as f:
             config.update(json.load(f))
+      
+      
+    # Parse command line again, with defaults set to the values from the json
+    # config. This is needed to allow command line arguments to override the
+    # json config.
+    parser.set_defaults(**config)
+    args = parser.parse_args()
+    config.update(vars(args))   
             
-    # Optionally save passed arguments
 
+    # Optionally save passed arguments
     if config.save_json:
         with open(config.save_json, 'wt') as f:
             json.dumps(args, f, indent=4, sort_keys=True)
