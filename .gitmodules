@@ -4,4 +4,4 @@
 	branch = release/2.1
 [submodule "simulator/TCN"]
 	path = simulator/TCN
-	url = https://github.com/locuslab/TCN.git
+	url = https://github.com/ubc-systopia/TCN.git
