@@ -5,7 +5,7 @@
   "communication_type": "bidirectional",
   "num_of_unique_streams": 100,
   "num_of_traces_per_stream": 100,
-  "filtering_type": "deterministic",
+  "filter_data": "true",
 
   "transport_type": "DP_dynamic",
   "DP_mechanism" : "Gaussian_rdp",
@@ -22,12 +22,7 @@
   "sensitivity_fpa": 80e6, 
   "min_dp_decision_server_to_client": 0,
   "min_dp_decision_client_to_server": 0,
-  "app_time_resolution_server_to_client_us": 5e5 ,
-  "app_time_resolution_client_to_server_us": 1e4 ,
-  "data_time_resolution_client_to_server_us": 1e4, 
-  "data_time_resolution_server_to_client_us": 5e5, 
-  "middlebox_period_server_to_client_us": 5e5 ,
-  "middlebox_period_client_to_server_us": 1e4 ,
+  "dp_intervals_us": [[5e5, 1e4], [5e5, 2e4]] ,
   "privacy_window_size_server_to_client_s": 5,
   "privacy_window_size_client_to_server_s": 1,
 
