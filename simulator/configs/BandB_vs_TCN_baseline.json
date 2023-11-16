@@ -1,7 +1,6 @@
 { 
 
   "experiment" : "BandB_vs_TCN",
-  "run_type": "experiment",
   "setup" : "realistic",
   "comparison_mode": "baseline",
   "results_dir" : "/home/ubuntu/results/",

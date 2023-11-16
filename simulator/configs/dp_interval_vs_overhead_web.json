@@ -1,15 +1,14 @@
 { 
-  "experiment" : "number_of_traces_vs_overhead_web",
+  "experiment" : "dp_interval_vs_overhead_web",
   "communication_type": "bidirectional",
   "num_of_unique_streams" : 96,
   "num_of_traces_per_stream" : 100,
-  "filtering_type" : "deterministic",
+  "filter_data" : true,
 
   "transport_type" : "DP_dynamic",
   "DP_mechanism" : "Gaussian_rdp",
-  "min_webpage_num": 1,
   "max_webpage_num": 1000,
-  "num_of_webpage_nums": 500,
+  "webpage_nums_list": [1, 16, 128],
   "max_webpage_per_single_experiment": 10,
   "privacy_losses_client_to_server": [1, 4, 16],
   "privacy_losses_server_to_client": [1, 4, 16],

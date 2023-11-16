@@ -93,7 +93,6 @@ def number_of_traces_vs_overhead_video_unidirectional(config: configlib.Config, 
                'dp_interval_server_to_client_us': [],
                'dp_interval_client_to_server_us': None}
     
-    print(f"Max burst size it {constant_rate_max_s_to_c}")
     video_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int)
     # video_nums_list = [1, 16, 128]
     with tqdm(total=len(video_nums_list)*len(noise_multipliers_s_to_c)) as pbar:

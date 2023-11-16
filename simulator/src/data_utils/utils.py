@@ -15,7 +15,6 @@ def data_loader(config:configlib.Config):
         if config.communication_type == "unidirectional":
             data.append(data_loader_unidirectional(
                                         config.load_data_dir_server_to_client, config.data_source,
-                                        config.setup_version,
                                         dp_interval_s_to_c_us,
                                         config.max_num_of_unique_streams,
                                         config.max_num_of_traces_per_stream), None)
@@ -23,13 +22,11 @@ def data_loader(config:configlib.Config):
             data.append(
                 data_loader_unidirectional(config.load_data_dir_server_to_client,
                                         config.data_source,
-                                        config.setup_version,
                                         dp_interval_s_to_c_us,
                                         config.max_num_of_unique_streams,
                                         config.max_num_of_traces_per_stream),
                 data_loader_unidirectional(config.load_data_dir_client_to_server,
                                         config.data_source,
-                                        config.setup_version,
                                         dp_interval_c_to_s_us,
                                         config.max_num_of_unique_streams,
                                         config.max_num_of_traces_per_stream)
@@ -39,7 +36,7 @@ def data_loader(config:configlib.Config):
     return data
 
 
-def data_loader_unidirectional(load_data_dir: str, data_source: str, setup_version: str, data_time_resolution_us: int, max_num_of_unique_streams: int, max_num_of_traces_per_stream: int):
+def data_loader_unidirectional(load_data_dir: str, data_source: str, data_time_resolution_us: int, max_num_of_unique_streams: int, max_num_of_traces_per_stream: int):
     if load_data_dir is None:
         raise ValueError("Please specify the directory of the dataset you want to load.")
 
@@ -49,12 +46,7 @@ def data_loader_unidirectional(load_data_dir: str, data_source: str, setup_versi
         df = pickle.load(open(file_dir, "rb"))
 
     elif data_source == "raw_data":
-        if setup_version == "v1":
-            dp = DataProcessor(load_data_dir, max_num_of_unique_streams, [1, 10], ['pkt_time', 'pkt_size'])
-        elif setup_version == "v2":
-            dp = DataProcessorNew(load_data_dir, max_num_of_unique_streams, max_num_of_traces_per_stream)
-        else:
-            raise ValueError("Please specify the setup you want to run. ('v1' or 'v2')")
+        dp = DataProcessorNew(load_data_dir, max_num_of_unique_streams, max_num_of_traces_per_stream)
         print(data_time_resolution_us)
         df = dp.aggregated_dataframe(data_time_resolution_us)
         # Save a backup in /tmp/ for future use
