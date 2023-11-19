@@ -17,7 +17,7 @@
   "middlebox_period_us" : 1e6 ,
   "privacy_window_size_s" : 300,
 
-  "data_source" : "memory",
+  "data_source" : "processed",
   "load_data_dir" : "/home/ubuntu/csvs_cache",
   "num_of_traces_per_stream" : 100,
   "num_of_unique_streams" : 100,

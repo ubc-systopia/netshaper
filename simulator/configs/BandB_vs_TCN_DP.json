@@ -9,7 +9,7 @@
   "filtering_type" : "deterministic",
 
   "transport_type" : "DP_dynamic",
-  "DP_mechanism" : "Gaussian_rdp",
+  "DP_mechanism" : "Gaussian",
   "privacy_loss_min" : 1,
   "privacy_loss_max" : 20,
   "privacy_loss_num" : 10, 
@@ -22,7 +22,7 @@
   "middlebox_period_us" : 1e6 ,
   "privacy_window_size_s" : 100,
 
-  "data_source" : "memory",
+  "data_source" : "processed",
   "load_data_dir" : "/home/ubuntu/data/windowed_real_stream/50",
   "max_num_of_unique_streams" : 9,
   "max_num_of_traces_per_stream" : 50,

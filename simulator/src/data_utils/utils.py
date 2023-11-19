@@ -40,7 +40,7 @@ def data_loader_unidirectional(load_data_dir: str, data_source: str, data_time_r
     if load_data_dir is None:
         raise ValueError("Please specify the directory of the dataset you want to load.")
 
-    if data_source == "memory":
+    if data_source == "processed":
         file_name = 'data_trace_w_' + str(int(data_time_resolution_us)) + '_c_'+ str(int(max_num_of_unique_streams)) + '.p'
         file_dir = os.path.join(load_data_dir, file_name)
         df = pickle.load(open(file_dir, "rb"))
@@ -164,7 +164,7 @@ def get_data_filter_function(config):
     
     
 def prune_data(config: configlib.Config, data_list):
-   if (config.experiment == "noise_multiplier_vs_overhead_video" or config.experiment == "number_of_traces_vs_overhead_video"):
+   if (config.experiment == "noise_multiplier_vs_overhead_video" or config.experiment == "number_of_flows_vs_overhead_video"):
        return data_list
    else:
         pruned_data_list = [] 

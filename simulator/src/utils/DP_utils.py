@@ -39,11 +39,9 @@ def queues_pull_DP(queues_list, epsilon, sensitivity, DP_mechanism, noise_multip
     # Making DP decision about dequeue size
     #DP_size = true_size + random.choice([-10,0])
     if(DP_mechanism == "Gaussian"):
-      DP_size = gaussian_mechanism(true_size, sensitivity, epsilon, 1e-5)
+      DP_size = gaussian_mechanism_rdp(true_size, sensitivity, noise_multiplier)
     elif(DP_mechanism == "Laplace"):
       DP_size = laplace_mechanism(true_size, sensitivity, epsilon)
-    elif(DP_mechanism == "Gaussian_rdp"):
-      DP_size = gaussian_mechanism_rdp(true_size, sensitivity, noise_multiplier)
 
     DP_size = min_DP_size if DP_size < min_DP_size else DP_size
     DP_size = max_DP_size if DP_size > max_DP_size else DP_size
@@ -67,7 +65,7 @@ def queues_pull_wDP(queues_list, wPrivacy_modules, sensitivity, DP_mechanism):
 
     # Making DP decision about queue size
     if(DP_mechanism == "Gaussian"):
-      pass
+      raise NotImplementedError("Gaussian mechanism is not implemented yet")
     elif(DP_mechanism == "Laplace"):
       DP_size = wPrivacy_modules[i].make_query_wDP(true_size)  
 

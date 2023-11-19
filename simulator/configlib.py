@@ -8,14 +8,14 @@ parser = argparse.ArgumentParser(description="parsing simulator configs", argume
 
 # Adding arguments to the parser
 p = parser.add_argument_group('configs')
-p.add_argument('--load_json', type=str, metavar='PATH', help='Path to the json file containing the configs')
+p.add_argument('--config_file', type=str, metavar='PATH', help='Path to the json file containing the configs')
 
 p.add_argument('--experiment',
                type=str,
                default=None,
                choices=[
-                   "number_of_traces_vs_overhead_video",
-                   "number_of_traces_vs_overhead_web",
+                   "number_of_flows_vs_overhead_video",
+                   "number_of_flows_vs_overhead_web",
                    "BandB_vs_TCN",
                    "dp_interval_vs_overhead_video",
                    "dp_interval_vs_overhead_web"
@@ -48,9 +48,9 @@ def parse(config: Config = None, save_fname: str = "") -> Dict[str, Any]:
         config = Config()
 
     args = parser.parse_args()
-    if "load_json" in args and args.load_json:
+    if "config_file" in args and args.config_file:
         # Load json config if there is one.
-        with open(args.load_json, 'rt') as f:
+        with open(args.config_file, 'rt') as f:
             config.update(json.load(f))
       
       
