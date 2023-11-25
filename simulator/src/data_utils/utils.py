@@ -8,6 +8,24 @@ from src.data_utils.DataProcessorNew import DataProcessorNew
 import configlib
 
 
+def get_data_loader_fn(config: configlib.Config):
+    if config.experiment == "privacy_loss_vs_noise_std" or config.experiment == "privacy_loss_vs_query_num":
+        return lambda x: None
+    else:
+        return data_loader
+
+def get_data_saver_fn(config: configlib.Config):
+    if config.experiment == "privacy_loss_vs_noise_std" or config.experiment == "privacy_loss_vs_query_num":
+        return lambda x, y: None
+    else: 
+        return data_saver
+
+def get_data_pruner_fn(config: configlib.Config):
+    if config.experiment == "privacy_loss_vs_noise_std" or config.experiment == "privacy_loss_vs_query_num":
+        return lambda x, y: y
+    else: 
+        return data_prune
+
 def data_loader(config:configlib.Config):
     data = []
     for dp_interval in config.dp_intervals_us:
@@ -118,7 +136,18 @@ def data_filter_deterministic(config: configlib.Config, data_list):
 
     return filtered_data_list
 
-def experiment_result_saver(config: configlib.Config, results, baseline_results = None):
+
+def get_result_saver_fn(config: configlib.Config):
+    if config.experiment == "privacy_loss_vs_noise_std" or config.experiment == "privacy_loss_vs_query_num":
+        return lambda x, y: None
+    else:
+        return experiment_result_saver
+
+
+
+
+
+def experiment_result_saver(config: configlib.Config, results):
     if not os.path.exists(config.results_dir):
         os.mkdir(config.results_dir)
 
@@ -134,12 +163,7 @@ def experiment_result_saver(config: configlib.Config, results, baseline_results 
     # Save the results 
     with open(child_dir + "results.pkl", "wb") as f:
         pickle.dump(results, f)
-    
-    # Save the baseline results if there is any
-    if baseline_results is not None:
-        with open(child_dir + "baseline_results.pkl", "wb") as f: 
-            pickle.dump(baseline_results, f)
-            
+           
 
 def analysis_result_saver(config: configlib.Config, results):
     analysis_dir = os.path.join(config.results_dir, "data_analysis")
@@ -157,13 +181,16 @@ def ensure_dir(file_path):
         os.makedirs(directory)
         
 def get_data_filter_function(config):
-    if config.filter_data:
-        return data_filter_deterministic
+    if config.experiment == "privacy_loss_vs_noise_std" or config.experiment == "privacy_loss_vs_query_num":
+        return lambda x, y: None
     else:
-        return lambda x: x 
+        if config.filter_data:
+            return data_filter_deterministic
+        else:
+            return lambda x, y: y 
+
     
-    
-def prune_data(config: configlib.Config, data_list):
+def data_prune(config: configlib.Config, data_list):
    if (config.experiment == "noise_multiplier_vs_overhead_video" or config.experiment == "number_of_flows_vs_overhead_video"):
        return data_list
    else:

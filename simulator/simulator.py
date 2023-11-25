@@ -5,36 +5,39 @@ import os
 import warnings
 warnings.filterwarnings("ignore")
 
-from src.data_utils.utils import data_loader, data_saver, experiment_result_saver, analysis_result_saver, get_data_filter_function, prune_data
+from src.data_utils.utils import get_data_saver_fn,  get_data_filter_function, get_data_loader_fn, get_data_pruner_fn, get_result_saver_fn
 
 from experiments.utils import get_experiment_function
-from analysis.utils import get_analysis_function
-from src.data_utils.testbed_data_processor import get_data_aggregator_function   
      
 def main():
     # load the config file
     config = configlib.parse(save_fname="tmp.txt")
+
+    # load the data
+    data_loader_fn = get_data_loader_fn(config) 
+    
     '''
     The simulator supports two communication types:
     1. unidirectional
     2. bidirectional
-    
     In bidirectional, the data is a tuple of two dataframe, one for each direction.
     In unidirectional, the data is a tuple with the first element being the dataframe and the second element being None. 
     ''' 
-    data_list = data_loader(config) 
+    data_list = data_loader_fn(config) 
     
     '''
     We cache the data of the experiment in the directory specified by config.save_data_dir. in case the data is already cached, we load it from the cache. 
     ''' 
     if config.save_data_dir is not None:
-        data_saver(config, data_list)
+        data_saver_fn = get_data_saver_fn(config)
+        data_saver_fn(config, data_list)
 
     
     '''
     Some experiments requires to have the title of each webpage/video in the dataset, others don't. Here, we prune the data to only include the required columns based on the experiment type. 
-    '''        
-    data = prune_data(config, data)
+    '''      
+    data_pruner_fn = get_data_pruner_fn(config)  
+    data_list = data_pruner_fn(config, data_list)
 
     
     '''
@@ -43,10 +46,19 @@ def main():
     data_filter_fn = get_data_filter_function(config)
     filtered_data_list = data_filter_fn(config, data_list)
 
+
+    '''
+    Run the experiment. 
+    '''
     experiment_fn = get_experiment_function(config)
-    
     results = experiment_fn(config, filtered_data_list)
-    experiment_result_saver(config, results)
+
+
+    '''
+    Save the results of the experiment. 
+    '''
+    result_saver_fn = get_result_saver_fn(config)
+    result_saver_fn(config, results)
 
     
 

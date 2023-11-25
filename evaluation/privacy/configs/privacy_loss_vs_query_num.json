@@ -1,0 +1,7 @@
+{
+  "sensitivity" : 100e3,
+  "delta" : 1e-6,
+  "noise_variances" : [100e3, 400e3, 1600e3, 6400e3],
+  "results_dir": "results/",
+  "plot_dir": "plots/"
+}

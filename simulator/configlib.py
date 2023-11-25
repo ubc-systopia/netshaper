@@ -18,7 +18,9 @@ p.add_argument('--experiment',
                    "number_of_flows_vs_overhead_web",
                    "BandB_vs_TCN",
                    "dp_interval_vs_overhead_video",
-                   "dp_interval_vs_overhead_web"
+                   "dp_interval_vs_overhead_web",
+                   "privacy_loss_vs_noise_std",
+                   "privacy_loss_vs_query_num"
                ],
                help='Name of the experiment')
 
