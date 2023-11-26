@@ -9,6 +9,9 @@ from src.data_utils.utils import get_data_saver_fn,  get_data_filter_function, g
 
 from experiments.utils import get_experiment_function
      
+from src.plots.utils import get_plot_fn
+
+
 def main():
     # load the config file
     config = configlib.parse(save_fname="tmp.txt")
@@ -60,6 +63,13 @@ def main():
     result_saver_fn = get_result_saver_fn(config)
     result_saver_fn(config, results)
 
+    
+    '''
+    Plot the data
+    '''
+    plot_fn = get_plot_fn(config)
+    plot_fn(config, results)
+    
     
 
      

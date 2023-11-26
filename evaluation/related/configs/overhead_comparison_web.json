@@ -19,15 +19,16 @@
   "sensitivity_client_to_server" : 200,
   "min_dp_decision_server_to_client": 0,
   "min_dp_decision_client_to_server": 0,
-  "dp_intervals_us": [[1e6, 1e4], [500e3, 1e4]],
-  "static_max_dp_decision": true,
-  "privacy_window_size_server_to_client_s" : 1,
+  "dp_intervals_us": [[50e3, 10e3]],
+  "static_max_dp_decision": false,
+  "privacy_window_size_server_to_client_s" : 5,
   "privacy_window_size_client_to_server_s" : 1,
 
   "data_source": "processed",
-  "load_data_dir_server_to_client": "../../data/web/cachec/server_to_client/",
-  "load_data_dir_client_to_server": "../../data/web/cachec/client_to_server/",
-  "results_dir": "results/",   
+  "load_data_dir_server_to_client": "../../dataset/web/cache/server_to_client/",
+  "load_data_dir_client_to_server": "../../dataset/web/cache/client_to_server/",
+  "results_dir": "results/",
+  "plot_dir": "plots/",   
   "max_num_of_unique_streams" : 96,
   "max_num_of_traces_per_stream" : 100
 }

@@ -92,7 +92,7 @@ def overhead_video_unidirectional(config: configlib.Config, filtered_data_list):
     
         if config.experiment == "dp_interval_vs_overhead_web":                 
             video_nums_list = config.video_nums_list
-        elif config.experiment == "number_of_flows_vs_overhead_web":
+        elif config.experiment == "overhead_comparison_web":
             video_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int)  
 
      
@@ -248,7 +248,7 @@ def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
 
         if config.experiment == "dp_interval_vs_overhead_web":                 
             video_nums_list = config.video_nums_list
-        elif config.experiment == "number_of_flows_vs_overhead_web":
+        elif config.experiment == "overhead_comparison_web":
             video_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int)  
 
         with tqdm(total=len(video_nums_list)*len(noise_multipliers_s_to_c)) as pbar:

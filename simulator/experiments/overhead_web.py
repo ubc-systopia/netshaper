@@ -86,7 +86,7 @@ def overhead_web_unidirectional(config: configlib.Config, filtered_data_list):
     
         if config.experiment == "dp_interval_vs_overhead_web":                 
             webpage_nums_list = config.webpage_nums_list
-        elif config.experiment == "number_of_flows_vs_overhead_web":
+        elif config.experiment == "overhead_comparison_web":
             webpage_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int) 
         
     with tqdm(total=len(webpage_nums_list)*len(noise_multipliers_s_to_c)) as pbar:
@@ -143,7 +143,7 @@ def overhead_web_unidirectional(config: configlib.Config, filtered_data_list):
 
 
 
-def overhead_web_biidirectional(config: configlib.Config, filtered_data_list):
+def overhead_web_bidirectional(config: configlib.Config, filtered_data_list):
     alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
 
 
@@ -164,7 +164,6 @@ def overhead_web_biidirectional(config: configlib.Config, filtered_data_list):
                'std_aggregated_overhead_constant_rate_dynamic': [],
                'average_aggregated_overhead_constant_rate_anonymized':[],
                'std_aggregated_overhead_constant_rate_anonymized':[],
-               'std_aggregated_overhead_dynamic_shaping': [],
                'average_aggregated_overhead_pacer':[],
                'std_aggregated_overhead_pacer': []
                }
@@ -201,14 +200,14 @@ def overhead_web_biidirectional(config: configlib.Config, filtered_data_list):
 
         # From client to server data and parameters (if bidirectional) 
         filtered_data_c_to_s = filtered_data[1]
-        dp_interval_c_to_s_us = config.dp_intervals[index][1]
+        dp_interval_c_to_s_us = config.dp_intervals_us[index][1]
         
         
         
         num_of_queries_c_to_s = int(privacy_window_size_c_to_s_us / dp_interval_c_to_s_us)
         
         # Baseline from client to server        
-        original_data_c_to_s, shaped_data_constant_rate_c_to_s = NonDP_transport(filtered_data_c_to_s, dp_interval_c_to_s_us, config.data_time_resolution_client_to_server_us, method="constant-rate") 
+        original_data_c_to_s, shaped_data_constant_rate_c_to_s = NonDP_transport(filtered_data_c_to_s, dp_interval_c_to_s_us, dp_interval_c_to_s_us, method="constant-rate") 
         constant_rate_max_c_to_s = shaped_data_constant_rate_c_to_s.max().max()
         overhead_constant_rate_dynamic_c_to_s = overhead(original_data_c_to_s, shaped_data_constant_rate_c_to_s)  
 
@@ -235,8 +234,8 @@ def overhead_web_biidirectional(config: configlib.Config, filtered_data_list):
 
         if config.experiment == "dp_interval_vs_overhead_web":                 
             webpage_nums_list = config.webpage_nums_list
-        elif config.experiment == "number_of_flows_vs_overhead_web":
-            webpage_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int) 
+        elif config.experiment == "overhead_comparison_web":
+            webpage_nums_list = np.linspace(config.min_webpage_num, config.max_webpage_num, config.num_of_webpage_nums, dtype=int) 
        
         with tqdm(total=len(webpage_nums_list)*len(noise_multipliers_s_to_c)) as pbar:
             for nm_s_to_c, nm_c_to_s in zip(noise_multipliers_s_to_c, noise_multipliers_c_to_s):
@@ -322,7 +321,7 @@ def overhead_web_biidirectional(config: configlib.Config, filtered_data_list):
 
 def overhead_web(config: configlib.Config, filtered_data_list):
     if config.communication_type == "bidirectional":
-        return overhead_web_biidirectional(config, filtered_data_list)
+        return overhead_web_bidirectional(config, filtered_data_list)
     elif config.communication_type == "unidirectional":
         return overhead_web_unidirectional(config, filtered_data_list)
     else: 

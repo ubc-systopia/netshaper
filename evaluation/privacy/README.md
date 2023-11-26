@@ -6,17 +6,17 @@ Here, we measure the relation between standard deviation of the noise asdded to 
 ## Installing Python Dependencies
 To install the python dependencies, run the following command:
 ```bash
-pip install -r requirements.txt
+pip install -r ../../simulator/requirements.txt
 ```
 
 ## Running the Microbenchmarks
 To run the first microbenchmark, run the following command:
 ```bash
-run.sh --experiment="privacy_loss_vs_noise_std"  --config_file="configs/privacy_loss_vs_noise_std.json"
+./run.sh --experiment="privacy_loss_vs_noise_std"  --config_file="configs/privacy_loss_vs_noise_std.json"
 ```
 To run the second microbenchmark, run the following command:
 ```bash
-run.sh --experiment="privacy_loss_vs_num_queries"  --config_file="configs/privacy_loss_vs_num_queries.json"
+./run.sh --experiment="privacy_loss_vs_num_queries"  --config_file="configs/privacy_loss_vs_num_queries.json"
 ```
 The results will be saved in the `/results` directory.
 

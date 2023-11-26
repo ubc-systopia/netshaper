@@ -31,14 +31,14 @@ def data_loader(config:configlib.Config):
     for dp_interval in config.dp_intervals_us:
         dp_interval_s_to_c_us, dp_interval_c_to_s_us = dp_interval[0], dp_interval[1]
         if config.communication_type == "unidirectional":
-            data.append(data_loader_unidirectional(
+            data.append((data_loader_unidirectional(
                                         config.load_data_dir_server_to_client, config.data_source,
                                         dp_interval_s_to_c_us,
                                         config.max_num_of_unique_streams,
-                                        config.max_num_of_traces_per_stream), None)
+                                        config.max_num_of_traces_per_stream), None))
         elif config.communication_type == "bidirectional":
             data.append(
-                data_loader_unidirectional(config.load_data_dir_server_to_client,
+                (data_loader_unidirectional(config.load_data_dir_server_to_client,
                                         config.data_source,
                                         dp_interval_s_to_c_us,
                                         config.max_num_of_unique_streams,
@@ -47,7 +47,7 @@ def data_loader(config:configlib.Config):
                                         config.data_source,
                                         dp_interval_c_to_s_us,
                                         config.max_num_of_unique_streams,
-                                        config.max_num_of_traces_per_stream)
+                                        config.max_num_of_traces_per_stream))
                 )
         else:
             raise ValueError("Please specify the communication type you want to run. ('unidirectional' or 'bidirectional')")
@@ -132,7 +132,7 @@ def data_filter_deterministic(config: configlib.Config, data_list):
         else:  
             filtered_client_to_server_df = None 
             
-        filtered_data_list.append(filtered_server_to_client_df, filtered_client_to_server_df)
+        filtered_data_list.append((filtered_server_to_client_df, filtered_client_to_server_df))
 
     return filtered_data_list
 
@@ -199,7 +199,11 @@ def data_prune(config: configlib.Config, data_list):
             server_to_client_data = data[0]
             client_to_server_data = data[1]
             if config.communication_type == "bidirectional":
-                pruned_data_list.append(server_to_client_data.drop(columns = ['video_name']), client_to_server_data.drop(columns = ['video_name'])) 
+                pruned_data_list.append(
+                    (server_to_client_data.drop(columns = ['video_name']), client_to_server_data.drop(columns = ['video_name']))
+                ) 
             elif config.communication_type == "unidirectional":
-                pruned_data_list.append(server_to_client_data.drop(columns = ['video_name']), None) 
+                pruned_data_list.append(
+                    (server_to_client_data.drop(columns = ['video_name']), None)
+                ) 
         return pruned_data_list

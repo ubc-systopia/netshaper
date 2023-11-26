@@ -25,7 +25,7 @@ The config file is a json file that contains all the parameters for the traffic 
     * ``"dp_interval_vs_overhead_video"``.
     * ``"dp_interval_vs_overhead_web"``.
     * ``"number_of_flows_vs_overhead_video"``.
-    * ``"number_of_flows_vs_overhead_web"``.
+    * ``"overhead_comparison_web"``.
     * ``"empirical_privacy"``.
 * ``"communication_type"``: The communication type between the client and the server:
     * ``"bidirectional"``. 
