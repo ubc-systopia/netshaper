@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import configlib
+from memory_profiler import profile
 
 from src.transport import DP_transport, NonDP_transport
 from src.utils.overhead_utils import overhead, overhead_aggregation, get_pacer_web_overhead
@@ -77,7 +78,7 @@ def overhead_video_unidirectional(config: configlib.Config, filtered_data_list):
 
 
         # Pacer shaping and overheads
-        original_data_s_to_c, shaped_data_pacer_s_to_c = NonDP_transport(filtered_data_s_to_c, dp_interval_s_to_c_us, dp_interval_s_to_c_us, method="pacer_video")
+        original_data_s_to_c, shaped_data_pacer_s_to_c = NonDP_transport(filtered_data_s_to_c, dp_interval_s_to_c_us, dp_interval_s_to_c_us, method="pacer_video", pacer_data=config.pacer_data_dir)
         overhead_pacer_s_to_c = overhead(original_data_s_to_c, shaped_data_pacer_s_to_c)
     
         # Aggregation of overhead for pacer shaping in one direction
@@ -156,7 +157,7 @@ def overhead_video_unidirectional(config: configlib.Config, filtered_data_list):
     return results
 
 
-
+@profile
 def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
     alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
 
@@ -206,7 +207,7 @@ def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
         overhead_constant_rate_dynamic_s_to_c = overhead(original_data_s_to_c, shaped_data_constant_rate_s_to_c) 
 
         # Pacer overhead from server to client
-        original_data_s_to_c, shaped_data_pacer_s_to_c = NonDP_transport(filtered_data_s_to_c, dp_interval_s_to_c_us, dp_interval_s_to_c_us, method="pacer_video")
+        original_data_s_to_c, shaped_data_pacer_s_to_c = NonDP_transport(filtered_data_s_to_c, dp_interval_s_to_c_us, dp_interval_s_to_c_us, method="pacer_video", pacer_data=config.pacer_data_dir)
         overhead_pacer_s_to_c = overhead(original_data_s_to_c, shaped_data_pacer_s_to_c) 
     
     
@@ -246,9 +247,9 @@ def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
         average_aggregated_overhead_pacer, std_aggregated_overhead_pacer = overhead_aggregation(overhead_df_server_to_client=overhead_pacer_s_to_c,
                          overhead_df_client_to_server=overhead_pacer_c_to_s)
 
-        if config.experiment == "dp_interval_vs_overhead_web":                 
+        if config.experiment == "dp_interval_vs_overhead_video":                 
             video_nums_list = config.video_nums_list
-        elif config.experiment == "overhead_comparison_web":
+        elif config.experiment == "overhead_comparison_video":
             video_nums_list = np.linspace(config.min_video_num, config.max_video_num, config.num_of_video_nums, dtype=int)  
 
         with tqdm(total=len(video_nums_list)*len(noise_multipliers_s_to_c)) as pbar:
@@ -328,6 +329,9 @@ def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
                     results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
                     results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
                     results['video_num'].append(video_num)
+                    
+                    del original_data_s_to_c, DP_data_s_to_c, dummy_data_s_to_c
+                    del original_data_c_to_s, DP_data_c_to_s, dummy_data_c_to_s
                     
                     
                     

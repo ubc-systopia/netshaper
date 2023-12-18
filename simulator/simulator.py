@@ -63,7 +63,6 @@ def main():
     result_saver_fn = get_result_saver_fn(config)
     result_saver_fn(config, results)
 
-    
     '''
     Plot the data
     '''

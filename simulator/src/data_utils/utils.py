@@ -191,9 +191,9 @@ def get_data_filter_function(config):
 
     
 def data_prune(config: configlib.Config, data_list):
-   if (config.experiment == "noise_multiplier_vs_overhead_video" or config.experiment == "number_of_flows_vs_overhead_video"):
+    if (config.experiment == "dp_interval_vs_overhead_video" or config.experiment == "overhead_comparison_video"):
        return data_list
-   else:
+    else:
         pruned_data_list = [] 
         for data in data_list:
             server_to_client_data = data[0]

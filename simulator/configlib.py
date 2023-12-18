@@ -14,7 +14,7 @@ p.add_argument('--experiment',
                type=str,
                default=None,
                choices=[
-                   "number_of_flows_vs_overhead_video",
+                   "overhead_comparison_video",
                    "overhead_comparison_web",
                    "BandB_vs_TCN",
                    "dp_interval_vs_overhead_video",

@@ -32,7 +32,7 @@ def DP_transport(data, app_time_resolution_us, transport_type, DP_mechanism, sen
     return -1, -1
   
 
-def NonDP_transport(data, app_time_resolution_us, data_time_resolution_us, method="constant-rate"):
+def NonDP_transport(data, app_time_resolution_us, data_time_resolution_us, method="constant-rate", pacer_data = None):
     app = Application(app_time_resolution_us, data, data_time_resolution_us)
     app_df = app.data_loader()
     app_labels = app.get_all_labels()
@@ -49,7 +49,7 @@ def NonDP_transport(data, app_time_resolution_us, data_time_resolution_us, metho
         video_names = [ x[x.index('mpd-')+4:x.index('.csv')] for x in video_names]
         # Getting Pacer data 
         #TODO: make it configurable
-        pacer_data = pd.read_csv("/home/ubuntu/data/pacer/tvseries_720p_sizes.csv")
+        pacer_data = pd.read_csv(pacer_data)
         pacer_data.fillna(0, inplace=True)
 
         # Filter based on video names
