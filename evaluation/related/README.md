@@ -15,6 +15,6 @@ To run compare bandwidth overhead of NetShaper with Pacer and Constant-Rate Shap
 ```
 To run the second microbenchmark, run the following command:
 ```bash
-./run.sh --experiment="number_of_flows_vs_overhead_video"  --config_file="configs/number_of_flows_vs_overhead_video.json"
+./run.sh --experiment="overhead_comparison_video"  --config_file="configs/overhead_comparison_video.json"
 ```
 The results will be saved in the `/results` directory. The corresponding plots are saved in the `/plots` directory.
