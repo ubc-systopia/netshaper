@@ -1,0 +1,31 @@
+{ 
+  "experiment" : "empirical_privacy",
+  "communication_type": "unidirectional",
+  "num_of_unique_streams": 40,
+  "num_of_traces_per_stream": 100, 
+  "filter_data": true,
+
+
+  "transport_type": "DP_dynamic",
+  "DP_mechansim": "Gaussian",
+  "min_privacy_loss_server_to_client": 1,
+  "max_privacy_loss_server_to_client": 100, 
+  "num_privacy_loss_server_to_client":  10,
+  "delta_server_to_client": 1e-6,
+  "sensitivity_server_to_client": 2.5e6,
+  "dp_intervals_us": [[1e6, 1e4]],
+  "privacy_window_size_server_to_client_s": 5,
+  "attack_epoch_num": 1000,
+  "attack_batch_size": 64,
+  "attack_num_of_repeats": 3,
+
+
+
+
+  "data_source" : "processed",
+  "load_data_dir_server_to_client": "../../dataset/video/cache/server_to_client/",
+  "results_dir": "results/",
+  "plot_dir": "plots/",
+  "max_num_of_unique_streams" : 100,
+  "max_num_of_traces_per_stream" : 100
+}

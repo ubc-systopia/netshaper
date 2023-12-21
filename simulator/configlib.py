@@ -16,7 +16,7 @@ p.add_argument('--experiment',
                choices=[
                    "overhead_comparison_video",
                    "overhead_comparison_web",
-                   "BandB_vs_TCN",
+                   "empirical_privacy",
                    "dp_interval_vs_overhead_video",
                    "dp_interval_vs_overhead_web",
                    "privacy_loss_vs_noise_std",

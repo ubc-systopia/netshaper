@@ -34,53 +34,72 @@ def attack_accuracy(config:configlib.Config, attack_fn, DP_data):
     return accs, precs, recals
 
 
-def empirical_privacy(config: configlib.Config, datasets: pd.DataFrame):
-    data = datasets[0]
-    ## Initializing parameters
-    if(config.middlebox_period_us % config.app_time_resolution_us != 0):
-        print("The middlebox period must be a multiple of the application time resolution.")
-        return -1
-    else:
-         DP_step = int(config.middlebox_period_us / config.app_time_resolution_us) 
+def empirical_privacy(config: configlib.Config, filtered_data_list):
+    results = {'privacy_loss_server_to_client': [],
+               'noise_multiplier_server_to_client': [],
+               'Baseline_BandB_accuracy': [],
+               'Baseline_BandB_precision': [],
+               'Baseline_BandB_recall': [],
+               'Baseline_TCN_accuracy': [],
+               'Baseline_TCN_precision': [],
+               'Baseline_TCN_recall': [],
+               'DP_BandB_accuracy': [],
+               'DP_BandB_precision': [],
+               'DP_BandB_recall': [],
+               'DPTCN_accuracy': [],
+               'DP_TCN_precision': [],
+               'DP_TCN_recall': [],
+               'noise_multiplier_server_to_client': [],
+               'alpha_server_to_client': [], 
+               'dp_interval_server_to_client': [],
+               'sensitivity_server_to_client': [],
+               'comparsion_mode': []
+    } 
     
-    privacy_window_size_us = config.privacy_window_size_s * 1e6
-    num_of_queries = int(privacy_window_size_us / config.middlebox_period_us)
-    
-    ## privacy loss parameters
-    alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))   
-       
-    ## Baseline accuracy 
-    if (config.comparison_mode == "baseline"):
-        baseline_results = {'classes_num': [], 'TCN_accuracy': [], 'TCN_precision': [], 'TCN_recall': [], 'BandB_accuracy': [], 'BandB_precision': [], 'BandB_recall': []}
-        classes_num_list = np.linspace(config.min_classes_num, config.max_classes_num, config.classes_num_num, dtype=int)
-        with tqdm(total=len(classes_num_list)) as pbar:
-            for classes_num in classes_num_list:
-                pbar.set_description(f'Number of videos: {classes_num} ...')
-                # Filtering data based on the config
-                config.num_of_unique_streams =  classes_num
-                filtered_data = data_filter_deterministic(config, df = data)
-                baseline_results['classes_num'].append(classes_num)
-                
-                BandB_accs, BandB_precs, BandB_recals = attack_accuracy(config, BandB_attack, filtered_data)
-                baseline_results['BandB_accuracy'].append(BandB_accs)
-                baseline_results['BandB_precision'].append(BandB_precs)
-                baseline_results['BandB_recall'].append(BandB_recals)
-                
-                 
-                TCN_accs, TCN_precs, TCN_recals = attack_accuracy(config, TCN_attack, filtered_data)
-                baseline_results['TCN_accuracy'].append(TCN_accs)
-                baseline_results['TCN_precision'].append(TCN_precs)
-                baseline_results['TCN_recall'].append(TCN_recals) 
-                pbar.update(1)    
-                
-        return baseline_results, {}
-    
-    if (config.comparison_mode == "DP"):
-        privacy_losses = np.linspace(config.privacy_loss_min, config.privacy_loss_max, config.privacy_loss_num)
-        
-        filtered_data = data_filter_deterministic(config, df = data) 
 
-        results = {'privacy_loss': [], 'noise_multiplier': [], 'BandB_accuracy': [], 'BandB_precision': [], 'BandB_recall': [], 'TCN_accuracy': [], 'TCN_precision': [], 'TCN_recall': []}
+
+    alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
+
+    
+    privacy_window_size_s_to_c_us = config.privacy_window_size_server_to_client_s * 1e6
+
+
+    for index, filtered_data in enumerate(filtered_data_list):
+        # From server to client data and parameters
+        filtered_data_s_to_c = filtered_data[0]
+        dp_interval_s_to_c_us = config.dp_intervals_us[index][0]
+        
+        num_of_queries_s_to_c = int(privacy_window_size_s_to_c_us / dp_interval_s_to_c_us)
+        
+
+        ## Initializing parameters
+        DP_step = 1 
+        
+        
+
+
+        ## Traffic analysis attack on  non-shaped traffic
+        
+        BandB_accs, BandB_precs, BandB_recals = attack_accuracy(config, BandB_attack, filtered_data_s_to_c)
+
+
+
+
+        TCN_accs, TCN_precs, TCN_recals = attack_accuracy(config, TCN_attack, filtered_data_s_to_c)
+
+        results['Baseline_BandB_accuracy'].append(BandB_accs)
+        results['Baseline_BandB_precision'].append(BandB_precs)
+        results['Baseline_BandB_recall'].append(BandB_recals)
+        results['Baseline_TCN_accuracy'].append(TCN_accs)
+        results['Baseline_TCN_precision'].append(TCN_precs)
+        results['Baseline_TCN_recall'].append(TCN_recals)
+                 
+
+        ## Traffic analysis attack on DP shaped traffic
+
+
+        privacy_losses = np.linspace(config.min_privacy_loss_server_to_client, config.max_privacy_loss_server_client, config.num_privacy_loss_server_to_client)
+        
         with tqdm(total=len(privacy_losses)) as pbar: 
             for privacy_loss in privacy_losses:
                 pbar.set_description(f'Privacy loss: {privacy_loss} ...')
@@ -98,10 +117,10 @@ def empirical_privacy(config: configlib.Config, datasets: pd.DataFrame):
                 results['BandB_precision'].append(BandB_precs)
                 results['BandB_recall'].append(BandB_recals)
                 
-                 
+                
                 TCN_accs, TCN_precs, TCN_recals = attack_accuracy(config, TCN_attack, DP_data)
                 results['TCN_accuracy'].append(TCN_accs)
                 results['TCN_precision'].append(TCN_precs)
                 results['TCN_recall'].append(TCN_recals)  
                 pbar.update(1)                    
-        return {}, results 
+        return results 

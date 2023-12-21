@@ -2,4 +2,5 @@ build
 cmake-build-debug
 test
 *.pyc
-
+dataset/*
+hardware/msquic/*
