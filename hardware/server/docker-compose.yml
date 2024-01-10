@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+
+  # Proxies requests to internal services
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ../../dataset/server:/home
+    restart: unless-stopped
+    ports:
+      - "5555:80"
+
+networks:
+  default:
+    external:
+      name: ${NETWORK}
