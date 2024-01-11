@@ -12,8 +12,3 @@ services:
     restart: unless-stopped
     ports:
       - "5555:80"
-
-networks:
-  default:
-    external:
-      name: ${NETWORK}
