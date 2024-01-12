@@ -39,13 +39,13 @@ add_compile_definitions(SHAPING) # Enables shaping (else, just proxies data)
 
 include_directories(../msquic/src/inc)
 
-add_subdirectory(../msquic)
-add_subdirectory(../src/modules/quic_wrapper)
-add_subdirectory(../src/modules/tcp_wrapper)
-add_subdirectory(../src/modules/lamport_queue/queue)
-add_subdirectory(../src/modules/shaper)
-add_subdirectory(../src/example/util)
+add_subdirectory(../msquic msquic)
+add_subdirectory(../src/modules/quic_wrapper src/modules/quic_wrapper)
+add_subdirectory(../src/modules/tcp_wrapper src/modules/tcp_wrapper)
+add_subdirectory(../src/modules/lamport_queue/queue src/modules/lamport_queue/queue)
+add_subdirectory(../src/modules/shaper src/modules/shaper)
+add_subdirectory(../src/example/util src/example/util)
 
 
 # Build example
-add_subdirectory(../src/example/peer2)
+add_subdirectory(../src/example/peer2 src/example/peer2)
