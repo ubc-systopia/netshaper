@@ -37,6 +37,9 @@ for i in {2..8}; do cpufreq-set -c $i -f 4GHz; done
 ## Server
 ### Prerequisites 
 Ensure that Docker and Docker Compose are installed on the server machine.
+```bash
+sudo apt install docker-compose
+```
 
 ### Setup
 To setup the server, follow these steps:  
@@ -52,6 +55,34 @@ To setup the server, follow these steps:
 Run the docker container of server with the following command:
 ```bash
 docker-compose up -d
+```
+
+
+## Middlebox at ther server side (MB-2)
+### Prerequisites
+Ensure that Docker, Docker Compose, and tcpdump are installed on the middlebox machine.
+```bash
+sudo apt install docker-compose tcpdump
+```
+
+### Setup
+To setup the middlebox at the server side follow these steps:
+1. Open an SSH connection to the machine that serves as the middlebox at server side. 
+2. Clone the NetShaper repository onto the middlebox at the server side.
+3. Change the directory to `Path/To/NetShaper/hardware/server-middlebox/`
+4. Execute the setup script. Ensure that the machine has Internet connection to download and isntall dependencies. 
+```bash
+./setup.sh
+```
+
+### Compile
+To build the server-side middlebox binary, execute the following command:
+```bash
+./build.sh
+```
+With the successful build of the middlebox, build peer2 container with the following command:
+```bash
+docker build -t peer2 ./peer2/
 ```
 
 
