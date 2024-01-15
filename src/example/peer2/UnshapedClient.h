@@ -22,6 +22,7 @@ private:
   // Client to queue_in and queue_out. queue_out contains response received on
   // the sending socket
   std::unordered_map<TCP::Client *, QueuePair> *clientToQueues;
+  std::shared_mutex mapLock;
 
   config::Peer2Config peer2Config;
 
