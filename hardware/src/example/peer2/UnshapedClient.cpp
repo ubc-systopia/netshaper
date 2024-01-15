@@ -65,7 +65,10 @@ void UnshapedClient::onResponse(TCP::Client *client,
                                 uint8_t *buffer, size_t length,
                                 connectionStatus connStatus) {
   if (connStatus == ONGOING) {
-    auto toShaped = (*clientToQueues)[client].toShaped;
+    mapLock.lock_shared();
+    auto toShaped = (*clientToQueues).at(client).toShaped;
+    mapLock.unlock_shared();
+
     while (toShaped->push(buffer, length) == -1) {
       log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
                    " is full, waiting for it to be empty!");
@@ -97,14 +100,19 @@ void UnshapedClient::onResponse(TCP::Client *client,
 }
 
 inline void UnshapedClient::eraseMapping(TCP::Client *client) {
-  auto queues = (*clientToQueues)[client];
+  QueuePair queues;
+  // Clear mappings
+  mapLock.lock();
+  queues = (*clientToQueues)[client];
+  (*clientToQueues).erase(client);
+  mapLock.unlock();
+
 #ifdef DEBUGGING
   log(DEBUG, "Clearing the mapping for the queues {" +
              std::to_string(queues.fromShaped->ID) + "," +
              std::to_string(queues.toShaped->ID) + "}");
 #endif
-  // Clear mappings
-  (*clientToQueues).erase(client);
+
   delete client;
   (*queuesToClient)[queues] = nullptr;
 }
@@ -148,10 +156,12 @@ void UnshapedClient::updateConnectionStatus(uint64_t queueID,
                      std::forward<decltype(PH3)>(PH3),
                      std::forward<decltype(PH4)>(PH4));
         };
+        mapLock.lock();
         auto unshapedClient = new TCP::Client{
             queues.fromShaped->addrPair.serverAddress,
             std::stoi(queues.fromShaped->addrPair.serverPort),
             onResponseFunc, logLevel};
+
 #ifdef DEBUGGING
         log(DEBUG, "Starting a new client paired to queues {" +
                    std::to_string(queues.fromShaped->ID) + "," +
@@ -159,6 +169,7 @@ void UnshapedClient::updateConnectionStatus(uint64_t queueID,
 #endif
         (*queuesToClient)[queues] = unshapedClient;
         (*clientToQueues)[unshapedClient] = queues;
+        mapLock.unlock();
       } else if (queueInfo.connStatus == FIN) {
         (*pendingSignal)[queueInfo.queueID] = FIN;
       }
