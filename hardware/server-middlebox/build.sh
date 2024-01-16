@@ -11,6 +11,6 @@ OFF='\033[0m'
 BUILD_TYPE=Release # Debug
 
 # Build the proxy application
-cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -G Ninja -S $(pwd) -B $(pwd)/build
-cmake --build $(pwd)/build -j $(nproc)
+cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -G Ninja -S $(pwd) -B $(pwd)/peer2/build
+cmake --build $(pwd)/peer2/build -j $(nproc)
 
