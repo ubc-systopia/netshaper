@@ -51,7 +51,7 @@ To setup the server, follow these steps:
 ./setup.sh
 ```
 
-### Run
+### Build
 Run the docker container of server with the following command:
 ```bash
 docker-compose up -d
@@ -75,7 +75,7 @@ To setup the middlebox at the server side follow these steps:
 ./setup.sh
 ```
 
-### Compile
+### Build
 To build the server-side middlebox binary, execute the following command:
 ```bash
 ./build.sh
@@ -103,7 +103,7 @@ To setup the middlebox at the client side follow these steps:
 ./setup.sh
 ```
 
-### Compile
+### Build
 To build the client-side middlebox binary, execute the following command:
 ```bash
 ./build.sh
@@ -114,4 +114,33 @@ docker build -t peer1 ./peer1/
 ```
 
 
+## Client
+### Prerequisites
+Ensure that Docke, Docker Compose, and python are installed on the client machine.
+```bash
+sudo apt install docker-compose python3 python3-pip
+```
 
+### Setup
+To setup the client, follow these steps:  
+1. Open an SSH connection to the machine that serves as the client.
+2. Clone the NetShaper repository onto the client machine. 
+3. Change the directory to `Path/To/Netshaper/hardware/client/`
+4. Execute the client setup script. Ensure that your machine has an internet connection to download the dataset for the client:
+```bash
+./setup.sh
+```
+
+
+### Build 
+To build the client container, execute the following command:
+```bash
+docker build -t video-client .
+```
+
+## Running the Experiments
+To run the experiments, follow these steps:
+1. **Ensure that the server, middleboxes, and client have being setup and built.**
+2. Open an SSH connection to the client machine.
+3. Change the directory to `Path/To/Netshaper/evaluation/videoLatency/`
+4. 
