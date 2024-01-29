@@ -1,5 +1,5 @@
 {
-  "ITER_NUM": 10,
+  "iter_num": 10,
   "noise_multiplier_peer1": 12,
   "noise_multiplier_peer2": 12,
   "sensitivity_peer1": 200,
@@ -8,7 +8,7 @@
   "sender_loop_interval_peer1": 5000,
   "dp_interval_peer2": 1,
   "sender_loop_interval_peer2": 10000,
-  "max_decision_size_peer1": 1000,
+  "max_decision_size_peer1": 100,
   "min_decision_size_peer1": 0,
   "max_decision_size_peer2": 4000000,
   "min_decision_size_peer2": 0
