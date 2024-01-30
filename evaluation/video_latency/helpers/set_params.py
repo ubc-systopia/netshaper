@@ -1,23 +1,71 @@
 import paramiko
 import json
+import argparse
 
 
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Description of your program")
+    
+    # Add arguments
+    parser.add_argument("--dp_interval_peer2", type=int, help="Description of dp_interval_peer2")
+
+    parser.add_argument("--hostname_peer1", type=str, help="SSH hostname for peer1")
+    parser.add_argument("--port_peer1", type=int, default=22, help="SSH port for peer1")    
+    parser.add_argument("--username_peer1", type=str, help="SSH username for peer1")
+    
+    
+    parser.add_argument("--hostname_peer2", type=str, help="SSH hostname for peer2")
+    parser.add_argument("--port_peer2", type=int, default=22, help="SSH port for peer2")
+    parser.add_argument("--username_peer2", type=str, help="SSH username for peer2")
+    
+    
+     
+    
+    args = parser.parse_args()
+    # check for the required arguments
+    if args.dp_interval_peer2 is None:
+        parser.error("Please provide the required arguments")
+    else: 
+        dp_interval_peer2 = args.dp_interval_peer2 
     
     # SSH details for the client-side middlebox (peer1)
-    hostname_peer1 = 'desh02'
-    port_peer1 = 22
-    username_peer1 = 'minesvpn'
-
-    # SSH details for the server-side middlebox (peer2)    
-    hostname_peer2 = 'desh03'
-    port_peer2 = 22
-    username_peer2 = 'minesvpn'
+    if args.hostname_peer1 is None:
+        parser.error("Please provide the required arguments")
+    else:
+        hostname_peer1 = args.hostname_peer1
     
+    if args.port_peer1 is None:
+        parser.error("Please provide the required arguments")
+    else:
+        port_peer1 = args.port_peer1
+        
+    if args.username_peer1 is None:
+        parser.error("Please provide the required arguments")
+    else:
+        username_peer1 = args.username_peer1
         
     
+    # SSH details for the server-side middlebox (peer2)
+    if args.hostname_peer2 is None:
+        parser.error("Please provide the required arguments")
+    else:
+        hostname_peer2 = args.hostname_peer2
+        
+    if args.port_peer2 is None:
+        parser.error("Please provide the required arguments")
+    else:
+        port_peer2 = args.port_peer2
+        
+    if args.username_peer2 is None:
+        parser.error("Please provide the required arguments")
+    else:
+        username_peer2 = args.username_peer2
+        
+        
+            
+
     # Experiment config file path
     # TODO: make it a command line argument
     experiment_file_path = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/video_latency/configs/video_latency.json"
@@ -66,7 +114,7 @@ def main():
     # Modify Peer2 Config file
     peer2_config["shapedServer"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer2"]
     peer2_config["shapedServer"]["sensitivity"] = experiment_config["sensitivity_peer2"]
-    peer2_config["shapedServer"]["DPCreditorLoopInterval"] = experiment_config["dp_interval_peer2"]
+    peer2_config["shapedServer"]["DPCreditorLoopInterval"] = dp_interval_peer2 
     peer2_config["shapedServer"]["sendingLoopInterval"] = experiment_config["sender_loop_interval_peer2"]
     peer2_config["shapedServer"]["maxDecisionSize"] = experiment_config["max_decision_size_peer2"]
     peer2_config["shapedServer"]["minDecisionSize"] = experiment_config["min_decision_size_peer2"]
