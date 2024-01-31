@@ -14,12 +14,13 @@ def main():
     parser.add_argument("--hostname_peer1", type=str, help="SSH hostname for peer1")
     parser.add_argument("--port_peer1", type=int, default=22, help="SSH port for peer1")    
     parser.add_argument("--username_peer1", type=str, help="SSH username for peer1")
-    
+    parser.add_argument("--netshaper_dir_peer1", type=str, help="Netshaper directory for peer2") 
     
     parser.add_argument("--hostname_peer2", type=str, help="SSH hostname for peer2")
     parser.add_argument("--port_peer2", type=int, default=22, help="SSH port for peer2")
     parser.add_argument("--username_peer2", type=str, help="SSH username for peer2")
-    
+    parser.add_argument("--netshaper_dir_peer2", type=str, help="Netshaper directory for peer2") 
+     
     
      
     
@@ -45,7 +46,12 @@ def main():
         parser.error("Please provide the required arguments")
     else:
         username_peer1 = args.username_peer1
-        
+    if args.netshaper_dir_peer1 is None:
+        parser.error("Please provide the required arguments") 
+    else:
+        netshaper_dir_peer1 = args.netshaper_dir_peer1 
+    
+         
     
     # SSH details for the server-side middlebox (peer2)
     if args.hostname_peer2 is None:
@@ -62,22 +68,26 @@ def main():
         parser.error("Please provide the required arguments")
     else:
         username_peer2 = args.username_peer2
+    if args.netshaper_dir_peer2 is None:
+        parser.error("Please provide the required arguments")     
+    else:  
+        netshaper_dir_peer2 = args.netshaper_dir_peer2
         
-        
+         
             
 
     # Experiment config file path
     # TODO: make it a command line argument
-    experiment_file_path = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/video_latency/configs/video_latency.json"
+    experiment_file_path = f'/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/video_latency/configs/video_latency.json'
     experiment_config = json.load(open(experiment_file_path, 'r'))  
     
     
      
     # Peer1 JSON file path
-    json_file_path_peer1 = "~/workspace/artifact_evaluation/code/minesvpn/hardware/client-middlebox/peer1_config.json"
+    json_file_path_peer1 = f'{netshaper_dir_peer1}/hardware/client-middlebox/peer1_config.json'
 
     # Peer2 JSON file path
-    json_file_path_peer2 = "~/workspace/artifact_evaluation/code/minesvpn/hardware/server-middlebox/peer2_config.json"
+    json_file_path_peer2 = f'{netshaper_dir_peer2}/hardware/server-middlebox/peer2_config.json'
 
 
     # Peer1 SSH connection

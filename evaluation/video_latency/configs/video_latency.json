@@ -6,7 +6,7 @@
   "sensitivity_peer2": 100000,
   "dp_interval_peer1": 5000,
   "sender_loop_interval_peer1": 5000,
-  "dp_interval_peer2": 1,
+  "dp_intervals_peer2": [1000000],
   "sender_loop_interval_peer2": 10000,
   "max_decision_size_peer1": 100,
   "min_decision_size_peer1": 0,

@@ -20,8 +20,17 @@ peer2_ssh_username="minesvpn"
 peer1_ssh_host="desh02"
 peer1_ssh_username="minesvpn"
 
-# TODO: this line should be read from the json file. 
+
+# NetShaper directory at server-side middlebox (peer2)
+peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+
+
+# NetShaper directory at client-side middlebox (peer1)
+peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+
+
 dp_intervals_peer2=($(jq -r '.dp_intervals_peer2[]' configs/video_latency.json))
+
 iter_num=($(jq -r '.iter_num' configs/video_latency.json))
 
 
@@ -29,10 +38,11 @@ iter_num=($(jq -r '.iter_num' configs/video_latency.json))
 for dp_interval_peer2 in "${dp_intervals_peer2[@]}"; do
   echo -e "${YELLOW}Modifying the config file in peer2${OFF}"
 
-  python3 helpers/set_params.py --dp_interval_peer2 $dp_interval_peer2 --hostname_peer1 $peer1_ssh_host --username_peer1 $peer1_ssh_username --hostname_peer2 $peer2_ssh_host --username_peer2 $peer2_ssh_username
+  python3 helpers/set_params.py --dp_interval_peer2 $dp_interval_peer2 --hostname_peer1 $peer1_ssh_host --username_peer1 $peer1_ssh_username --hostname_peer2 $peer2_ssh_host --username_peer2 $peer2_ssh_username --netshaper_dir_peer1 $peer1_netshaper_dir --netshaper_dir_peer2 $peer2_netshaper_dir
+
 
   echo -e "${YELLOW}Running experiment with peer2_DP_interval = $dp_interval_peer2...${OFF}"
-  ./run_testbed.sh $iter_num   
+  ./helpers/run_testbed.sh --hostname_peer1 $peer1_ssh_host --username_peer1 $peer1_ssh_username --hostname_peer2 $peer2_ssh_host --username_peer2 $peer2_ssh_username --netshaper_dir_peer1 $peer1_netshaper_dir --netshaper_dir_peer2 $peer2_netshaper_dir  
 
   sleep 5
 done
