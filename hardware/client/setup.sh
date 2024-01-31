@@ -27,3 +27,5 @@ fi
 if [ ! -d "../../dataset/client/" ]; then
     echo "${RED} the dataset does not exist, downloading the dataset..."
 fi
+
+echo -e "${GREEN}Setup complete"

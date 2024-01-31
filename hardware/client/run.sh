@@ -12,8 +12,7 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 OFF='\033[0m'
 
-CONFIG=config.json # Path of the config file relative to /root in the container
-MAX_PARALLEL=5
+
 
 if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ]
 then
@@ -21,38 +20,24 @@ then
   exit 1
 fi
 
-if (( $1 > 5 ))
-then
-  echo -e "${RED}Instance number should be less than 6${OFF}"
-  exit 1
-fi
-
 videoMPD=$2
 i=$3
-port=$(($1 + 4560))
+port=$((COUNTER + 8000))
 TIMEOUT=$4 # Seconds
 
 # Maximum capture size of TCPdump (# bytes)
-MAX_CAPTURE_SIZE=$5 
+MAX_CAPTURE_SIZE=$5
 
-
-# Run Peer2
-echo -e "${YELLOW}Starting Peer 2${OFF}"
-mkdir -p traces/peer2/$i
+echo -e "${YELLOW}Running the video client${OFF}"
+mkdir -p traces/client/$i
 
 docker run \
   -d --rm \
-  -e TIMEOUT="$TIMEOUT" \
-  -e MAX_CAPTURE_SIZE="$MAX_CAPTURE_SIZE" \
+  --name "video-client-$(basename $videoMPD .mpd)-$i" \
+  -e VIDEO="$videoMPD" \
   -e PCAP="$(basename $videoMPD .mpd)" \
-  -e CONFIG="$CONFIG" \
-  --name "peer2-$(basename $videoMPD .mpd)-${i}" \
-  -v "$(pwd)/traces/peer2/$i:/root/traces" \
-  -v "$(pwd)/peer2_config.json:/root/config.json" \
-  -p $port:4567/udp \
-  peer2
-
-echo -e "${YELLOW}Waiting for 3s${OFF}"
-sleep 3
-
-#echo -e "${GREEN}Traces are stored in $(pwd)/traces${OFF}"
+  -e TIMEOUT="$TIMEOUT" \
+  -e SERVER="192.168.1.2:$port" \
+  -e MAX_CAPTURE_SIZE="$MAX_CAPTURE_SIZE" \
+  -v "$(pwd)/traces/client/$i:/root/traces" \
+  video-client

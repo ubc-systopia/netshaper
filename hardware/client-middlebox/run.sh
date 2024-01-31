@@ -12,15 +12,12 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 OFF='\033[0m'
 
-# Maximum capture size of TCPdump
-MAX_CAPTURE_SIZE=300 #bytes
-#PCAP=test #Name of the PCAP file generated (without the extension)
 CONFIG=config.json # Path of the config file relative to /root in the container
 MAX_PARALLEL=5
 
-if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ]
+if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ]
 then
-  echo -e "${RED}Usage ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout>${OFF}"
+  echo -e "${RED}Usage ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE>${OFF}"
   exit 1
 fi
 
@@ -35,6 +32,11 @@ i=$3
 peer_port=$(($1 + 4560))
 port=$(($1 + 8000))
 TIMEOUT=$4 # Seconds
+
+# Maximum capture size of TCPdump (# bytes)
+MAX_CAPTURE_SIZE=$5 
+
+
 
 # Run Peer1
 echo -e "${YELLOW}Starting Peer 1${OFF}"
