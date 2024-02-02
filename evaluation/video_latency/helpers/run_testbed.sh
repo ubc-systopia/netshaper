@@ -167,3 +167,5 @@ scp -r "$username_peer2@$hostname_peer2:$netshaper_dir_peer2/hardware/server-mid
 # Copy traces from the video client
 mkdir -p "$results_dir/client/"
 cp -r "../../hardware/client/traces" "$results_dir/client/"
+
+echo -e "${GREEN}Traces are saved in $results_dir${OFF}"
