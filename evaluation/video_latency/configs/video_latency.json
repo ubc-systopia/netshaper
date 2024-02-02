@@ -8,7 +8,7 @@
   "sender_loop_interval_peer1": 5000,
   "dp_intervals_peer2": [1000000],
   "sender_loop_interval_peer2": 10000,
-  "max_decision_size_peer1": 100,
+  "max_decision_size_peer1": 1000,
   "min_decision_size_peer1": 0,
   "max_decision_size_peer2": 4000000,
   "min_decision_size_peer2": 0

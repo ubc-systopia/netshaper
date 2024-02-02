@@ -16,7 +16,7 @@ MAX_CAPTURE_SIZE=300
 TIMEOUT=300 
 
 # Number of parallel communication channels
-MAX_PARALLEL=12
+MAX_PARALLEL=6
 
 #!/bin/bash
 
@@ -31,12 +31,16 @@ peer2_netshaper_dir=""
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --iter_num number --hostname_peer1 <host> --username_peer1 <user> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir>"
+    echo "Usage: $0 --iter_num number --hostname_peer1 <host> --username_peer1 <user> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir>"
     exit 1
 }
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --results_dir)
+            results_dir="$2"
+            shift 2
+            ;;
         --iter_num)
             iter_num="$2"
             shift 2
@@ -73,7 +77,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check if all required arguments are provided
-if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" ]]; then
+if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" ]]; then
     echo "Missing required arguments."
     usage
 fi
@@ -93,20 +97,22 @@ videoMPDs=($(find ../../dataset/client/ -iname "*.mpd" -type f -print))
 
 
 
-cd - || exit
+cd - >/dev/null 2>&1 || exit
+
 
 
 # Remove previous traces from middleboxes
 
-# Remove traces from peer1
-ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client-middlebox/ && rm -r data/traces"
+# Remove traces from peer1 if the directory exists
+ssh "$username_peer1@$hostname_peer1" "[[ -d \"$netshaper_dir_peer1/hardware/client-middlebox/traces\" ]] && rm -rf \"$netshaper_dir_peer1/hardware/client-middlebox/traces\""
 
 
-# Remove traces from peer2
-ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server-middlebox/ && rm -r data/traces"
+# Remove traces from peer2 if the directory exists
+ssh "$username_peer2@$hostname_peer2" "[[ -d \"$netshaper_dir_peer2/hardware/server-middlebox/traces\" ]] && rm -rf \"$netshaper_dir_peer2/hardware/server-middlebox/traces\""
 
 
-# 
+# Remove traces from the video client if the directory exists
+[[ -d "../../hardware/client/traces" ]] && rm -rf "../../hardware/client/traces"
 
 
 
@@ -120,64 +126,44 @@ for ((i=1; i<=$iter_num; i++)); do
 
 
     # Run Peer2
-    ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server-middlebox/ && ./run_peer2.sh $COUNTER $videoMPD $i $TIMEOUT"
+    ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server-middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
     # Run Peer1
-    ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client-middlebox/ && ./run_peer1.sh $COUNTER $videoMPD $i $TIMEOUT"
+    ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client-middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
-    #Run the video client
-#     echo -e "${YELLOW}Running the video client${OFF}"
-#     mkdir -p traces/Video-Bandwidth/Client/$i
-#     port=$((COUNTER + 8000))
+    # Run the video client
+    cd ../../hardware/client/ || exit
+    ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE
+    cd - >/dev/null 2>&1 || exit
 
-#     docker run \
-#       -d --rm \
-#       --name "video-client-$(basename $videoMPD .mpd)-$i" \
-#       -e VIDEO="$videoMPD" \
-#       -e PCAP="$(basename $videoMPD .mpd)" \
-#       -e TIMEOUT="$TIMEOUT" \
-#       -e SERVER="192.168.1.2:$port" \
-#       -e MAX_CAPTURE_SIZE="$MAX_CAPTURE_SIZE" \
-#       -v "$(pwd)/traces/Video-Bandwidth/Client/$i:/root/traces" \
-#       video-client
 
-#     COUNTER=$((COUNTER+1))
-#     if [[ $COUNTER -ge $MAX_PARALLEL ]]
-#     then
-#       echo Waiting for previous batch to finish
-#       sleep $((TIMEOUT+20))
-#       COUNTER=0
-# #      break
-#     fi
+
+    COUNTER=$((COUNTER+1))
+    if [[ $COUNTER -ge $MAX_PARALLEL ]]
+    then
+      echo -e "${YELLOW}Waiting for $(($TIMEOUT+20)) seconds to finish the last batch of containers${OFF}"
+      sleep $(($TIMEOUT+20))
+      COUNTER=0
+      break
+    fi
   done
+  break
 done
 
 
 
+echo -e "${YELLOW}Waiting for all container to stop${OFF}"
+sleep $((TIMEOUT+20))
 
+# Copy traces from peer1
+mkdir -p "$results_dir/peer1/"
+scp -r "$username_peer1@$hostname_peer1:$netshaper_dir_peer1/hardware/client-middlebox/traces" "$results_dir/peer1/"
 
+# Copy traces from peer2
+mkdir -p "$results_dir/peer2/"
+scp -r "$username_peer2@$hostname_peer2:$netshaper_dir_peer2/hardware/server-middlebox/traces" "$results_dir/peer2/"
 
-
-
-
-
-
-
-
-
-
-
-# # echo -e "${YELLOW}Waiting for all container to stop${OFF}"
-# # sleep $((TIMEOUT+20))
-
-# # scp -r desh02:~/workspace/minesvpn-testbed/experiments/macrobenchmarks/traces/Video-Bandwidth/Peer1 ./traces/Video-Bandwidth/
-# # scp -r desh02:~/workspace/minesvpn-testbed/experiments/macrobenchmarks/peer1-config.json ./traces/Video-Bandwidth/
-# # scp -r desh03:~/workspace/minesvpn-testbed/experiments/macrobenchmarks/peer2-config.json ./traces/Video-Bandwidth/
-# # scp -r desh03:~/workspace/minesvpn-testbed/experiments/macrobenchmarks/traces/Video-Bandwidth/Peer2 ./traces/Video-Bandwidth/
-
-# # date=$(date +%Y-%m-%d_%H-%M)
-# # mkdir -p data/$date
-# # mv traces/Video-Bandwidth data/$date/
-
-# # echo -e "${GREEN}Traces are stored in $(pwd)/traces${OFF}"
+# Copy traces from the video client
+mkdir -p "$results_dir/client/"
+cp -r "../../hardware/client/traces" "$results_dir/client/"
