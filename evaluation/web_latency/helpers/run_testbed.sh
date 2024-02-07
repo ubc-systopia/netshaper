@@ -82,72 +82,37 @@ if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z
     usage
 fi
 
-# # Use the variables as needed
-# echo "Peer 1 SSH Host: $peer1_ssh_host"
-# echo "Peer 1 SSH Username: $peer1_ssh_username"
-# echo "Peer 2 SSH Host: $peer2_ssh_host"
-# echo "Peer 2 SSH Username: $peer2_ssh_username"
-# echo $iter_num
-
 
 cd ../../dataset/client/ || exit
 
-# List of all files of type *.mpd
-videoMPDs=($(cat ../../dataset/client/videos.txt))
-
-
-
-cd - >/dev/null 2>&1 || exit
-
-
-
-# Remove previous traces from middleboxes
-
-# Remove traces from peer1 if the directory exists
-ssh "$username_peer1@$hostname_peer1" "[[ -d \"$netshaper_dir_peer1/hardware/client-middlebox/traces\" ]] && rm -rf \"$netshaper_dir_peer1/hardware/client-middlebox/traces\""
-
-
-# Remove traces from peer2 if the directory exists
-ssh "$username_peer2@$hostname_peer2" "[[ -d \"$netshaper_dir_peer2/hardware/server-middlebox/traces\" ]] && rm -rf \"$netshaper_dir_peer2/hardware/server-middlebox/traces\""
-
-
-# Remove traces from the video client if the directory exists
-[[ -d "../../hardware/video-client/traces" ]] && rm -rf "../../hardware/video-client/traces"
-
-
+cd - > /dev/null 2>&1 || exit
 
 
 COUNTER=0
 for ((i=1; i<=$iter_num; i++)); do	
+
   echo -e "${CYAN}Running iteration $i${OFF}"
-  for videoMPD in ${videoMPDs[@]}
-  do
+
+  PCAP_FILE="iter_$i.mpd"
+  # Run Peer2
+  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server-middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+
+  # Run Peer1
+  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client-middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
-    # Run Peer2
-    ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server-middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  # Run the video client
+  cd ../../hardware/web-client/ || exit
+  ./run.sh $i
 
-    # Run Peer1
-    ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client-middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
-
-
-    # Run the video client
-    cd ../../hardware/video-client/ || exit
-    ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE
-    cd - >/dev/null 2>&1 || exit
-
-
-
-    COUNTER=$((COUNTER+1))
-    if [[ $COUNTER -ge $MAX_PARALLEL ]]
-    then
-      echo -e "${YELLOW}Waiting for $(($TIMEOUT+20)) seconds to finish the last batch of containers${OFF}"
-      sleep $(($TIMEOUT+20))
-      COUNTER=0
-      break
-    fi
-  done
-  break
+  COUNTER=$((COUNTER+1))
+  if [[ $COUNTER -ge $MAX_PARALLEL ]]
+  then
+    echo -e "${YELLOW}Waiting for $(($TIMEOUT+20)) seconds to finish the last batch of containers${OFF}"
+    sleep $(($TIMEOUT+20))
+    COUNTER=0
+    break
+  fi
 done
 
 
@@ -165,6 +130,7 @@ scp -r "$username_peer2@$hostname_peer2:$netshaper_dir_peer2/hardware/server-mid
 
 # Copy traces from the video client
 mkdir -p "$results_dir/client/"
-cp -r "../../hardware/video-client/traces" "$results_dir/client/"
+cp -r "../../hardware/web-client/latencies" "$results_dir/client/"
 
 echo -e "${GREEN}Traces are saved in $results_dir${OFF}"
+

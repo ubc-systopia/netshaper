@@ -1,5 +1,6 @@
-# Video Streaming Latency Experiments
-This folder contains the scripts for the video streaming latency experiments. 
+# Web Streaming Latency Experiments
+(**If you already have the setup for video latency experiment, skip to the client section**).  
+This folder contains the scripts for the web streaming latency experiments. 
 These experiments are executed on our testbed, which consists of 4 machines connected with a linear topology.
 The machines are connected with 10Gbps links, two of which work as the client and the server, and the other two work as NetShaper middleboxes.
 
