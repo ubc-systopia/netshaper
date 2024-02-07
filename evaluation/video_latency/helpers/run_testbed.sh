@@ -122,7 +122,7 @@ for ((i=1; i<=$iter_num; i++)); do
   echo -e "${CYAN}Running iteration $i${OFF}"
   for videoMPD in ${videoMPDs[@]}
   do
-
+    videoMPD="video/$videoMPD"
 
     # Run Peer2
     ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server-middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
@@ -157,14 +157,14 @@ sleep $((TIMEOUT+20))
 
 # Copy traces from peer1
 mkdir -p "$results_dir/peer1/"
-scp -r "$username_peer1@$hostname_peer1:$netshaper_dir_peer1/hardware/client-middlebox/traces" "$results_dir/peer1/"
+scp -r "$username_peer1@$hostname_peer1:$netshaper_dir_peer1/hardware/client-middlebox/traces/peer1" "$results_dir/"
 
 # Copy traces from peer2
 mkdir -p "$results_dir/peer2/"
-scp -r "$username_peer2@$hostname_peer2:$netshaper_dir_peer2/hardware/server-middlebox/traces" "$results_dir/peer2/"
+scp -r "$username_peer2@$hostname_peer2:$netshaper_dir_peer2/hardware/server-middlebox/traces/peer2" "$results_dir/"
 
 # Copy traces from the video client
 mkdir -p "$results_dir/client/"
-cp -r "../../hardware/video-client/traces" "$results_dir/client/"
+cp -r "../../hardware/video-client/traces/client" "$results_dir/"
 
 echo -e "${GREEN}Traces are saved in $results_dir${OFF}"

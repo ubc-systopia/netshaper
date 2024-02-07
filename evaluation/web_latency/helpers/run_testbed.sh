@@ -120,13 +120,6 @@ done
 echo -e "${YELLOW}Waiting for all container to stop${OFF}"
 sleep $((TIMEOUT+20))
 
-# Copy traces from peer1
-mkdir -p "$results_dir/peer1/"
-scp -r "$username_peer1@$hostname_peer1:$netshaper_dir_peer1/hardware/client-middlebox/traces" "$results_dir/peer1/"
-
-# Copy traces from peer2
-mkdir -p "$results_dir/peer2/"
-scp -r "$username_peer2@$hostname_peer2:$netshaper_dir_peer2/hardware/server-middlebox/traces" "$results_dir/peer2/"
 
 # Copy traces from the video client
 mkdir -p "$results_dir/client/"
