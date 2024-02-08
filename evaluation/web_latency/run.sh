@@ -32,7 +32,7 @@ peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
 # Results directory
 date=$(date +%Y-%m-%d_%H-%M)
 
-results_dir="$(pwd)/results/video_latency_($date)/"
+results_dir="$(pwd)/results/web_latency_($date)/"
 
 
 
@@ -48,7 +48,7 @@ for dp_interval_peer2 in "${dp_intervals_peer2[@]}"; do
 
   python3 helpers/set_params.py --dp_interval_peer2 $dp_interval_peer2 --hostname_peer1 $peer1_ssh_host --username_peer1 $peer1_ssh_username --hostname_peer2 $peer2_ssh_host --username_peer2 $peer2_ssh_username --netshaper_dir_peer1 $peer1_netshaper_dir --netshaper_dir_peer2 $peer2_netshaper_dir
 
-  experiment_results_dir="$results_dir_traces/T_$dp_interval_peer2"
+  experiment_results_dir="$results_dir/T_$dp_interval_peer2"
 
 
   echo -e "${YELLOW}Running experiment with peer2_DP_interval = $dp_interval_peer2...${OFF}"

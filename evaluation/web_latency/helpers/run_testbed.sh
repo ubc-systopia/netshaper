@@ -83,9 +83,8 @@ if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z
 fi
 
 
-cd ../../dataset/client/ || exit
-
-cd - > /dev/null 2>&1 || exit
+# Remove stats from the web client if the directory exists
+[[ -d "../../hardware/video-client/traces" ]] && rm -rf "../../hardware/web-client/latencies"
 
 
 COUNTER=0
@@ -104,6 +103,8 @@ for ((i=1; i<=$iter_num; i++)); do
   # Run the video client
   cd ../../hardware/web-client/ || exit
   ./run.sh $i
+  cd - > /dev/null 2>&1 || exit
+
 
   COUNTER=$((COUNTER+1))
   if [[ $COUNTER -ge $MAX_PARALLEL ]]
