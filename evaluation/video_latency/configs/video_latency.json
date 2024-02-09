@@ -1,5 +1,6 @@
 {
   "iter_num": 10,
+  "max_client_number": 6,
   "noise_multiplier_peer1": 12,
   "noise_multiplier_peer2": 12,
   "sensitivity_peer1": 200,

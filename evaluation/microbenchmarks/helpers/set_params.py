@@ -9,7 +9,7 @@ def main():
     parser = argparse.ArgumentParser(description="Description of your program")
     
     # Add arguments
-    parser.add_argument("--dp_interval_peer2", type=int, help="Description of dp_interval_peer2")
+    parser.add_argument("--max_client_num", type=int, help="max client number in middleboxes")
 
     parser.add_argument("--hostname_peer1", type=str, help="SSH hostname for peer1")
     parser.add_argument("--port_peer1", type=int, default=22, help="SSH port for peer1")    
@@ -20,16 +20,17 @@ def main():
     parser.add_argument("--port_peer2", type=int, default=22, help="SSH port for peer2")
     parser.add_argument("--username_peer2", type=str, help="SSH username for peer2")
     parser.add_argument("--netshaper_dir_peer2", type=str, help="Netshaper directory for peer2") 
-    parser.add_argument("--experiment_config_path", type=str, help="Path to the experiment config file") 
+    
+    parser.add_argument("--experiment_config_path", type=str, help="Path to the experiment config file")
     
      
     
     args = parser.parse_args()
     # check for the required arguments
-    if args.dp_interval_peer2 is None:
+    if args.max_client_num is None:
         parser.error("Please provide the required arguments")
     else: 
-        dp_interval_peer2 = args.dp_interval_peer2 
+        max_client_num = args.max_client_num 
     
     # SSH details for the client-side middlebox (peer1)
     if args.hostname_peer1 is None:
@@ -72,13 +73,15 @@ def main():
         parser.error("Please provide the required arguments")     
     else:  
         netshaper_dir_peer2 = args.netshaper_dir_peer2
-    if args.experiment_config_path is None:
-        parser.error("Please provide the required arguments")  
-    else:   
-        experiment_config_path = args.experiment_config_path
+        
          
             
-
+    if args.experiment_config_path is None:
+        parser.error("Please provide the required arguments")
+    else:
+        experiment_config_path = args.experiment_config_path
+    
+    
     experiment_config = json.load(open(experiment_config_path, 'r'))  
     
     
@@ -113,7 +116,7 @@ def main():
     peer2_config = json.loads(json_data_peer2)
 
     # Modify Peer1 Config file
-    peer1_config["maxClients"] = experiment_config["max_client_number"] + 2
+    peer1_config["maxClients"] = max_client_num + 2
     peer1_config["shapedClient"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer1"]
     peer1_config["shapedClient"]["sensitivity"] = experiment_config["sensitivity_peer1"]
     peer1_config["shapedClient"]["DPCreditorLoopInterval"] = experiment_config["dp_interval_peer1"]
@@ -123,10 +126,10 @@ def main():
     
     
     # Modify Peer2 Config file
-    peer2_config["maxStreamsPerPeer"] = experiment_config["max_client_number"] + 2
+    peer2_config["maxStreamsPerPeer"] = max_client_num + 2
     peer2_config["shapedServer"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer2"]
     peer2_config["shapedServer"]["sensitivity"] = experiment_config["sensitivity_peer2"]
-    peer2_config["shapedServer"]["DPCreditorLoopInterval"] = dp_interval_peer2 
+    peer2_config["shapedServer"]["DPCreditorLoopInterval"] = experiment_config["dp_interval_peer2"] 
     peer2_config["shapedServer"]["sendingLoopInterval"] = experiment_config["sender_loop_interval_peer2"]
     peer2_config["shapedServer"]["maxDecisionSize"] = experiment_config["max_decision_size_peer2"]
     peer2_config["shapedServer"]["minDecisionSize"] = experiment_config["min_decision_size_peer2"]

@@ -29,6 +29,10 @@ peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
 peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
 
 
+# Config directory
+config_file_dir="$(pwd)/configs/video_latency.json"
+
+
 # Results directory
 date=$(date +%Y-%m-%d_%H-%M)
 
@@ -47,7 +51,7 @@ for dp_interval_peer2 in "${dp_intervals_peer2[@]}"; do
 
   echo -e "${YELLOW}Modifying the config file in peer1 and Peer2${OFF}"
 
-  python3 helpers/set_params.py --dp_interval_peer2 $dp_interval_peer2 --hostname_peer1 $peer1_ssh_host --username_peer1 $peer1_ssh_username --hostname_peer2 $peer2_ssh_host --username_peer2 $peer2_ssh_username --netshaper_dir_peer1 $peer1_netshaper_dir --netshaper_dir_peer2 $peer2_netshaper_dir
+  python3 helpers/set_params.py --dp_interval_peer2 $dp_interval_peer2 --hostname_peer1 $peer1_ssh_host --username_peer1 $peer1_ssh_username --hostname_peer2 $peer2_ssh_host --username_peer2 $peer2_ssh_username --netshaper_dir_peer1 $peer1_netshaper_dir --netshaper_dir_peer2 $peer2_netshaper_dir --experiment_config_path $config_file_dir
 
   experiment_results_dir="$results_dir_traces/T_$dp_interval_peer2"
 

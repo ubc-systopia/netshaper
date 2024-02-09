@@ -9,24 +9,48 @@ RED='\033[0;31m'
 OFF='\033[0m'
 
 
-if [[ -z $1 ]]
+
+
+if [[ -z $1 || -z $2 || -z $3 || -z $4 ]]
 then
-  echo -e "${RED}Usage ./run.sh <iter_num>${OFF}"
+  echo -e "${RED}Usage ./run.sh <experiment> <client_num> <request_rate> <request_size> <iter_num>${OFF}"
   exit 1
 fi
 
 
 
-
-iter_num=$1
-clients=128
-requests=1600
-
-
-echo -e "${YELLOW}Running the web client${OFF}"
-mkdir -p latencies/$iter_num
-./wrk2/wrk -c $clients -d 180 -R $requests -L -U -t $clients -s multiple_urls.lua http://192.168.1.2:8000/ > latencies/$iter_num/wrk.log
-mv stats.csv latencies/$iter_num/stats.csv 
+client_num=$2
+request_rate=$3
+request_size=$4
+iter_num=$5
 
 
-echo -e "${GREEN}Done!${OFF}"
+if [[ $1 == "web-latency" ]]; then
+  echo -e "${YELLOW}Measuring the latency for a web service.${OFF}"
+
+
+  echo -e "${YELLOW}Running the web client${OFF}"
+  mkdir -p "latencies/iter_$iter_num"
+
+  ./wrk2/wrk -c $client_num -d 180 -R $request_rate -L -U -t $client_num -s multiple_urls.lua http://192.168.1.2:8000/ > "latencies/iter_$iter_num/wrk.log"
+
+  mv stats.csv "latencies/iter_$iter_num/stats.csv" 
+
+  echo -e "${GREEN}Done!${OFF}"
+
+elif [[ $1 == "microbenchmark" ]]; then
+  echo -e "${YELLOW}Measuring the latency for a microbenchmark.${OFF}"
+
+  echo -e "${YELLOW}Running the web client${OFF}"
+  mkdir -p "latencies/iter_$iter_num/req_$request_size"
+
+  ./wrk2/wrk -c $client_num -d 120 -R $request_rate -L -U -t $client_num "http://192.168.1.2:8000/web/latency/$request_size.html" > "latencies/iter_$iter_num/req_$request_size/wrk.log"
+
+  mv stats.csv "latencies/iter_$iter_num/req_$request_size/stats.csv"
+
+fi
+
+
+
+
+

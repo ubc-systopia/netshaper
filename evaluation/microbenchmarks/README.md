@@ -1,7 +1,6 @@
-# Video Streaming Latency Experiments
-Experiments
-(**If you already have the setup for web latency and/or microbenchmarks experiments, skip to the client section**). 
-This folder contains the scripts for the video streaming latency experiments. 
+# Microbenchmarks Experiments
+(**If you already have the setup for web latency and/or video latency experiments, skip to the client section**).  
+This folder contains the scripts for the web streaming latency experiments. 
 These experiments are executed on our testbed, which consists of 4 machines connected with a linear topology.
 The machines are connected with 10Gbps links, two of which work as the client and the server, and the other two work as NetShaper middleboxes.
 
@@ -144,7 +143,7 @@ docker build -t video-client .
 To run the experiments, follow these steps:
 1. **Ensure that the server, middleboxes, and client have being setup and built.**
 2. Open an SSH connection to the client machine.
-3. Change the directory to `Path/To/Netshaper/evaluation/video-latency/`
+3. Change the directory to `Path/To/Netshaper/evaluation/microbenchmarks/`
 4. run the experiment script with the following command:
 ```bash
 ./run.sh

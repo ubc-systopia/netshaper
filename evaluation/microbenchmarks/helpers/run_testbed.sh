@@ -24,6 +24,7 @@ MAX_PARALLEL=6
 iter_num=""
 max_client_num=""
 request_rate=""
+request_size=""
 peer1_ssh_host=""
 peer1_ssh_username=""
 peer2_ssh_host=""
@@ -33,7 +34,7 @@ peer2_netshaper_dir=""
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --iter_num number --max_client_num number --request_rate number --hostname_peer1 <host> --username_peer1 <user> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir>"
+    echo "Usage: $0 --iter_num number --max_client_num number --request_rate number --request_size number --hostname_peer1 <host> --username_peer1 <user> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir>"
     exit 1
 }
 # Parse command line arguments
@@ -79,6 +80,10 @@ while [[ $# -gt 0 ]]; do
             request_rate="$2"
             shift 2
             ;;
+        --request_size)
+            request_size="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
             usage
@@ -87,13 +92,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check if all required arguments are provided
-if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" || -z "$max_client_num" || -z "$request_rate" ]]; then
+if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" || -z "$max_client_num" || -z "$request_rate" || -z "$request_size" ]]; then
     echo "Missing required arguments."
     usage
 fi
 
-# Dummy request size as this experiment is not for microbenchmarks
-request_size=0
 
 # Remove stats from the web client if the directory exists
 [[ -d "../../hardware/video-client/traces" ]] && rm -rf "../../hardware/web-client/latencies"
@@ -114,7 +117,7 @@ for ((i=1; i<=$iter_num; i++)); do
 
   # Run the video client
   cd ../../hardware/web-client/ || exit
-  ./run.sh "web-latency" $max_client_num $request_rate $request_size $i
+  ./run.sh "microbenchmark" $max_client_num $request_rate $request_size $i
   cd - > /dev/null 2>&1 || exit
 
 

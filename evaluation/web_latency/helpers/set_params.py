@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--port_peer2", type=int, default=22, help="SSH port for peer2")
     parser.add_argument("--username_peer2", type=str, help="SSH username for peer2")
     parser.add_argument("--netshaper_dir_peer2", type=str, help="Netshaper directory for peer2") 
+    parser.add_argument("--experiment_config_path", type=str, help="Path to the experiment config file")
      
     
      
@@ -72,14 +73,14 @@ def main():
         parser.error("Please provide the required arguments")     
     else:  
         netshaper_dir_peer2 = args.netshaper_dir_peer2
-        
+    if args.experiment_config_path is None:
+        parser.error("Please provide the required arguments")
+    else:
+        experiment_config_path = args.experiment_config_path  
          
             
 
-    # Experiment config file path
-    # TODO: make it a command line argument
-    experiment_file_path = f'/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/web_latency/configs/web_latency.json'
-    experiment_config = json.load(open(experiment_file_path, 'r'))  
+    experiment_config = json.load(open(experiment_config_path, 'r'))  
     
     
      
@@ -113,6 +114,7 @@ def main():
     peer2_config = json.loads(json_data_peer2)
 
     # Modify Peer1 Config file
+    peer1_config["maxClients"] = experiment_config["max_client_number"] + 2
     peer1_config["shapedClient"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer1"]
     peer1_config["shapedClient"]["sensitivity"] = experiment_config["sensitivity_peer1"]
     peer1_config["shapedClient"]["DPCreditorLoopInterval"] = experiment_config["dp_interval_peer1"]
@@ -122,6 +124,7 @@ def main():
     
     
     # Modify Peer2 Config file
+    peer2_config["maxStreamsPerPeer"] = experiment_config["max_client_number"] + 2
     peer2_config["shapedServer"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer2"]
     peer2_config["shapedServer"]["sensitivity"] = experiment_config["sensitivity_peer2"]
     peer2_config["shapedServer"]["DPCreditorLoopInterval"] = dp_interval_peer2 
