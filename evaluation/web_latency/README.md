@@ -10,7 +10,7 @@ The machines are connected with 10Gbps links, two of which work as the client an
 
 
 ## General Prerequisites
-You should have physical access to the testbed machines, as well as the ability to SSH into them. The phyical access is requried to change BIOS settings and reboot the machines. The SSH access is required to run the experiments and collect the results.
+You should have physical access to the testbed machines, as well as the ability to SSH into them. The physical access is required to change BIOS settings and reboot the machines. SSH access is required to run the experiments and collect the results.
 The following configurations should be applied to all 4 machines. 
 
 ### BIOS Configuration
@@ -67,11 +67,11 @@ sudo apt install docker-compose tcpdump
 ```
 
 ### Setup
-To setup the middlebox at the server side follow these steps:
-1. Open an SSH connection to the machine that serves as the middlebox at server side. 
-2. Clone the NetShaper repository onto the middlebox at the server side.
+To set the middlebox on the server side follow these steps:
+1. Open an SSH connection to the machine that serves as the middlebox on the server side. 
+2. Clone the NetShaper repository onto the middlebox on the server side.
 3. Change the directory to `Path/To/NetShaper/hardware/server-middlebox/`
-4. Execute the setup script. Ensure that the machine has Internet connection to download and isntall dependencies. 
+4. Execute the setup script. Ensure that the machine has an Internet connection to download and install dependencies. 
 ```bash
 ./setup.sh
 ```
@@ -81,7 +81,7 @@ To build the server-side middlebox binary, execute the following command:
 ```bash
 ./build.sh
 ```
-With the successful build of the middlebox, build peer2 container with the following command:
+With the successful build of the middlebox, build the peer2 container with the following command:
 ```bash
 docker build -t peer2 ./peer2/
 ```
@@ -95,11 +95,11 @@ sudo apt install docker-compose tcpdump
 ```
 
 ### Setup
-To setup the middlebox at the client side follow these steps:
-1. Open an SSH connection to the machine that serves as the middlebox at the client side. 
-2. Clone the NetShaper repository onto the middlebox at the client side.
+To set up the middlebox at the client side follow these steps:
+1. Open an SSH connection to the machine that serves as the middlebox on the client side. 
+2. Clone the NetShaper repository onto the middlebox on the client side.
 3. Change the directory to `Path/To/NetShaper/hardware/client-middlebox/`
-4. Execute the setup script. Ensure that the machine has Internet connection to download and isntall dependencies. 
+4. Execute the setup script. Ensure that the machine has an Internet connection to download and install dependencies. 
 ```bash
 ./setup.sh
 ```
@@ -109,7 +109,7 @@ To build the client-side middlebox binary, execute the following command:
 ```bash
 ./build.sh
 ```
-With the successful build of the middlebox, build peer1 container with the following command:
+With the successful build of the middlebox, build the peer1 container with the following command:
 ```bash
 docker build -t peer1 ./peer1/
 ```
@@ -117,7 +117,7 @@ docker build -t peer1 ./peer1/
 
 ## Client
 ### Prerequisites
-Ensure that Docke, Docker Compose, and python are installed on the client machine.
+Ensure that Docker, Docker Compose, and Python are installed on the client machine.
 ```bash
 sudo apt install docker-compose python3 python3-pip
 ```
@@ -126,7 +126,7 @@ sudo apt install docker-compose python3 python3-pip
 To setup the client, follow these steps:  
 1. Open an SSH connection to the machine that serves as the client.
 2. Clone the NetShaper repository onto the client machine. 
-3. Change the directory to `Path/To/Netshaper/hardware/video-client/`
+3. Change the directory to `Path/To/Netshaper/hardware/web-client/`
 4. Execute the client setup script. Ensure that your machine has an internet connection to download the dataset for the client:
 ```bash
 ./setup.sh
@@ -136,14 +136,14 @@ To setup the client, follow these steps:
 ### Build 
 To build the client container, execute the following command:
 ```bash
-docker build -t video-client .
+./build.sh
 ```
 
 ## Running the Experiments
 To run the experiments, follow these steps:
-1. **Ensure that the server, middleboxes, and client have being setup and built.**
+1. **Ensure that the server, middleboxes, and client have been set up and built.**
 2. Open an SSH connection to the client machine.
-3. Change the directory to `Path/To/Netshaper/evaluation/video-latency/`
+3. Change the directory to `Path/To/Netshaper/evaluation/web-latency/`
 4. run the experiment script with the following command:
 ```bash
 ./run.sh
