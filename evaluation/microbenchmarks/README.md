@@ -1,4 +1,4 @@
-# Microbenchmarks Experiments
+# Microbenchmark Experiments
 (**If you already have the setup for web latency and/or video latency experiments, skip to the client section**).  
 This folder contains the scripts for microbenchmarks. 
 These experiments are executed on our testbed, which consists of 4 machines connected with a linear topology.
