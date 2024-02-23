@@ -11,7 +11,7 @@
 #include <sys/ipc.h>
 #include <atomic>
 #include <cstring>
-#include "../../../Common.h"
+#include "../../Common.h"
 
 class LamportQueue {
 public:
