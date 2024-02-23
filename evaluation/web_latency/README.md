@@ -70,7 +70,7 @@ sudo apt install docker-compose tcpdump
 To set the middlebox on the server side follow these steps:
 1. Open an SSH connection to the machine that serves as the middlebox on the server side. 
 2. Clone the NetShaper repository onto the middlebox on the server side.
-3. Change the directory to `Path/To/NetShaper/hardware/server-middlebox/`
+3. Change the directory to `Path/To/NetShaper/hardware/server_middlebox/`
 4. Execute the setup script. Ensure that the machine has an Internet connection to download and install dependencies. 
 ```bash
 ./setup.sh
