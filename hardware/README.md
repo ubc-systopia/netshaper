@@ -20,9 +20,9 @@ instance_ (each peer can talk to only 1 other peer)
 #### Run Individual components
 
 3. First start the actual server (or ensure it is up)
-4. Start Peer 2 using `./build/src/example/peer2/peer_2 <CONFIG FILE>`.
+4. Start Peer 2 using `./build/src/peer2/peer_2 <CONFIG FILE>`.
    Wait for the "Peer is ready" message to appear
-5. Start Peer 1 using `./build/src/example/peer1/peer_1 <CONFIG FILE>`.
+5. Start Peer 1 using `./build/src/peer1/peer_1 <CONFIG FILE>`.
    Wait for the   "Peer is ready" message to appear
 7. Now, you can send requests from any client to peer1
 

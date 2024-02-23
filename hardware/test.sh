@@ -50,14 +50,14 @@ exec {serverPipeFd}>$serverPipe
 # Run Peer 2
 echo -e "${YELLOW}Starting Peer 2${OFF}"
 printf '%s\n' "$peer_2" |
-  ../build/src/example/peer2/peer_2 &>$output_redirect &
+  ../build/src/peer2/peer_2 &>$output_redirect &
 PIds="$PIds $!"
 sleep $sleep_time
 
 # Run Peer 1
 echo -e "${YELLOW}Starting Peer 1${OFF}"
 printf '%s\n' "$peer_1" |
-  ../build/src/example/peer1/peer_1 &>$output_redirect &
+  ../build/src/peer1/peer_1 &>$output_redirect &
 PIds="$PIds $!"
 sleep $((sleep_time + 10))
 

@@ -23,7 +23,7 @@ RUN apt-get update \
  RUN ln -s /usr/lib/x86_64-linux-gnu/libmsquic.so.2 /usr/lib/x86_64-linux-gnu/libmsquic.so
 #RUN ln -s /usr/lib/aarch64-linux-gnu/libmsquic.so.2 /usr/lib/aarch64-linux-gnu/libmsquic.so
 
-COPY build/src/example/peer2/peer_2 /root/peer_2
+COPY build/src/peer2/peer_2 /root/peer_2
 COPY ./entrypoint.sh /root/entrypoint.sh
 
 RUN printf '\n\n\n\n\n\n\n' | \

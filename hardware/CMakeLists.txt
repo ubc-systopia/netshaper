@@ -44,9 +44,9 @@ add_subdirectory(src/modules/quic_wrapper)
 add_subdirectory(src/modules/tcp_wrapper)
 add_subdirectory(src/modules/lamport_queue)
 add_subdirectory(src/modules/shaper)
-add_subdirectory(src/example/util)
+add_subdirectory(src/util)
 
 
-# Build example
-add_subdirectory(src/example/peer1)
-add_subdirectory(src/example/peer2)
+# Build peers
+add_subdirectory(src/peer1)
+add_subdirectory(src/peer2)

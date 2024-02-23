@@ -23,7 +23,7 @@ RUN apt-get update \
  RUN ln -s /usr/lib/x86_64-linux-gnu/libmsquic.so.2 /usr/lib/x86_64-linux-gnu/libmsquic.so
 #RUN ln -s /usr/lib/aarch64-linux-gnu/libmsquic.so.2 /usr/lib/aarch64-linux-gnu/libmsquic.so
 
-COPY build/src/example/peer1/peer_1 /root/peer_1
+COPY build/src/peer1/peer_1 /root/peer_1
 COPY ./entrypoint.sh /root/entrypoint.sh
 
 WORKDIR /root
