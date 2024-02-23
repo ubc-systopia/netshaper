@@ -85,7 +85,7 @@ def main():
     
      
     # Peer1 JSON file path
-    json_file_path_peer1 = f'{netshaper_dir_peer1}/hardware/client-middlebox/peer1_config.json'
+    json_file_path_peer1 = f'{netshaper_dir_peer1}/hardware/client_middlebox/peer1_config.json'
 
     # Peer2 JSON file path
     json_file_path_peer2 = f'{netshaper_dir_peer2}/hardware/server_middlebox/peer2_config.json'

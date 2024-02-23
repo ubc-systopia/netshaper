@@ -104,7 +104,7 @@ cd - >/dev/null 2>&1 || exit
 # Remove previous traces from middleboxes
 
 # Remove traces from peer1 if the directory exists
-ssh "$username_peer1@$hostname_peer1" "[[ -d \"$netshaper_dir_peer1/hardware/client-middlebox/traces\" ]] && rm -rf \"$netshaper_dir_peer1/hardware/client-middlebox/traces\""
+ssh "$username_peer1@$hostname_peer1" "[[ -d \"$netshaper_dir_peer1/hardware/client_middlebox/traces\" ]] && rm -rf \"$netshaper_dir_peer1/hardware/client_middlebox/traces\""
 
 
 # Remove traces from peer2 if the directory exists
@@ -128,7 +128,7 @@ for ((i=1; i<=$iter_num; i++)); do
     ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
     # Run Peer1
-    ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client-middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
+    ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
     # Run the video client
@@ -157,7 +157,7 @@ sleep $((TIMEOUT+20))
 
 # Copy traces from peer1
 mkdir -p "$results_dir/peer1/"
-scp -r "$username_peer1@$hostname_peer1:$netshaper_dir_peer1/hardware/client-middlebox/traces/peer1" "$results_dir/"
+scp -r "$username_peer1@$hostname_peer1:$netshaper_dir_peer1/hardware/client_middlebox/traces/peer1" "$results_dir/"
 
 # Copy traces from peer2
 mkdir -p "$results_dir/peer2/"

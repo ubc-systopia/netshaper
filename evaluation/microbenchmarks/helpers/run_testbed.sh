@@ -112,7 +112,7 @@ for ((i=1; i<=$iter_num; i++)); do
   ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
   # Run Peer1
-  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client-middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
   # Run the video client
