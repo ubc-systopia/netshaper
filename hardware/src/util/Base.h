@@ -8,7 +8,7 @@
 
 #include <string>
 #include <mutex>
-#include "../../modules/Common.h"
+#include "../modules/Common.h"
 #include "helpers.h"
 
 class Base {

@@ -5,7 +5,7 @@
 #ifndef MINESVPN_CONFIG_H
 #define MINESVPN_CONFIG_H
 
-#include "../../modules/Common.h"
+#include "../modules/Common.h"
 #include <string>
 #include <nlohmann/json.hpp>
 

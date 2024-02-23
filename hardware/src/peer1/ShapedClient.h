@@ -8,10 +8,10 @@
 #include <thread>
 #include <unordered_map>
 #include <csignal>
-#include "../../modules/quic_wrapper/Client.h"
-#include "../../modules/lamport_queue/Cpp/LamportQueue.hpp"
+#include "../modules/quic_wrapper/Client.h"
+#include "../modules/lamport_queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
-#include "../../modules/shaper/NoiseGenerator.h"
+#include "../modules/shaper/NoiseGenerator.h"
 #include "../util/config.h"
 #include "../util/Shaped.h"
 #include <shared_mutex>
