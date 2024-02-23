@@ -1,5 +1,5 @@
 { 
-  "experiment": "number_of_flows_vs_overhead_video",
+  "experiment": "overhead_comparison_video",
   "communication_type": "bidirectional",
   "num_of_unique_streams": 100,
   "num_of_traces_per_stream": 100,
