@@ -144,7 +144,7 @@ docker build -t video_client .
 To run the experiments, follow these steps:
 1. **Ensure that the server, middleboxes, and client have being setup and built.**
 2. Open an SSH connection to the client machine.
-3. Change the directory to `Path/To/Netshaper/evaluation/video-latency/`
+3. Change the directory to `Path/To/Netshaper/evaluation/video_latency/`
 4. run the experiment script with the following command:
 ```bash
 ./run.sh
