@@ -5,7 +5,7 @@
 #ifndef MINESVPN_HELPERS_H
 #define MINESVPN_HELPERS_H
 
-#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/lamport_queue/Cpp/LamportQueue.hpp"
 #include "../../modules/Common.h"
 #include "msquic.hpp"
 #include "../../modules/shaper/NoiseGenerator.h"

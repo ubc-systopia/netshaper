@@ -42,7 +42,7 @@ include_directories(../msquic/src/inc)
 add_subdirectory(../msquic msquic)
 add_subdirectory(../src/modules/quic_wrapper src/modules/quic_wrapper)
 add_subdirectory(../src/modules/tcp_wrapper src/modules/tcp_wrapper)
-add_subdirectory(../src/modules/lamport_queue/queue src/modules/lamport_queue/queue)
+add_subdirectory(../src/modules/lamport_queue src/modules/lamport_queue)
 add_subdirectory(../src/modules/shaper src/modules/shaper)
 add_subdirectory(../src/example/util src/example/util)
 

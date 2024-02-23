@@ -11,7 +11,7 @@
 #include <queue>
 #include <shared_mutex>
 #include "../../modules/tcp_wrapper/Server.h"
-#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/lamport_queue/Cpp/LamportQueue.hpp"
 #include "../../modules/Common.h"
 #include "../util/helpers.h"
 #include "../peer2/UnshapedClient.h"

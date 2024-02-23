@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <csignal>
 #include "../../modules/quic_wrapper/Client.h"
-#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/lamport_queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../../modules/shaper/NoiseGenerator.h"
 #include "../util/config.h"

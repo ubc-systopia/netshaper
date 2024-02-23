@@ -12,7 +12,7 @@
 #include <queue>
 #include <shared_mutex>
 #include "../../modules/quic_wrapper/Server.h"
-#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/lamport_queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../../modules/shaper/NoiseGenerator.h"
 #include "../util/config.h"

@@ -8,7 +8,7 @@
 #include <thread>
 #include <algorithm>
 #include "../../modules/tcp_wrapper/Client.h"
-#include "../../modules/lamport_queue/queue/Cpp/LamportQueue.hpp"
+#include "../../modules/lamport_queue/Cpp/LamportQueue.hpp"
 #include "../util/helpers.h"
 #include "../util/config.h"
 #include "../util/Unshaped.h"
