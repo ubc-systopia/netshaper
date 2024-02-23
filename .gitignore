@@ -8,3 +8,4 @@ hardware/msquic/*
 *.vscode
 *.csv
 *.pkl
+*.pcap

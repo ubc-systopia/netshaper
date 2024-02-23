@@ -126,7 +126,7 @@ sudo apt install docker-compose python3 python3-pip
 To setup the client, follow these steps:  
 1. Open an SSH connection to the machine that serves as the client.
 2. Clone the NetShaper repository onto the client machine. 
-3. Change the directory to `Path/To/Netshaper/hardware/web-client/`
+3. Change the directory to `Path/To/Netshaper/hardware/web_client/`
 4. Execute the client setup script. Ensure that your machine has an internet connection to download the dataset for the client:
 ```bash
 ./setup.sh

@@ -5,6 +5,6 @@
 	path = hardware/msquic
 	url = https://github.com/ubc-systopia/msquic.git
 	branch = release/2.1
-[submodule "hardware/web-client/wrk2"]
-	path = hardware/web-client/wrk2
+[submodule "hardware/web_client/wrk2"]
+	path = hardware/web_client/wrk2
 	url = https://github.com/ubc-systopia/wrk2.git

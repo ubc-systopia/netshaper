@@ -96,7 +96,7 @@ fi
 request_size=0
 
 # Remove stats from the web client if the directory exists
-[[ -d "../../hardware/video_client/traces" ]] && rm -rf "../../hardware/web-client/latencies"
+[[ -d "../../hardware/web_client/latencies" ]] && rm -rf "../../hardware/web_client/latencies"
 
 
 COUNTER=0
@@ -113,7 +113,7 @@ for ((i=1; i<=$iter_num; i++)); do
 
 
   # Run the video client
-  cd ../../hardware/web-client/ || exit
+  cd ../../hardware/web_client/ || exit
   ./run.sh "web-latency" $max_client_num $request_rate $request_size $i
   cd - > /dev/null 2>&1 || exit
 
@@ -136,7 +136,7 @@ sleep $((TIMEOUT+20))
 
 # Copy traces from the video client
 mkdir -p "$results_dir/client/"
-cp -r "../../hardware/web-client/latencies" "$results_dir/client/"
+cp -r "../../hardware/web_client/latencies" "$results_dir/client/"
 
 echo -e "${GREEN}Traces are saved in $results_dir${OFF}"
 
