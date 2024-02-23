@@ -112,7 +112,7 @@ ssh "$username_peer2@$hostname_peer2" "[[ -d \"$netshaper_dir_peer2/hardware/ser
 
 
 # Remove traces from the video client if the directory exists
-[[ -d "../../hardware/video-client/traces" ]] && rm -rf "../../hardware/video-client/traces"
+[[ -d "../../hardware/video_client/traces" ]] && rm -rf "../../hardware/video_client/traces"
 
 
 
@@ -132,7 +132,7 @@ for ((i=1; i<=$iter_num; i++)); do
 
 
     # Run the video client
-    cd ../../hardware/video-client/ || exit
+    cd ../../hardware/video_client/ || exit
     ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE
     cd - >/dev/null 2>&1 || exit
 
@@ -165,6 +165,6 @@ scp -r "$username_peer2@$hostname_peer2:$netshaper_dir_peer2/hardware/server_mid
 
 # Copy traces from the video client
 mkdir -p "$results_dir/client/"
-cp -r "../../hardware/video-client/traces/client" "$results_dir/"
+cp -r "../../hardware/video_client/traces/client" "$results_dir/"
 
 echo -e "${GREEN}Traces are saved in $results_dir${OFF}"

@@ -8,7 +8,7 @@ RUN apt-get update \
 RUN pip install requests
 
 #COPY ./videoClient /root/videoClient
-COPY ./video-client.py /root/video-client.py
+COPY ./video_client.py /root/video_client.py
 COPY ./entrypoint.sh /root/entrypoint.sh
 
 WORKDIR /root

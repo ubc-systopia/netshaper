@@ -4,3 +4,7 @@ test
 *.pyc
 dataset/*
 hardware/msquic/*
+*.log
+*.vscode
+*.csv
+*.pkl

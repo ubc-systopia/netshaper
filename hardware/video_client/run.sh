@@ -33,11 +33,11 @@ mkdir -p traces/client/$i
 
 docker run \
   -d --rm \
-  --name "video-client-$(basename $videoMPD .mpd)-$i" \
+  --name "video_client-$(basename $videoMPD .mpd)-$i" \
   -e VIDEO="$videoMPD" \
   -e PCAP="$(basename $videoMPD .mpd)" \
   -e TIMEOUT="$TIMEOUT" \
   -e SERVER="192.168.1.2:$port" \
   -e MAX_CAPTURE_SIZE="$MAX_CAPTURE_SIZE" \
   -v "$(pwd)/traces/client/$i:/root/traces" \
-  video-client
+  video_client

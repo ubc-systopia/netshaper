@@ -96,7 +96,7 @@ fi
 request_size=0
 
 # Remove stats from the web client if the directory exists
-[[ -d "../../hardware/video-client/traces" ]] && rm -rf "../../hardware/web-client/latencies"
+[[ -d "../../hardware/video_client/traces" ]] && rm -rf "../../hardware/web-client/latencies"
 
 
 COUNTER=0
