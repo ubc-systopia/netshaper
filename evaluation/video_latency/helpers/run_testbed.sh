@@ -15,8 +15,6 @@ MAX_CAPTURE_SIZE=300
 # Length of captured traces (seconds) 
 TIMEOUT=300 
 
-# Number of parallel communication channels
-MAX_PARALLEL=6
 
 #!/bin/bash
 
@@ -28,10 +26,10 @@ peer2_ssh_host=""
 peer2_ssh_username=""
 peer1_netshaper_dir=""  
 peer2_netshaper_dir=""
-
+max_client_num=""
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --iter_num number --hostname_peer1 <host> --username_peer1 <user> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir>"
+    echo "Usage: $0 --iter_num number --hostname_peer1 <host> --username_peer1 <user> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir> --max_client_num <num>"
     exit 1
 }
 # Parse command line arguments
@@ -43,6 +41,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --iter_num)
             iter_num="$2"
+            shift 2
+            ;;
+        --max_client_num)
+            max_client_num="$2"
             shift 2
             ;;
         --hostname_peer1)
@@ -77,7 +79,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check if all required arguments are provided
-if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" ]]; then
+if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" || -z "$max_client_num" ]]; then
     echo "Missing required arguments."
     usage
 fi
@@ -117,18 +119,24 @@ ssh "$username_peer2@$hostname_peer2" "[[ -d \"$netshaper_dir_peer2/hardware/ser
 
 
 
+
+instance_num=0
+iter_num_middlebox=1
+
+# Run Peer2
+ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $instance_num $videoMPD $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE"
+
+# Run Peer1
+ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $instance_num $videoMPD $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE"
+
+
+
 COUNTER=0
 for ((i=1; i<=$iter_num; i++)); do	
   echo -e "${CYAN}Running iteration $i${OFF}"
   for videoMPD in ${videoMPDs[@]}
   do
     videoMPD="video/$videoMPD"
-
-    # Run Peer2
-    ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
-
-    # Run Peer1
-    ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $COUNTER $videoMPD $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
     # Run the video client
@@ -139,15 +147,16 @@ for ((i=1; i<=$iter_num; i++)); do
 
 
     COUNTER=$((COUNTER+1))
-    if [[ $COUNTER -ge $MAX_PARALLEL ]]
+    if [[ $COUNTER -ge $max_client_num ]]
     then
-      echo -e "${YELLOW}Waiting for $(($TIMEOUT+20)) seconds to finish the last batch of containers${OFF}"
-      sleep $(($TIMEOUT+20))
-      COUNTER=0
       break
     fi
   done
-  break
+  # Break if the number of clients is reached
+  if [[ $COUNTER -ge $max_client_num ]]
+  then
+    break
+  fi
 done
 
 

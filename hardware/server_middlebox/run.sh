@@ -17,7 +17,7 @@ MAX_PARALLEL=5
 
 if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ]
 then
-  echo -e "${RED}Usage ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE>${OFF}"
+  echo -e "${RED}Usage (server middlebox) ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE>${OFF}"
   exit 1
 fi
 

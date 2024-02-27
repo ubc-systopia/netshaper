@@ -16,15 +16,14 @@ OFF='\033[0m'
 
 if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ]
 then
-  echo -e "${RED}Usage ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE>${OFF}"
+  echo -e "${RED}Usage (video client) ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE>${OFF}"
   exit 1
 fi
 
 videoMPD=$2
 i=$3
-port=$((COUNTER + 8000))
+port=8000
 TIMEOUT=$4 # Seconds
-
 # Maximum capture size of TCPdump (# bytes)
 MAX_CAPTURE_SIZE=$5
 
