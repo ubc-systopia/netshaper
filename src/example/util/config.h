@@ -54,7 +54,7 @@ namespace config {
     std::string bindAddr;
     uint16_t bindPort = 8000;
     __useconds_t checkQueuesInterval = 50000;
-    std::string serverAddr = "localhost:5555";
+    std::string serverAddr[2] = {"localhost:5555", "localhost:5556"};
     std::vector<int> cores{};
   };
   /**
@@ -250,9 +250,13 @@ namespace config {
         config.unshapedServer.checkQueuesInterval =
             unshapedServerJson["checkQueuesInterval"].get<__useconds_t>();
       }
-      if (unshapedServerJson.contains("serverAddr")) {
-        config.unshapedServer.serverAddr =
-            unshapedServerJson["serverAddr"].get<std::string>();
+      if (unshapedServerJson.contains("serverAddr[0]")) {
+        config.unshapedServer.serverAddr[0] =
+            unshapedServerJson["serverAddr[0]"].get<std::string>();
+      }
+      if (unshapedServerJson.contains("serverAddr[1]")) {
+        config.unshapedServer.serverAddr[1] =
+            unshapedServerJson["serverAddr[1]"].get<std::string>();
       }
       if (unshapedServerJson.contains("cores")) {
         config.unshapedServer.cores =
@@ -348,7 +352,8 @@ namespace config {
     os << "Bind Port: " << unshapedServer.bindPort << "\n";
     os << "Check Response Loop Interval: "
        << unshapedServer.checkQueuesInterval << "\n";
-    os << "Server Address: " << unshapedServer.serverAddr << "\n";
+    os << "Server Address[0]: " << unshapedServer.serverAddr[0] << "\n";
+    os << "Server Address[1]: " << unshapedServer.serverAddr[1] << "\n";
     os << "Cores: " << unshapedServer.cores << "\n";
     return os;
   }

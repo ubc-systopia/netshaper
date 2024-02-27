@@ -20,8 +20,13 @@ using namespace helpers;
 
 class UnshapedServer : public Unshaped {
 private:
+  static constexpr int FIRST_SERVER_PARTITION = 3;
+  static constexpr int NUM_PARTITIONS = 5;
+
   config::Peer1Config peer1Config;
-  std::string serverAddr;
+
+  std::string serverAddr[2];
+  int server_idx = 0;
 
   std::unordered_map<int, QueuePair> *socketToQueues;
   std::unordered_map<QueuePair, int, QueuePairHash> *queuesToSocket;

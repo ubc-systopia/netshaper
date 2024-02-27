@@ -194,7 +194,12 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
 
   switch (connStatus) {
     case SYN: {
-      auto queues = assignQueue(fromSocket, clientAddress, serverAddr);
+      std::string addr = serverAddr[0];
+      if (server_idx > UnshapedServer::FIRST_SERVER_PARTITION) {
+                                addr = serverAddr[1];
+      }
+      server_idx = (server_idx + 1) % UnshapedServer::NUM_PARTITIONS;
+      auto queues = assignQueue(fromSocket, clientAddress, addr);
       if (queues.toShaped == nullptr) {
         log(ERROR, "More clients than configured for!");
         return false;
