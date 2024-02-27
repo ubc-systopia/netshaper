@@ -94,7 +94,7 @@ def main():
     ## Get the privacy loss for peer1
     privacy_loss_peer1 = experiment_config["privacy_loss_peer1"]
     num_of_queries_peer1 = 100000 // experiment_config["dp_interval_peer1"]
-    noise_multiplier_peer1 = "{:.2f}".format(get_noise_multiplier(privacy_loss_peer1, num_of_queries_peer1))
+    noise_multiplier_peer1 = float("{:.2f}".format(get_noise_multiplier(privacy_loss_peer1, num_of_queries_peer1)))
     
     
     
@@ -102,7 +102,7 @@ def main():
     ## Get the privacy loss for peer2
     privacy_loss_peer2 = experiment_config["privacy_loss_peer2"]
     num_of_queries_peer2 = 5e6  //  dp_interval_peer2
-    noise_multiplier_peer2 = "{:.2f}".format(get_noise_multiplier(privacy_loss_peer2, num_of_queries_peer2)) 
+    noise_multiplier_peer2 = float("{:.2f}".format(get_noise_multiplier(privacy_loss_peer2, num_of_queries_peer2))) 
      
     
     # Peer1 JSON file path
