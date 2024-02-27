@@ -69,4 +69,5 @@ done
 echo -e "${YELLOW}Converting pcap files to csvs...${OFF}"
 ./helpers/pcap_to_csvs.sh --traces_dir $results_dir_traces --csvs_dir $results_dir_csvs
 
-
+echo -e "${YELLOW}Processing the data...${OFF}"
+python3 helpers/process_data.py --results_dir $results_dir_traces

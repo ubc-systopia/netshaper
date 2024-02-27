@@ -19,9 +19,22 @@ def get_interval_list(results_dir):
 
 
 
+def get_clients_list(results_dir):
+    # Getting the list of all direcotries in the results directory
+    dirs = [d for d in os.listdir(results_dir) if os.path.isdir(os.path.join(results_dir, d))]
+
+    # Removing T_ from the beginning of the directory names
+    clients = [int(d.replace("C_", "")) for d in dirs]
+    
+    return clients  
+
+
+
 def get_interval_dir(results_dir, interval):
     return os.path.join(results_dir, "T_" + str(interval), "client")
 
+def get_client_dir(results_dir, client):
+    return os.path.join(results_dir, "C_" + str(client))
 
 def get_log_files(interval_dir):
     # Getting the list of all files in all subdirectories of the interval directory that end with .log
@@ -71,33 +84,39 @@ def main():
         
         
         
-    # Temporary reults dir for testing
-    # TODO: Remove this
-    results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/video_latency/results/video_latency_(2024-02-07_10-12)/traces"
+    processed_data = {"client_num": [], "dp_intevals": [], "mean": [], "std": []} 
     
     
-    processed_data = {"dp_intevals": [], "mean": [], "std": []} 
     
-     
-    dp_intervals = get_interval_list(results_dir)      
-
-    for interval in dp_intervals:
-        # Get the directory for the interval
-        interval_dir = get_interval_dir(results_dir, interval)
-
-        # Get the list of all log files in the interval directory
-        log_files = get_log_files(interval_dir)
-
-        # Get the latencies from the log files
-        latencies = get_all_latencies(log_files)
+    client_nums = get_clients_list(results_dir) 
+    
+    for client in client_nums:
+        # Get the directory for the client    
+        client_dir = get_client_dir(results_dir, client)
         
-        # Get the mean and variance of the latencies        
-        mean, std = get_latency_stats(latencies)
+        dp_intervals = get_interval_list(client_dir)      
 
-        processed_data["dp_intevals"].append(interval)
-        processed_data["mean"].append(mean)
-        processed_data["std"].append(std)
-        
+        for interval in dp_intervals:
+
+
+            # Get the directory for the interval
+            interval_dir = get_interval_dir(client_dir, interval)
+
+            # Get the list of all log files in the interval directory
+            log_files = get_log_files(interval_dir)
+
+            # Get the latencies from the log files
+            latencies = get_all_latencies(log_files)
+            
+            # Get the mean and variance of the latencies        
+            mean, std = get_latency_stats(latencies)
+
+            processed_data["dp_intevals"].append(interval)
+            processed_data["mean"].append(mean)
+            processed_data["std"].append(std)
+            processed_data["client_num"].append(client)
+                        
+    print(processed_data)
     # Saving the processed data in the same results directory as a pickle file
     with open(os.path.join(results_dir, "processed_data.pkl"), "wb") as f:
         pickle.dump(processed_data, f)

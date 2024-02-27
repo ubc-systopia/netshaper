@@ -123,11 +123,14 @@ ssh "$username_peer2@$hostname_peer2" "[[ -d \"$netshaper_dir_peer2/hardware/ser
 instance_num=0
 iter_num_middlebox=1
 
+mpd_middlebox="tmp.mpd"
+
+
 # Run Peer2
-ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $instance_num $videoMPD $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE"
+ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $instance_num $mpd_middlebox $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE"
 
 # Run Peer1
-ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $instance_num $videoMPD $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE"
+ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $instance_num $mpd_middlebox $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
 
@@ -175,5 +178,9 @@ scp -r "$username_peer2@$hostname_peer2:$netshaper_dir_peer2/hardware/server_mid
 # Copy traces from the video client
 mkdir -p "$results_dir/client/"
 cp -r "../../hardware/video_client/traces/client" "$results_dir/"
+
+
+
+
 
 echo -e "${GREEN}Traces are saved in $results_dir${OFF}"
