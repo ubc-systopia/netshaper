@@ -2,8 +2,8 @@ import argparse
 import pickle
 import re
 import os
-
-
+import pandas as pd
+import numpy as np
 
 def get_interval_list(results_dir):
     # Getting the list of all direcotries in the results directory
@@ -15,46 +15,39 @@ def get_interval_list(results_dir):
     return intervals  
 
 
+def get_clients_list(results_dir):
+    # Getting the list of all direcotries in the results directory
+    dirs = [d for d in os.listdir(results_dir) if os.path.isdir(os.path.join(results_dir, d))]
+
+    # Removing T_ from the beginning of the directory names
+    clients = [int(d.replace("C_", "")) for d in dirs]
+    
+    return clients  
+
 
 def get_interval_dir(results_dir, interval):
     return os.path.join(results_dir, "T_" + str(interval), "client")
 
+def get_client_dir(results_dir, client):
+    return os.path.join(results_dir, "C_" + str(client))
 
-def get_log_file(interval_dir):
+
+
+def get_csv_files(interval_dir):
     # Get the file that is named wrk.log and is in one of the subdirectories of the interval directory
+    csv_files = []
     for root, dirs, files in os.walk(interval_dir):
         for file in files:
-            if file.endswith("wrk.log"):
-                return os.path.join(root, file)
-    return None
+            if file.endswith("stats.csv"):
+                csv_files.append(os.path.join(root, file))
+
+    return csv_files
 
 
-def get_latency_stats(log_file):
-    mean_value = None
-    std_dev = None
-
-    # Open the file
-    with open(log_file, 'r') as file:
-        # Read each line
-        for line in file:
-            # Search for lines containing "Mean" and "StdDeviation"
-            if "Mean" in line:
-                # Extract mean value using regular expression
-                mean_match = re.search(r'Mean\s*=\s*([\d.]+)', line)
-                if mean_match:
-                    mean_value = float(mean_match.group(1))
-            if "StdDeviation" in line:
-                # Extract standard deviation value using regular expression
-                std_dev_match = re.search(r'StdDeviation\s*=\s*([\d.]+)', line)
-                if std_dev_match:
-                    std_dev = float(std_dev_match.group(1))
-            
-            # Break loop if both mean and standard deviation are found
-            if mean_value is not None and std_dev is not None:
-                break 
-    return mean_value, std_dev
-
-
+def get_latency_stats(latencies):
+    mean = np.mean(latencies)
+    std = np.std(latencies)
+    return mean, std
 
 
 def main():
@@ -76,33 +69,49 @@ def main():
         
         
     # Temporary reults dir for testing
-    # TODO: Remove this
-    results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/web_latency/results/web_latency_(2024-02-07_13-17)"
+    results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/web_latency/results/web_latency_(2024-02-28_16-34)"
     
     
     
-    processed_data = {"dp_intevals": [], "mean": [], "std": []}
+    processed_data = {"client_num":[], "dp_intevals": [], "mean": [], "std": []}
     
-    dp_intervals = get_interval_list(results_dir)      
+    client_nums = get_clients_list(results_dir) 
+    for client_num in client_nums:
+        # Get the directory for the client    
+        client_dir = get_client_dir(results_dir, client_num)
+        
+        dp_intervals = get_interval_list(client_dir)
+        for dp_interval in dp_intervals:
+            # Get the directory for the interval
+            interval_dir = get_interval_dir(client_dir, dp_interval)
+            # Get the list of all log files in the interval directory
+            csv_files = get_csv_files(interval_dir)
+            latencies = []
+            for csv_file in csv_files: 
+                # read the csv file as a pandas dataframe
+                df = pd.read_csv(csv_file)
+                df = df.rename(columns={'start_time 0': ' start_time 0'}) 
+                for i in range(client_num):
+                    columns_to_select = [f' start_time {i}', f' actual_time {i}']
+                    # drop the tail
+                    client_df = df.loc[:, columns_to_select] 
+                    # drop row that conian string ' '
+                    client_df = client_df[~((client_df == ' ').any(axis=1))]
+                    client_df = client_df.dropna().astype(float)
+                    T = 60 * 1e6
+                    # Take values from actual time column with start time more than T 
+                    client_df = client_df[client_df[f' start_time {i}'] > T]
+                    # change the actual time values from string to int
+                    latencies = latencies + list(client_df[f' actual_time {i}'] ) 
+            # print(latencies)
+            mean, std = get_latency_stats(latencies)
 
-    
-    for interval in dp_intervals:
-        # Get the directory for the interval
-        interval_dir = get_interval_dir(results_dir, interval)
-
-        # Get the list of all log files in the interval directory
-        log_file = get_log_file(interval_dir)
-        
-        if log_file is None:
-            raise Exception(f'No log file found in {interval_dir}')
-        
-        mean, std = get_latency_stats(log_file) 
-        
-        processed_data["dp_intevals"].append(interval)
-        processed_data["mean"].append(mean)
-        processed_data["std"].append(std)
-    
-    
+            processed_data["dp_intevals"].append(dp_interval)
+            processed_data["client_num"].append(client_num)
+            processed_data["mean"].append(mean)
+            processed_data["std"].append(std)
+   
+    # print(processed_data)
     # Saving the processed data in the same results directory as a pickle file
     with open(os.path.join(results_dir, "processed_data.pkl"), "wb") as file:
         pickle.dump(processed_data, file)

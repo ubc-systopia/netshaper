@@ -2,7 +2,7 @@ import paramiko
 import json
 import argparse
 
-
+from privacy_utils import get_noise_multiplier
 
 
 def main():
@@ -10,7 +10,7 @@ def main():
     
     # Add arguments
     parser.add_argument("--dp_interval_peer2", type=int, help="Description of dp_interval_peer2")
-
+    parser.add_argument("--max_client_num", type=int, help="max client number in middleboxes")
     parser.add_argument("--hostname_peer1", type=str, help="SSH hostname for peer1")
     parser.add_argument("--port_peer1", type=int, default=22, help="SSH port for peer1")    
     parser.add_argument("--username_peer1", type=str, help="SSH username for peer1")
@@ -32,6 +32,11 @@ def main():
     else: 
         dp_interval_peer2 = args.dp_interval_peer2 
     
+    if args.max_client_num is None:
+        parser.error("Please provide the required arguments")
+    else:
+        max_client_num = args.max_client_num
+
     # SSH details for the client-side middlebox (peer1)
     if args.hostname_peer1 is None:
         parser.error("Please provide the required arguments")
@@ -83,7 +88,22 @@ def main():
     experiment_config = json.load(open(experiment_config_path, 'r'))  
     
     
-     
+    # Calculate the noise multiplier for peer1
+    ## Get the privacy loss for peer1
+    privacy_loss_peer1 = experiment_config["privacy_loss_peer1"]
+    num_of_queries_peer1 = 100000 // experiment_config["dp_interval_peer1"]
+    noise_multiplier_peer1 = float("{:.2f}".format(get_noise_multiplier(privacy_loss_peer1, num_of_queries_peer1)))
+    
+    
+    
+    # Calculate the noise multiplier for peer2
+    ## Get the privacy loss for peer2
+    privacy_loss_peer2 = experiment_config["privacy_loss_peer2"]
+    num_of_queries_peer2 = 1e6  //  dp_interval_peer2
+    noise_multiplier_peer2 = float("{:.2f}".format(get_noise_multiplier(privacy_loss_peer2, num_of_queries_peer2))) 
+
+
+
     # Peer1 JSON file path
     json_file_path_peer1 = f'{netshaper_dir_peer1}/hardware/client_middlebox/peer1_config.json'
 
@@ -114,8 +134,8 @@ def main():
     peer2_config = json.loads(json_data_peer2)
 
     # Modify Peer1 Config file
-    peer1_config["maxClients"] = experiment_config["max_client_number"] + 2
-    peer1_config["shapedClient"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer1"]
+    peer1_config["maxClients"] = max_client_num + 2
+    peer1_config["shapedClient"]["noiseMultiplier"] = noise_multiplier_peer1
     peer1_config["shapedClient"]["sensitivity"] = experiment_config["sensitivity_peer1"]
     peer1_config["shapedClient"]["DPCreditorLoopInterval"] = experiment_config["dp_interval_peer1"]
     peer1_config["shapedClient"]["sendingLoopInterval"] = experiment_config["sender_loop_interval_peer1"]
@@ -124,8 +144,8 @@ def main():
     
     
     # Modify Peer2 Config file
-    peer2_config["maxStreamsPerPeer"] = experiment_config["max_client_number"] + 2
-    peer2_config["shapedServer"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer2"]
+    peer2_config["maxStreamsPerPeer"] = max_client_num + 2
+    peer2_config["shapedServer"]["noiseMultiplier"] = noise_multiplier_peer2
     peer2_config["shapedServer"]["sensitivity"] = experiment_config["sensitivity_peer2"]
     peer2_config["shapedServer"]["DPCreditorLoopInterval"] = dp_interval_peer2 
     peer2_config["shapedServer"]["sendingLoopInterval"] = experiment_config["sender_loop_interval_peer2"]

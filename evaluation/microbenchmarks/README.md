@@ -1,5 +1,4 @@
 # Microbenchmark Experiments
-(**If you already have the setup for web latency and/or video latency experiments, skip to the client section**).  
 This folder contains the scripts for microbenchmarks. 
 These experiments are executed on our testbed, which consists of 4 machines connected with a linear topology.
 The machines are connected with 10Gbps links, two of which work as the client and the server, and the other two work as NetShaper middleboxes.
@@ -77,6 +76,11 @@ To set the middlebox on the server side follow these steps:
 ```
 
 ### Build
+To disable shaping and measure latency and throughput, in directory `Path/To/NetShaper/hardware/server_middlebox/`, make sure that you commented out the following line from the `CMakeLists.txt` file:
+```cmake
+# add_compile_definitions(SHAPING) 
+```
+
 To build the server-side middlebox binary, execute the following command:
 ```bash
 ./build.sh
@@ -105,6 +109,12 @@ To set up the middlebox at the client side follow these steps:
 ```
 
 ### Build
+To disable shaping and measure latency and throughput, in directory `Path/To/NetShaper/hardware/client_middlebox/`, make sure that you commented out the following line from the `CMakeLists.txt` file:
+```cmake
+# add_compile_definitions(SHAPING) 
+```
+
+
 To build the client-side middlebox binary, execute the following command:
 ```bash
 ./build.sh
