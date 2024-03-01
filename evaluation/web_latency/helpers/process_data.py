@@ -68,8 +68,6 @@ def main():
         
         
         
-    # Temporary reults dir for testing
-    results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/web_latency/results/web_latency_(2024-02-28_16-34)"
     
     
     
