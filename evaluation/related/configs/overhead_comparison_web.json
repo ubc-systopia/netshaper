@@ -25,8 +25,8 @@
   "privacy_window_size_client_to_server_s" : 1,
 
   "data_source": "processed",
-  "load_data_dir_server_to_client": "../../dataset/web/cache/server_to_client/",
-  "load_data_dir_client_to_server": "../../dataset/web/cache/client_to_server/",
+  "load_data_dir_server_to_client": "../../dataset/simulator/web/cache/server_to_client/",
+  "load_data_dir_client_to_server": "../../dataset/simulator/web/cache/client_to_server/",
   "results_dir": "results/",
   "plot_dir": "plots/",   
   "max_num_of_unique_streams" : 96,

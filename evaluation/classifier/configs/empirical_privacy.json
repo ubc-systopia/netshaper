@@ -23,7 +23,7 @@
 
 
   "data_source" : "processed",
-  "load_data_dir_server_to_client": "../../dataset/video/cache/server_to_client/",
+  "load_data_dir_server_to_client": "../../dataset/simulator/video/cache/server_to_client/",
   "results_dir": "results/",
   "plot_dir": "plots/",
   "max_num_of_unique_streams" : 100,

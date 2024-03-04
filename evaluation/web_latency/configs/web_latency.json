@@ -1,6 +1,6 @@
 {
   "iter_num": 3,
-  "max_client_numbers": [1, 16, 128],
+  "max_client_numbers": [1, 16],
   "request_rate": 1600,
   "privacy_loss_peer1": 1,
   "privacy_loss_peer2": 1,
