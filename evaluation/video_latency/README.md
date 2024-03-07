@@ -5,9 +5,18 @@ This folder contains the scripts for the video streaming latency experiments.
 These experiments are executed on our testbed, which consists of 4 machines connected with a linear topology.
 The machines are connected with 10Gbps links, two of which work as the client and the server, and the other two work as NetShaper middleboxes.
 
-     +-----------+        +-----------+        +-----------+        +-----------+
-     |   Client  |--------|    MB-1   |--------|    MB-2   |--------|   Server  |
-     +-----------+ 10Gbps +-----------+ 10Gbps +-----------+ 10Gbps +-----------+
+         +-----------+        +-----------+        +-----------+        +-----------+
+         |   Client  |--------|    MB-1   |--------|    MB-2   |--------|   Server  |
+         +-----------+ 10Gbps +-----------+ 10Gbps +-----------+ 10Gbps +-----------+
+               |                    |                    |                    |
+               |                    |                    |                    |
+                                        SSH Connections  
+               |                    |                    |                    |
+               |                    |                    |                    |
+               v                    v                    v                    v
+         +--------------------------------------------------------------------------+
+         |                           User (local machine)                           |
+         +--------------------------------------------------------------------------+
 
 
 ## General Prerequisites
