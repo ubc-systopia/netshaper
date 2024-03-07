@@ -45,8 +45,8 @@ def plot_latency_vs_dp_interval(data, results_dir):
         fixed_params = {"client_num": client_num}        
         filtered_data = filter_data_based_on_params(data, fixed_params)
         dp_intervals = np.array(filtered_data["dp_intevals"])/1e3
-        mean = np.array(filtered_data["mean"])/1e6
-        std = np.array(filtered_data["std"])/1e6
+        mean = np.array(filtered_data["mean"])/1e3
+        std = np.array(filtered_data["std"])/1e3
         
         mean, dp_intervals = sort_x_based_on_y(mean, dp_intervals)
         plt.plot(dp_intervals, mean, label=f"{client_num} clients", markersize=8, marker=markers[ind], color=colors[ind])
@@ -55,7 +55,7 @@ def plot_latency_vs_dp_interval(data, results_dir):
     plt.legend(framealpha=0, handlelength=1, fontsize=12, ncol=1)
     plt.xlabel('DP interval, $T$ (ms)')
     plt.ylabel('Latency (ms)')
-    plt.yticks([i for i in range(0, 101, 20)])
+    # plt.yticks([i for i in range(0, 101, 20)])
     plt.xticks([i for i in range(0, 101, 20)])
     plt.title('$\epsilon_W$=1, $\delta_W$=1e-6, $\Delta_W$=60 KB')
     plot_file = os.path.join(results_dir, "latency_vs_dp_interval.pdf")

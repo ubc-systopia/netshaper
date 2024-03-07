@@ -118,11 +118,11 @@ for ((i=1; i<=$iter_num; i++)); do
   cd - > /dev/null 2>&1 || exit
 
 
+  sleep $(($TIMEOUT+20))
   COUNTER=$((COUNTER+1))
   if [[ $COUNTER -ge $MAX_PARALLEL ]]
   then
     echo -e "${YELLOW}Waiting for $(($TIMEOUT+20)) seconds to finish the last batch of containers${OFF}"
-    sleep $(($TIMEOUT+20))
     COUNTER=0
     break
   fi
@@ -139,4 +139,6 @@ mkdir -p "$results_dir/client/"
 cp -r "../../hardware/web_client/latencies" "$results_dir/client/"
 
 echo -e "${GREEN}Traces are saved in $results_dir${OFF}"
+
+
 
