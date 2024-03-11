@@ -3,7 +3,6 @@ import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import configlib
-from memory_profiler import profile
 
 from src.transport import DP_transport, NonDP_transport
 from src.utils.overhead_utils import overhead, overhead_aggregation, get_pacer_web_overhead
@@ -157,7 +156,6 @@ def overhead_video_unidirectional(config: configlib.Config, filtered_data_list):
     return results
 
 
-@profile
 def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
     alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
 

@@ -34,7 +34,7 @@ The testbed setup requires physical access to the machines and the ability to SS
           |                           User (local machine)                           |
           +--------------------------------------------------------------------------+
 ```
-The experiments executed from the local machine and are managed through the client machine. Therefore, the client machine should have the ability to SSH into the other machines to start different stages of experiment and collect the result.
+The experiments executed from the local machine and are managed through the client machine. Therefore, **the client machine should have the ability to SSH into the other machines** to start different stages of experiment and collect the result.
 
 
 
