@@ -24,6 +24,8 @@ request_rate=$3
 request_size=$4
 iter_num=$5
 
+port=$(($iter_num + 8000))
+
 
 if [[ $1 == "web-latency" ]]; then
   echo -e "${YELLOW}Measuring the latency for a web service.${OFF}"
@@ -32,7 +34,7 @@ if [[ $1 == "web-latency" ]]; then
   echo -e "${YELLOW}Running the web client${OFF}"
   mkdir -p "latencies/iter_$iter_num"
 
-  ./wrk2/wrk -c $client_num -d 180 -R $request_rate -L -U -t $client_num -s multiple_urls.lua http://192.168.1.2:8000/ > "latencies/iter_$iter_num/wrk.log"
+  ./wrk2/wrk -c $client_num -d 180 -R $request_rate -L -U -t $client_num -s multiple_urls.lua "http://192.168.1.2:$port/" > "latencies/iter_$iter_num/wrk.log"
 
   mv stats.csv "latencies/iter_$iter_num/stats.csv" 
 

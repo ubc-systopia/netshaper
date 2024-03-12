@@ -20,8 +20,8 @@ The machines are connected with 10Gbps links, two of which work as the client an
 
 
 ## General Prerequisites
-You should have physical access to the testbed machines, as well as the ability to SSH into them. The physical access is required to change BIOS settings and reboot the machines. SSH access is required to run the experiments and collect the results.
-The following configurations should be applied to all 4 machines. 
+You should have physical access to the testbed machines, as well as the ability to SSH into them. The phyical access to middlebox machines is requried to change BIOS settings and reboot the machines. The SSH access is required to run the experiments and collect the results.
+The following configurations should be applied to machines hosting middleboxes (MB-1 and MB-2). 
 
 ### BIOS Configuration
 1. Disable hyperthreading.

@@ -99,17 +99,16 @@ request_size=0
 [[ -d "../../hardware/web_client/latencies" ]] && rm -rf "../../hardware/web_client/latencies"
 
 
-COUNTER=0
 for ((i=1; i<=$iter_num; i++)); do	
 
   echo -e "${CYAN}Running iteration $i${OFF}"
 
   PCAP_FILE="iter_$i.mpd"
   # Run Peer2
-  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
   # Run Peer1
-  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
   # Run the video client
@@ -119,13 +118,6 @@ for ((i=1; i<=$iter_num; i++)); do
 
 
   sleep $(($TIMEOUT+20))
-  COUNTER=$((COUNTER+1))
-  if [[ $COUNTER -ge $MAX_PARALLEL ]]
-  then
-    echo -e "${YELLOW}Waiting for $(($TIMEOUT+20)) seconds to finish the last batch of containers${OFF}"
-    COUNTER=0
-    break
-  fi
 done
 
 
