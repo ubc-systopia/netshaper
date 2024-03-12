@@ -46,14 +46,13 @@ def empirical_privacy(config: configlib.Config, filtered_data_list):
                'DP_BandB_accuracy': [],
                'DP_BandB_precision': [],
                'DP_BandB_recall': [],
-               'DPTCN_accuracy': [],
+               'DP_TCN_accuracy': [],
                'DP_TCN_precision': [],
                'DP_TCN_recall': [],
-               'noise_multiplier_server_to_client': [],
                'alpha_server_to_client': [], 
                'dp_interval_server_to_client': [],
                'sensitivity_server_to_client': [],
-               'comparsion_mode': []
+               'model': []
     } 
     
 
@@ -98,29 +97,33 @@ def empirical_privacy(config: configlib.Config, filtered_data_list):
         ## Traffic analysis attack on DP shaped traffic
 
 
-        privacy_losses = np.linspace(config.min_privacy_loss_server_to_client, config.max_privacy_loss_server_client, config.num_privacy_loss_server_to_client)
+        privacy_losses = np.linspace(config.min_privacy_loss_server_to_client, config.max_privacy_loss_server_to_client, config.num_privacy_loss_server_to_client)
         
         with tqdm(total=len(privacy_losses)) as pbar: 
             for privacy_loss in privacy_losses:
                 pbar.set_description(f'Privacy loss: {privacy_loss} ...')
-                noise_multiplier = get_noise_multiplier(privacy_loss, num_of_queries, alphas, config.delta) 
+                noise_multiplier = get_noise_multiplier(privacy_loss, num_of_queries_s_to_c, alphas, config.delta_server_to_client) 
 
-                original_data, DP_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier)   
-                # Calculating the total privacy loss
-                eps, best_alpha = calculate_privacy_loss(num_of_queries, alphas, noise_multiplier, config.delta)
                 
-                results['privacy_loss'].append(eps)
-                results['noise_multiplier'].append(noise_multiplier)
+                # print(config.dp_interval_s_to_c_us)
+                original_data, DP_data, dummy_data = DP_transport(filtered_data_s_to_c, dp_interval_s_to_c_us, config.transport_type, config.DP_mechanism, config.sensitivity_server_to_client, DP_step, dp_interval_s_to_c_us, noise_multiplier=noise_multiplier)   
+                # Calculating the total privacy loss
+                eps, best_alpha = calculate_privacy_loss(num_of_queries_s_to_c, alphas, noise_multiplier, config.delta_server_to_client)
+                
+                results['privacy_loss_server_to_client'].append(eps)
+                results['noise_multiplier_server_to_client'].append(noise_multiplier)
 
                 BandB_accs, BandB_precs, BandB_recals = attack_accuracy(config, BandB_attack, DP_data)
-                results['BandB_accuracy'].append(BandB_accs)
-                results['BandB_precision'].append(BandB_precs)
-                results['BandB_recall'].append(BandB_recals)
-                
+                results['DP_BandB_accuracy'].append(BandB_accs)
+                results['DP_BandB_precision'].append(BandB_precs)
+                results['DP_BandB_recall'].append(BandB_recals)
                 
                 TCN_accs, TCN_precs, TCN_recals = attack_accuracy(config, TCN_attack, DP_data)
-                results['TCN_accuracy'].append(TCN_accs)
-                results['TCN_precision'].append(TCN_precs)
-                results['TCN_recall'].append(TCN_recals)  
+                results['DP_TCN_accuracy'].append(TCN_accs)
+                results['DP_TCN_precision'].append(TCN_precs)
+                results['DP_TCN_recall'].append(TCN_recals)  
+                ## Print everything
+                print(f'Privacy loss: {eps}, Noise multiplier: {noise_multiplier}, BandB accuracy: {BandB_accs}, TCN accuracy: {TCN_accs}')
+                
                 pbar.update(1)                    
         return results 

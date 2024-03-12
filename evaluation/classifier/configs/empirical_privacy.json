@@ -7,9 +7,9 @@
 
 
   "transport_type": "DP_dynamic",
-  "DP_mechansim": "Gaussian",
-  "min_privacy_loss_server_to_client": 1,
-  "max_privacy_loss_server_to_client": 100, 
+  "DP_mechanism": "Gaussian",
+  "min_privacy_loss_server_to_client": 200,
+  "max_privacy_loss_server_to_client": 200000,  
   "num_privacy_loss_server_to_client":  10,
   "delta_server_to_client": 1e-6,
   "sensitivity_server_to_client": 2.5e6,
