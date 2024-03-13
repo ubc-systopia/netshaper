@@ -24,14 +24,15 @@ def attack_accuracy(config:configlib.Config, attack_fn, DP_data):
     accs = []
     precs = []
     recals = []
+    models = []
     for i in range(config.attack_num_of_repeats):
         # original_data, DP_data, dummy_data = DP_transport(filtered_data, config.app_time_resolution_us, config.transport_type, config.DP_mechanism, config.sensitivity, DP_step, config.data_time_resolution_us, noise_multiplier=noise_multiplier)  
-        acc,  prec, recal = attack_fn(config, DP_data)
+        acc,  prec, recal, model = attack_fn(config, DP_data)
         accs.append(acc)
         precs.append(prec)
         recals.append(recal)
-
-    return accs, precs, recals
+        models.append(model)
+    return accs, precs, recals, model
 
 
 def empirical_privacy(config: configlib.Config, filtered_data_list):
@@ -40,19 +41,22 @@ def empirical_privacy(config: configlib.Config, filtered_data_list):
                'Baseline_BandB_accuracy': [],
                'Baseline_BandB_precision': [],
                'Baseline_BandB_recall': [],
+               'Baseline_BandB_model': [],
                'Baseline_TCN_accuracy': [],
                'Baseline_TCN_precision': [],
                'Baseline_TCN_recall': [],
+               'Baseline_TCN_model': [], 
                'DP_BandB_accuracy': [],
                'DP_BandB_precision': [],
                'DP_BandB_recall': [],
+               'DP_BandB_model': [],
                'DP_TCN_accuracy': [],
                'DP_TCN_precision': [],
                'DP_TCN_recall': [],
+               'DP_TCN_model': [],
                'alpha_server_to_client': [], 
                'dp_interval_server_to_client': [],
-               'sensitivity_server_to_client': [],
-               'model': []
+               'sensitivity_server_to_client': []
     } 
     
 
@@ -79,20 +83,22 @@ def empirical_privacy(config: configlib.Config, filtered_data_list):
 
         ## Traffic analysis attack on  non-shaped traffic
         
-        BandB_accs, BandB_precs, BandB_recals = attack_accuracy(config, BandB_attack, filtered_data_s_to_c)
+        BandB_accs, BandB_precs, BandB_recals, BandB_model = attack_accuracy(config, BandB_attack, filtered_data_s_to_c)
 
 
 
 
-        TCN_accs, TCN_precs, TCN_recals = attack_accuracy(config, TCN_attack, filtered_data_s_to_c)
+        TCN_accs, TCN_precs, TCN_recals, TCN_model = attack_accuracy(config, TCN_attack, filtered_data_s_to_c)
 
         results['Baseline_BandB_accuracy'].append(BandB_accs)
         results['Baseline_BandB_precision'].append(BandB_precs)
         results['Baseline_BandB_recall'].append(BandB_recals)
+        results['Baseline_BandB_model'].append(BandB_model)
+
         results['Baseline_TCN_accuracy'].append(TCN_accs)
         results['Baseline_TCN_precision'].append(TCN_precs)
         results['Baseline_TCN_recall'].append(TCN_recals)
-                 
+        results['Baseline_TCN_model'].append(TCN_model)                 
 
         ## Traffic analysis attack on DP shaped traffic
 
@@ -113,15 +119,18 @@ def empirical_privacy(config: configlib.Config, filtered_data_list):
                 results['privacy_loss_server_to_client'].append(eps)
                 results['noise_multiplier_server_to_client'].append(noise_multiplier)
 
-                BandB_accs, BandB_precs, BandB_recals = attack_accuracy(config, BandB_attack, DP_data)
+                BandB_accs, BandB_precs, BandB_recals, BandB_model = attack_accuracy(config, BandB_attack, DP_data)
                 results['DP_BandB_accuracy'].append(BandB_accs)
                 results['DP_BandB_precision'].append(BandB_precs)
                 results['DP_BandB_recall'].append(BandB_recals)
+                results['DP_BandB_model'].append(BandB_model) 
                 
-                TCN_accs, TCN_precs, TCN_recals = attack_accuracy(config, TCN_attack, DP_data)
+                 
+                TCN_accs, TCN_precs, TCN_recals, TCN_model = attack_accuracy(config, TCN_attack, DP_data)
                 results['DP_TCN_accuracy'].append(TCN_accs)
                 results['DP_TCN_precision'].append(TCN_precs)
                 results['DP_TCN_recall'].append(TCN_recals)  
+                results['DP_TCN_model'].append(TCN_model)
                 ## Print everything
                 print(f'Privacy loss: {eps}, Noise multiplier: {noise_multiplier}, BandB accuracy: {BandB_accs}, TCN accuracy: {TCN_accs}')
                 
