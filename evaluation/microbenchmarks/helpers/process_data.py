@@ -85,7 +85,7 @@ def main():
         
     # Temporary reults dir for testing
     # TODO: Remove this
-    results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-02-09_09-51)"
+    # results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-02-09_09-51)"
     
     
     

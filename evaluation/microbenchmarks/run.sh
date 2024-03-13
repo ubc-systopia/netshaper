@@ -63,5 +63,14 @@ done
 
 echo -e "${GREEN}All experiments are done${OFF}"
 
+echo -e "${YELLOW}Processing the data...${OFF}"
+python3 helpers/process_data.py --results_dir $results_dir
+
+
+echo -e "${YELLOW}Plotting the data...${OFF}"
+python3 helpers/plot_data.py --results_dir $results_dir
+
+
+echo -e "${GREEN}All experiments are done${OFF}"
 
 
