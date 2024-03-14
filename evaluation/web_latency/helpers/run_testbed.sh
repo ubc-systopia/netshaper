@@ -18,22 +18,11 @@ TIMEOUT=300
 # Number of parallel communication channels
 MAX_PARALLEL=6
 
-#!/bin/bash
 
-# Initialize variables
-iter_num=""
-max_client_num=""
-request_rate=""
-peer1_ssh_host=""
-peer1_ssh_username=""
-peer2_ssh_host=""
-peer2_ssh_username=""
-peer1_netshaper_dir=""  
-peer2_netshaper_dir=""
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --iter_num number --max_client_num number --request_rate number --hostname_peer1 <host> --username_peer1 <user> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir>"
+    echo "Usage: $0 --iter_num number --max_client_num number --request_rate number --hostname_peer1 <host> --username_peer1 <user> --IP_peer1 <IP> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir>"
     exit 1
 }
 # Parse command line arguments
@@ -41,6 +30,10 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --results_dir)
             results_dir="$2"
+            shift 2
+            ;;
+        --IP_peer1)
+            IP_peer1="$2"
             shift 2
             ;;
         --iter_num)
@@ -87,7 +80,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check if all required arguments are provided
-if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" || -z "$max_client_num" || -z "$request_rate" ]]; then
+if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" || -z "$max_client_num" || -z "$request_rate" || -z "$IP_peer1" ]]; then
     echo "Missing required arguments."
     usage
 fi
@@ -111,9 +104,9 @@ for ((i=1; i<=$iter_num; i++)); do
   ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
-  # Run the video client
+  # Run the web client
   cd ../../hardware/web_client/ || exit
-  ./run.sh "web-latency" $max_client_num $request_rate $request_size $i
+  ./run.sh "web-latency" $max_client_num $request_rate $request_size $i $IP_peer1
   cd - > /dev/null 2>&1 || exit
 
 

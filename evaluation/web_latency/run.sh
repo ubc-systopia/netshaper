@@ -20,6 +20,9 @@ peer2_ssh_username="minesvpn"
 peer1_ssh_host="desh02"
 peer1_ssh_username="minesvpn"
 
+peer1_IP="192.168.1.2"
+
+
 
 # NetShaper directory at server-side middlebox (peer2)
 peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
@@ -58,7 +61,7 @@ for dp_interval_peer2 in "${dp_intervals_peer2[@]}"; do
 
 
     echo -e "${YELLOW}Running experiment with peer2_DP_interval = $dp_interval_peer2...${OFF}"
-    ./helpers/run_testbed.sh --hostname_peer1 $peer1_ssh_host --username_peer1 $peer1_ssh_username --hostname_peer2 $peer2_ssh_host --username_peer2 $peer2_ssh_username --netshaper_dir_peer1 $peer1_netshaper_dir --netshaper_dir_peer2 $peer2_netshaper_dir --iter_num $iter_num --results_dir $experiment_results_dir --max_client_num $client_number --request_rate $request_rate
+    ./helpers/run_testbed.sh --hostname_peer1 $peer1_ssh_host --username_peer1 $peer1_ssh_username --IP_peer1 $peer1_IP --hostname_peer2 $peer2_ssh_host --username_peer2 $peer2_ssh_username --netshaper_dir_peer1 $peer1_netshaper_dir --netshaper_dir_peer2 $peer2_netshaper_dir --iter_num $iter_num --results_dir $experiment_results_dir --max_client_num $client_number --request_rate $request_rate
 
     sleep 5
   done

@@ -32,11 +32,11 @@ if [[ $EXPERIMENT == "web-latency" ]]; then
 
 
   echo -e "${YELLOW}Running the web client${OFF}"
-  mkdir -p "latencies/iter_$ITER_NUM"
+  # mkdir -p "/root/latencies/iter_$ITER_NUM"
 
-  ./wrk2/wrk -c $CLIENT_NUM -d 180 -R $REQUEST_RATE -L -U -t $CLIENT_NUM -s multiple_urls.lua "http://192.168.1.2:$PORT/" > "latencies/iter_$ITER_NUM/wrk.log"
+  /root/wrk -c $CLIENT_NUM -d 180 -R $REQUEST_RATE -L -U -t $CLIENT_NUM -s multiple_urls.lua "http://$PEER1_IP:$PORT/" > "/root/latencies/wrk.log"
 
-  mv stats.csv "latencies/iter_$ITER_NUM/stats.csv" 
+  mv stats.csv "/root/latencies/stats.csv" 
 
   echo -e "${GREEN}Done!${OFF}"
 
@@ -44,11 +44,11 @@ elif [[ $EXPERIMENT == "microbenchmark" ]]; then
   echo -e "${YELLOW}Measuring the latency for a microbenchmark.${OFF}"
 
   echo -e "${YELLOW}Running the web client${OFF}"
-  mkdir -p "latencies/iter_$ITER_NUM/req_$REQUEST_SIZE"
+  # mkdir -p "/root/latencies/iter_$ITER_NUM/req_$REQUEST_SIZE"
 
-  ./wrk2/wrk -c $CLIENT_NUM -d 120 -R $REQUEST_RATE -L -U -t $CLIENT_NUM "http://192.168.1.2:$PORT/web/latency/$REQUEST_SIZE.html" > "latencies/iter_$ITER_NUM/req_$REQUEST_SIZE/wrk.log"
+  /root/wrk -c $CLIENT_NUM -d 180 -R $REQUEST_RATE -L -U -t $CLIENT_NUM "http://$PEER1_IP:$PORT/web/latency/$REQUEST_SIZE.html" > "/root/latencies/wrk.log"
 
-  mv stats.csv "latencies/iter_$ITER_NUM/req_$REQUEST_SIZE/stats.csv"
+  mv stats.csv "/root/latencies/stats.csv"
 
 fi
 

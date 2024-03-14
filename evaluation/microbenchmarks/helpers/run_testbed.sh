@@ -18,23 +18,11 @@ TIMEOUT=300
 # Number of parallel communication channels
 MAX_PARALLEL=6
 
-#!/bin/bash
 
-# Initialize variables
-iter_num=""
-max_client_num=""
-request_rate=""
-request_size=""
-peer1_ssh_host=""
-peer1_ssh_username=""
-peer2_ssh_host=""
-peer2_ssh_username=""
-peer1_netshaper_dir=""  
-peer2_netshaper_dir=""
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --iter_num number --max_client_num number --request_rate number --request_size number --hostname_peer1 <host> --username_peer1 <user> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir>"
+    echo "Usage: $0 --iter_num number --max_client_num number --request_rate number --request_size number --hostname_peer1 <host> --username_peer1 <user> --IP_peer1 <IP> --hostname_peer2 <host> --username_peer2 <user> --netshaper_dir_peer1 <dir> --netshaper_dir_peer2 <dir> --results_dir <dir>"
     exit 1
 }
 # Parse command line arguments
@@ -54,6 +42,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --username_peer1)
             username_peer1="$2"
+            shift 2
+            ;;
+        --IP_peer1)
+            IP_peer1="$2"
             shift 2
             ;;
         --hostname_peer2)
@@ -92,7 +84,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check if all required arguments are provided
-if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" || -z "$max_client_num" || -z "$request_rate" || -z "$request_size" ]]; then
+if [[ -z "$hostname_peer1" || -z "$username_peer1" || -z "$hostname_peer2" || -z "$username_peer2" || -z "$netshaper_dir_peer1" || -z "$netshaper_dir_peer2" || -z "$iter_num" || -z "$results_dir" || -z "$max_client_num" || -z "$request_rate" || -z "$request_size" || -z "$IP_peer1" ]]; then
     echo "Missing required arguments."
     usage
 fi
@@ -102,33 +94,24 @@ fi
 [[ -d "../../hardware/web_client/latencies" ]] && rm -rf "../../hardware/web_client/latencies"
 
 
-COUNTER=0
 for ((i=1; i<=$iter_num; i++)); do	
 
   echo -e "${CYAN}Running iteration $i${OFF}"
 
   PCAP_FILE="iter_$i.mpd"
   # Run Peer2
-  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
   # Run Peer1
-  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $COUNTER $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
 
 
-  # Run the video client
+  # Run the web client
   cd ../../hardware/web_client/ || exit
-  ./run.sh "microbenchmark" $max_client_num $request_rate $request_size $i
+  ./run.sh "microbenchmark" $max_client_num $request_rate $request_size $i $IP_peer1
   cd - > /dev/null 2>&1 || exit
 
-
-  COUNTER=$((COUNTER+1))
-  if [[ $COUNTER -ge $MAX_PARALLEL ]]
-  then
-    echo -e "${YELLOW}Waiting for $(($TIMEOUT+20)) seconds to finish the last batch of containers${OFF}"
-    sleep $(($TIMEOUT+20))
-    COUNTER=0
-    break
-  fi
+  sleep $(($TIMEOUT+20))
 done
 
 
