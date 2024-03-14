@@ -159,5 +159,12 @@ def train_test_and_report_acc(config: configlib.Config, df: pd.DataFrame, verbos
            lr /= 10
            for param_group in optimizer.param_groups:
                param_group['lr']
-    return acc, prec, recal
+
+    model_checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'epoch_num': epoch_num
+    }
+
+    return acc, prec, recal, model_checkpoint
         

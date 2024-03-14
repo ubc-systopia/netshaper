@@ -3,7 +3,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-
+import pickle
 
 from src.data_utils.utils import ensure_dir
 
@@ -198,7 +198,7 @@ def plot_overhead_comparison_video_loglog(config, results):
     ax.add_artist(legend1)
     ax.add_artist(legend2)
     plt.title('$\delta_W$=1e-6, $\Delta_W$=2.5 MB, $T$=1 s')
-    plt.savefig(f'figures/overhead_vs_number_of_traces_video_{config.gcommunication_type}_loglog_updated.pdf', bbox_inches='tight', transparent=True)
+    plt.savefig(f'figures/overhead_vs_number_of_traces_video_{config.communication_type}_loglog_updated.pdf', bbox_inches='tight', transparent=True)
     plt.close()
 
     
@@ -263,6 +263,85 @@ def plot_dp_interval_vs_overhead_web(config, results):
 
 
 
+def plot_accuracy_vs_privacy_loss(config, results):
+    fig, ax = plt.subplots(dpi=300, figsize=(4.0, 1.8))
+
+    aggregated_privacy_loss = results['privacy_loss_server_to_client']
+    aggregated_privacy_loss_updated = [] 
+    double_sensitivity = True
+    alphas = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
+    # if double_sensitivity:
+    #     for eps in aggregated_privacy_loss:
+    #         query_num = 5
+    #         delta = 1e-6
+    #         noise_multiplier = get_noise_multiplier(eps, query_num, alphas, delta)
+    #         noise_multiplier = noise_multiplier/2
+    #         aggregated_privacy_loss_updated.append(calculate_privacy_loss(query_num, alphas, noise_multiplier, delta)[0])
+             
+            
+    
+    
+    shaped_TCN_accuracy_mean = np.mean(results['DP_TCN_accuracy'], axis=1)
+    shaped_TCN_accuracy_std = np.std(results['DP_TCN_accuracy'], axis=1)
+
+    
+    ax.semilogx(aggregated_privacy_loss, shaped_TCN_accuracy_mean, '-^',
+            label='TCN ($\mathrm{NS_S}$)')
+    ax.fill_between(aggregated_privacy_loss,
+                    shaped_TCN_accuracy_mean-shaped_TCN_accuracy_std, 
+                    shaped_TCN_accuracy_mean+shaped_TCN_accuracy_std, 
+                    alpha=0.2)
+
+    shaped_BandB_accuracy_mean = np.mean(results['DP_BandB_accuracy'], axis=1)
+    shaped_BandB_accuracy_std = np.std(results['DP_BandB_accuracy'], axis=1)
+
+    ax.semilogx(aggregated_privacy_loss, shaped_BandB_accuracy_mean, '-s',
+            label='BB ($\mathrm{NS_S}$)')
+    ax.fill_between(aggregated_privacy_loss,
+                    shaped_BandB_accuracy_mean-shaped_BandB_accuracy_std,
+                    shaped_BandB_accuracy_mean+shaped_BandB_accuracy_std,
+                    alpha=0.2) 
+                    
+    unshaped_TCN_accuracy_mean = np.repeat(np.mean(results['Baseline_TCN_accuracy']), len(aggregated_privacy_loss)) 
+    unshaped_TCN_accuracy_std = np.repeat(0.99, len(aggregated_privacy_loss))
+    # print('unshaped_TCN_accuracy_mean', unshaped_TCN_accuracy_mean)
+    # print('unshaped_TCN_accuracy_std', unshaped_TCN_accuracy_std)
+    ax.semilogx(120, 
+                unshaped_TCN_accuracy_mean[0], marker='*', color='green',
+                label='TCN (Base)') 
+    # ax.fill_between(aggregated_privacy_loss,
+    #                 unshaped_TCN_accuracy_mean-unshaped_TCN_accuracy_std,
+    #                 unshaped_TCN_accuracy_mean+unshaped_TCN_accuracy_std,
+    #                 alpha=0.2)
+    unshaped_BandB_accuracy_mean = np.repeat(np.mean(results['Baseline_BandB_accuracy']), len(aggregated_privacy_loss)) 
+    # unshaped_BandB_accuracy_std = np.repeat(np.std(simulator_classification_data_baseline['unshaped_BandB_accuracy']), len(aggregated_privacy_loss))
+    # print('unshaped_BandB_accuracy_mean', unshaped_BandB_accuracy_mean)
+    # print('unshaped_BandB_accuracy_std', unshaped_BandB_accuracy_std) 
+    ax.semilogx(120,
+                unshaped_BandB_accuracy_mean[0], marker='o', color='red',
+                label='BB (Base)')
+    # ax.fill_between(aggregated_privacy_loss,
+    #                 unshaped_BandB_accuracy_mean-unshaped_BandB_accuracy_std,
+    #                 unshaped_BandB_accuracy_mean+unshaped_BandB_accuracy_std,
+    #                 alpha=0.2)
+    ax.legend(loc=(1.0, 0.20), framealpha=0, handlelength=1, fontsize=12, ncol=1)
+#    ax.legend(loc=(-0.2, 1.00), framealpha=0, handlelength=1, fontsize=12,
+#            ncol=4, columnspacing=0.8)
+    ax.set_ylabel("Attack accuracy")
+    ax.set_xlabel("Privacy loss, $\epsilon_W$")
+    plt.xlim(left=220, right=3*1e5)
+    # ax.legend(framealpha=0, handlelength=1, fontsize=12)
+    plt.xticks([10**i for i in range(2, 6)] + [3*(10**5)])
+    plt.yticks([i for i in np.arange(0.0, 1.01, 0.2)])
+    plot_dir = config.plot_dir
+    # plot_dir = "/home/ubuntu/workspace/artifact_evaluation/minesvpn/evaluation/classifier/results/empirical_privacy_(2024-03-13_12-14)"
+    ensure_dir(plot_dir)
+    plot_file = os.path.join(plot_dir, "empirical_privacy.pdf")
+    plt.savefig(plot_file, bbox_inches='tight', transparent=True)
+    plt.close() 
+
+
+
 def get_plot_fn(config):
     # TODO: Make the plot function separated from the experiment for better modularity
     if config.experiment == "privacy_loss_vs_noise_std":
@@ -277,8 +356,11 @@ def get_plot_fn(config):
         return plot_dp_interval_vs_overhead_web
     elif config.experiment == "dp_interval_vs_overhead_video":
         return plot_dp_interval_vs_overhead_video
+    elif config.experiment == "empirical_privacy":
+        return plot_accuracy_vs_privacy_loss
     else:
         return lambda x, y: None 
            
+
 
 

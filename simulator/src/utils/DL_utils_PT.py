@@ -115,7 +115,13 @@ def train_test_model(model, train_loader, test_loader, optimizer, criterion, num
         test_acc /= len(test_loader.dataset)
         precision = precision_score(all_targets, all_preds, average='macro')
         recall = recall_score(all_targets, all_preds, average='macro')
-    return test_acc, precision, recall
+        
+    model_checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'epoch_num': num_epochs
+    }
+    return test_acc, precision, recall, model_checkpoint
     
 
             
