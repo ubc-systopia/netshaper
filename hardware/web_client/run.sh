@@ -52,4 +52,4 @@ docker run \
   -e PORT="$port" \
   -e PEER1_IP="$peer1_IP" \
   -v $(pwd)/$path:/root/latencies \
-  web_client
+  web-client
