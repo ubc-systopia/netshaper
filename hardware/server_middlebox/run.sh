@@ -15,9 +15,9 @@ OFF='\033[0m'
 CONFIG=config.json # Path of the config file relative to /root in the container
 MAX_PARALLEL=5
 
-if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ]
+if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ] || [ -z $6 ]
 then
-  echo -e "${RED}Usage (server middlebox) ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE>${OFF}"
+  echo -e "${RED}Usage (server middlebox) ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE> <Mode>${OFF}"
   exit 1
 fi
 
@@ -36,6 +36,20 @@ TIMEOUT=$4 # Seconds
 MAX_CAPTURE_SIZE=$5 
 
 
+mode=$6
+
+container=""
+if [ $mode == "shaping"]
+  then
+    container="amirsabzi/netshaper:peer2-shaping"
+  elif [ $mode == "no-shaping"]
+  then
+    container="amirsabzi/netshaper:peer2-no-shaping"
+  else
+    echo -e "${RED}Mode should be either 'shaping' or 'no-shaping'${OFF}"
+    exit 1
+fi
+
 # Run Peer2
 echo -e "${YELLOW}Starting Peer 2${OFF}"
 mkdir -p traces/peer2/$i
@@ -50,7 +64,7 @@ docker run \
   -v "$(pwd)/traces/peer2/$i:/root/traces" \
   -v "$(pwd)/peer2_config.json:/root/config.json" \
   -p $port:4567/udp \
-  peer2
+  $container
 
 echo -e "${YELLOW}Waiting for 3s${OFF}"
 sleep 3

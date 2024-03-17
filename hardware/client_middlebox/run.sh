@@ -15,9 +15,9 @@ OFF='\033[0m'
 CONFIG=config.json # Path of the config file relative to /root in the container
 MAX_PARALLEL=5
 
-if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ]
+if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ] || [ -z $6 ]
 then
-  echo -e "${RED}Usage (client middlebox) ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE>${OFF}"
+  echo -e "${RED}Usage (client middlebox) ./run.sh <Instance-Number> <MPD-File-Path> <Iteration-Number> <Timeout> <MAX_CAPTURE_SIZE> <Mode>${OFF}"
   exit 1
 fi
 
@@ -37,6 +37,20 @@ TIMEOUT=$4 # Seconds
 MAX_CAPTURE_SIZE=$5 
 
 
+mode=$6
+
+container=""
+if [ $mode == "shaping"]
+  then
+    container="amirsabzi/netshaper:peer1-shaping"
+  elif [ $mode == "no-shaping"]
+  then
+    container="amirsabzi/netshaper:peer1-no-shaping"
+  else
+    echo -e "${RED}Mode should be either 'shaping' or 'no-shaping'${OFF}"
+    exit 1
+fi
+
 
 # Run Peer1
 echo -e "${YELLOW}Starting Peer 1${OFF}"
@@ -53,7 +67,7 @@ docker run \
   -v "$(pwd)/traces/peer1/$i:/root/traces" \
   -v "$(pwd)/peer1_config.json:/root/config.json" \
   -p $port:8000 \
-  peer1
+  $container
 
 echo -e "${YELLOW}Waiting for 5s${OFF}"
 sleep 5

@@ -39,4 +39,4 @@ docker run \
   -e SERVER="192.168.1.2:$port" \
   -e MAX_CAPTURE_SIZE="$MAX_CAPTURE_SIZE" \
   -v "$(pwd)/traces/client/$i:/root/traces" \
-  video_client
+  amirsabzi/netshaper:video-client
