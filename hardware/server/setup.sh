@@ -23,9 +23,13 @@ then
 fi
 
 
+echo -e "${YELLOW}Cloning the docker image for server...${OFF}"
+docker pull amirsabzi/netshaper:nginx
+
+
 
 if [ ! -d "../../dataset/server/" ]; then
-    echo "${RED} the dataset does not exist, downloading the dataset..."
+    echo "${RED} the dataset does not exist, download the dataset..."
 fi
 
 echo -e "${GREEN}Setup complete"

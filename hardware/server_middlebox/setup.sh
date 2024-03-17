@@ -35,4 +35,11 @@ apt-get install -y ninja-build
 # snap install cmake --classic
 
 
+echo -e "${YELLOW}Cloning the docker image for middle boxes on server side..."
+docker pull amirsabzi/netshaper:peer2-no-shaping
+docker pull amirsabzi/netshaper:peer2-shaping 
+docker pull amirsabzi/netshaper:web-client
+
+
+
 echo -e "${GREEN}Setup complete"

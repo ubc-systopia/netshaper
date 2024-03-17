@@ -35,4 +35,8 @@ apt-get install -y ninja-build
 # snap install cmake --classic
 
 
+docker pull amirsabzi/netshaper:peer1-no-shaping
+docker pull amirsabzi/netshaper:peer1-shaping
+
+
 echo -e "${GREEN}Setup complete"

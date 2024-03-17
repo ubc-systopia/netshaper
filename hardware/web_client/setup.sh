@@ -13,4 +13,7 @@ if [ ! -d "../../dataset/client/" ]; then
     echo "${RED} the dataset does not exist, downloading the dataset..."
 fi
 
+docker pull amirsabzi/netshaper:web-client
+
+
 echo -e "${GREEN}Setup complete"
