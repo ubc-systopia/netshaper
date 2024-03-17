@@ -107,7 +107,7 @@ for ((i=1; i<=$iter_num; i++)); do
 
   # Run the web client
   cd ../../hardware/web_client/ || exit
-  ./run.sh "web-latency" $max_client_num $request_rate $request_size $i $IP_peer1
+  ./run.sh $mode $max_client_num $request_rate $request_size $i $IP_peer1
   cd - > /dev/null 2>&1 || exit
 
 

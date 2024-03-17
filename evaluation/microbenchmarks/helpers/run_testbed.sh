@@ -94,21 +94,23 @@ fi
 [[ -d "../../hardware/web_client/latencies" ]] && rm -rf "../../hardware/web_client/latencies"
 
 
+mode="no-shaping"
+
 for ((i=1; i<=$iter_num; i++)); do	
 
   echo -e "${CYAN}Running iteration $i${OFF}"
 
   PCAP_FILE="iter_$i.mpd"
   # Run Peer2
-  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE $mode"
 
   # Run Peer1
-  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE $mode"
 
 
   # Run the web client
   cd ../../hardware/web_client/ || exit
-  ./run.sh "microbenchmark" $max_client_num $request_rate $request_size $i $IP_peer1
+  ./run.sh $mode $max_client_num $request_rate $request_size $i $IP_peer1
   cd - > /dev/null 2>&1 || exit
 
   sleep $(($TIMEOUT+20))

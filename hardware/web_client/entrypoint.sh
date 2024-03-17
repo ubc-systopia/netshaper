@@ -27,7 +27,7 @@ OFF='\033[0m'
 # port=$(($iter_num + 8000))
 
 
-if [[ $EXPERIMENT == "web-latency" ]]; then
+if [[ $MODE == "shaping" ]]; then
   echo -e "${YELLOW}Measuring the latency for a web service.${OFF}"
 
 
@@ -40,7 +40,7 @@ if [[ $EXPERIMENT == "web-latency" ]]; then
 
   echo -e "${GREEN}Done!${OFF}"
 
-elif [[ $EXPERIMENT == "microbenchmark" ]]; then
+elif [[ $MODE == "no-shaping" ]]; then
   echo -e "${YELLOW}Measuring the latency for a microbenchmark.${OFF}"
 
   echo -e "${YELLOW}Running the web client${OFF}"
