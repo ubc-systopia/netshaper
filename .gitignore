@@ -9,3 +9,4 @@ hardware/msquic/*
 *.csv
 *.pkl
 *.pcap
+*results
