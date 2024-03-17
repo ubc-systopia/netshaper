@@ -125,12 +125,13 @@ iter_num_middlebox=1
 
 mpd_middlebox="tmp.mpd"
 
+mode="shaping"
 
 # Run Peer2
-ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $instance_num $mpd_middlebox $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE"
+ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $instance_num $mpd_middlebox $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE $mode"
 
 # Run Peer1
-ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $instance_num $mpd_middlebox $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE"
+ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $instance_num $mpd_middlebox $iter_num_middlebox $TIMEOUT $MAX_CAPTURE_SIZE $mode"
 
 
 

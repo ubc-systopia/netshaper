@@ -91,6 +91,7 @@ request_size=0
 # Remove stats from the web client if the directory exists
 [[ -d "../../hardware/web_client/latencies" ]] && rm -rf "../../hardware/web_client/latencies"
 
+mode="shaping"
 
 for ((i=1; i<=$iter_num; i++)); do	
 
@@ -98,10 +99,10 @@ for ((i=1; i<=$iter_num; i++)); do
 
   PCAP_FILE="iter_$i.mpd"
   # Run Peer2
-  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer2@$hostname_peer2" "cd $netshaper_dir_peer2/hardware/server_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE $mode"
 
   # Run Peer1
-  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE"
+  ssh "$username_peer1@$hostname_peer1" "cd $netshaper_dir_peer1/hardware/client_middlebox/ && ./run.sh $i $PCAP_FILE $i $TIMEOUT $MAX_CAPTURE_SIZE $mode"
 
 
   # Run the web client
