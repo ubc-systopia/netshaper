@@ -116,6 +116,7 @@ def main():
     peer2_config = json.loads(json_data_peer2)
 
     # Modify Peer1 Config file
+    peer1_config["queueSize"] = 13*1024*1024
     peer1_config["maxClients"] = max_client_num + 2
     peer1_config["shapedClient"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer1"]
     peer1_config["shapedClient"]["sensitivity"] = experiment_config["sensitivity_peer1"]
@@ -126,6 +127,7 @@ def main():
     
     
     # Modify Peer2 Config file
+    peer2_config["queueSize"] = 13*1024*1024
     peer2_config["maxStreamsPerPeer"] = max_client_num + 2
     peer2_config["shapedServer"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer2"]
     peer2_config["shapedServer"]["sensitivity"] = experiment_config["sensitivity_peer2"]

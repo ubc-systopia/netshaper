@@ -42,7 +42,7 @@ def get_csv_files(interval_dir):
 def get_throughput_stats(log_files, client_num):
     throughput = []
     for log_file in log_files:
-        pattern = r'(\d+) requests'
+        pattern = r'Requests/sec:\s+([\d.]+)'
         # Initialize variable to store the number of requests
         num_requests = None
         # Open the file and read its content
@@ -53,7 +53,7 @@ def get_throughput_stats(log_files, client_num):
             match = re.search(pattern, content)
             if match:
             # Extract the number of requests
-                num_requests = int(match.group(1))    
+                num_requests = float(match.group(1))    
 
         if num_requests is None:
             raise Exception(f'No requests count found in {log_file}')
@@ -89,7 +89,7 @@ def get_request_size(log_file):
     req_number = None
     match = re.search(r'req_(\d+)', log_file)
     if match:
-        req_number = int(match.group(1))
+        req_number = float(match.group(1))
 
     return req_number
    
@@ -117,7 +117,7 @@ def main():
         
     # Temporary reults dir for testing
     # TODO: Remove this
-    # results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-03-14_00-57)"
+    # results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-03-15_14-13)"
     
     
     
@@ -158,7 +158,7 @@ def main():
 
 
         
-    # print(processed_data)
+    print(processed_data)
     # Saving the processed data in the same results directory as a pickle file
     with open(os.path.join(results_dir, "processed_data.pkl"), "wb") as file:
         pickle.dump(processed_data, file)
