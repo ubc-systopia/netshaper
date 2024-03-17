@@ -63,7 +63,7 @@ To setup the server, follow these steps:
 ./setup.sh
 ```
 
-### Build
+### Run
 Run the docker container of server with the following command:
 ```bash
 docker-compose up -d
@@ -86,15 +86,16 @@ To set the middlebox on the server side follow these steps:
 ```bash
 ./setup.sh
 ```
+The setup script will pull the server-side middlebox containers from the Docker Hub. Alternatively, you can build the server-side middlebox container based on the following instructions.
 
-### Build
+### Build (Optional)
 To build the server-side middlebox binary, execute the following command:
 ```bash
 ./build.sh
 ```
 With the successful build of the middlebox, build the peer2 container with the following command:
 ```bash
-docker build -t peer2 ./peer2/
+docker build -t amirsabzi/netshaper:peer2-shaping ./peer2/
 ```
 
 
@@ -114,15 +115,16 @@ To set up the middlebox at the client side follow these steps:
 ```bash
 ./setup.sh
 ```
+The setup script will pull the client-side middlebox containers from the Docker Hub. Alternatively, you can build the client-side middlebox container based on the following instructions.
 
-### Build
+### Build (Optional)
 To build the client-side middlebox binary, execute the following command:
 ```bash
 ./build.sh
 ```
 With the successful build of the middlebox, build the peer1 container with the following command:
 ```bash
-docker build -t peer1 ./peer1/
+docker build -t amirsabzi/netshaper:peer1-shaping ./peer1/
 ```
 
 
@@ -142,12 +144,17 @@ To setup the client, follow these steps:
 ```bash
 ./setup.sh
 ```
+The setup script will pull the client container from the Docker Hub. Alternatively, you can build the client container based on the following instructions.
 
 
-### Build 
-To build the client container, execute the following command:
+### Build (Optional) 
+To build the client container, first execute the following command to build the wrk2 client binary:
 ```bash
 ./build.sh
+```
+Then, build the client container with the following command:
+```bash
+docker build -t amirsabzi/netshaper:web-client .
 ```
 
 ## Running the Experiments
