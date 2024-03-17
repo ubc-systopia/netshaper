@@ -39,13 +39,11 @@ MAX_CAPTURE_SIZE=$5
 mode=$6
 
 container=""
-if [ $mode == "shaping"]
-  then
+if [[ $mode == "shaping" ]]; then
     container="amirsabzi/netshaper:peer2-shaping"
-  elif [ $mode == "no-shaping"]
-  then
+elif [[ $mode == "no-shaping" ]]; then
     container="amirsabzi/netshaper:peer2-no-shaping"
-  else
+else
     echo -e "${RED}Mode should be either 'shaping' or 'no-shaping'${OFF}"
     exit 1
 fi
