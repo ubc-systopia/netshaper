@@ -9,8 +9,9 @@ RED='\033[0;31m'
 OFF='\033[0m'
 
 
-
-
+# ************************************************************
+# *                    Run Parameters                        *
+# ************************************************************
 
 # SSH Host and Username for server-side middlebox (peer2)
 peer2_ssh_host="desh03"
@@ -27,6 +28,9 @@ peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
 
 # NetShaper directory at client-side middlebox (peer1)
 peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+#************************************************************
+
+
 
 
 # Config directory

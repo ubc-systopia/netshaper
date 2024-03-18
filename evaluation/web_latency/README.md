@@ -163,6 +163,81 @@ docker build -t amirsabzi/netshaper:web-client .
 The run script for web cliet, [hardware/web_client/run.sh](../../hardware/web_client/run.sh), receives the configuration parameters as arguments. This includes the shaping mode, number of parallel clients, request rate, request size, number of iterations, and IP address of the middlebox at client side. 
 
 ## Running the Experiments
+
+### Experiment Configuration
+The following parameters are used to configure the experiments:
+```json
+{
+  "iter_num": 3,
+  "max_client_numbers": [1, 16, 128],
+  "request_rate": 1600,
+  "privacy_loss_peer1": 1,
+  "privacy_loss_peer2": 1,
+  "sensitivity_peer1": 200,
+  "sensitivity_peer2": 60000,
+  "dp_interval_peer1": 10000,
+  "sender_loop_interval_peer1": 0,
+  "dp_intervals_peer2": [10000, 50000, 100000],
+  "sender_loop_interval_peer2": 0,
+  "max_decision_size_peer1": 10000000,
+  "min_decision_size_peer1": 0,
+  "max_decision_size_peer2": 100000000,
+  "min_decision_size_peer2": 0 
+}
+```
+1. `iter_num`: The number of iterations for each configuration.
+2. `max_client_numbers`: The number of parallel clients.
+3. `request_rate`: The request rate of the clients.
+4. `privacy_loss_peer1`: The privacy loss parameter for the middlebox at the client side (client to server communication).
+5. `privacy_loss_peer2`: The privacy loss parameter for the middlebox at the server side (server to client communication).
+6. `sensitivity_peer1`: The sensitivity parameter for the middlebox at the client side (client to server communication).
+7. `sensitivity_peer2`: The sensitivity parameter for the middlebox at the server side (server to client communication).
+8. `dp_interval_peer1`: The differential privacy interval for the middlebox at the client side (client to server communication).
+9. `sender_loop_interval_peer1`: The sender loop interval for the middlebox at the client side (client to server communication).
+10. `dp_intervals_peer2`: A list of different differential privacy intervals for the middlebox at the server side (server to client communication).
+11. `sender_loop_interval_peer2`: The sender loop interval for the middlebox at the server side (server to client communication).
+12. `max_decision_size_peer1`: The maximum decision size for the middlebox at the client side (client to server communication).
+13. `min_decision_size_peer1`: The minimum decision size for the middlebox at the client side (client to server communication).
+14. `max_decision_size_peer2`: The maximum decision size for the middlebox at the server side (server to client communication).
+15. `min_decision_size_peer2`: The minimum decision size for the middlebox at the server side (server to client communication).
+
+
+
+### Run Script Parameters
+To enhance the readability and maintainability of the run script, we do not use command line arguments for the run script. Instead, the first section of the run script is used to set the parameters for the experiment. The parameters are set as follows:
+```bash
+# ************************************************************
+# *                    Run Parameters                        *
+# ************************************************************
+peer2_ssh_host="desh03"
+peer2_ssh_username="minesvpn"
+
+# SSH Host and Username for client-side middlebox (peer1)
+peer1_ssh_host="desh02"
+peer1_ssh_username="minesvpn"
+
+peer1_IP="192.168.1.2"
+
+# NetShaper directory at server-side middlebox (peer2)
+peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+
+# NetShaper directory at client-side middlebox (peer1)
+peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+#************************************************************
+```
+1. `peer2_ssh_host`: The hostname of the middlebox at the server side. For example, `desh03`.
+2. `peer2_ssh_username`: The username for the middlebox at the server side. For example, `minesvpn`.
+3. `peer1_ssh_host`: The hostname of the middlebox at the client side. For example, `desh02`.
+4. `peer1_ssh_username`: The username for the middlebox at the client side. For example, `minesvpn`.
+5. `peer1_IP`: The IP address of the middlebox at the client side. For example, `192.168.1.2`.
+6. `peer2_netshaper_dir`: The absolute directory path of the NetShaper repository at the middlebox at the server side. For example, `/home/minesvpn/workspace/artifact_evaluation/code/minesvpn`.
+7. `peer1_netshaper_dir`: The absolute directory path of the NetShaper repository at the middlebox at the client side. For example, `/home/minesvpn/workspace/artifact_evaluation/code/minesvpn`.
+
+**NOTE: if you are using a different setup, you should modify the run script accordingly.**
+
+
+
+### Run
 To run the experiments, follow these steps:
 1. **Ensure that the server, middleboxes, and client have been set up and built.**
 2. Open an SSH connection to the client machine.

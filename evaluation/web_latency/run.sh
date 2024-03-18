@@ -11,6 +11,9 @@ OFF='\033[0m'
 
 
 
+# ************************************************************
+# *                    Run Parameters                        *
+# ************************************************************
 
 # SSH Host and Username for server-side middlebox (peer2)
 peer2_ssh_host="desh03"
@@ -22,18 +25,18 @@ peer1_ssh_username="minesvpn"
 
 peer1_IP="192.168.1.2"
 
-
-
 # NetShaper directory at server-side middlebox (peer2)
 peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
-
 
 # NetShaper directory at client-side middlebox (peer1)
 peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
 
-
 # Config directory
 config_file_dir="$(pwd)/configs/web_latency.json"
+
+#************************************************************
+
+
 
 
 # Results directory
