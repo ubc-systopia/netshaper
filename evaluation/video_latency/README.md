@@ -95,6 +95,8 @@ With the successful build of the middlebox, build peer2 container with the follo
 ```bash
 docker build -t amirsabzi/netshaper:peer2-shaping ./peer2/
 ```
+### Configuration
+All configuration parameters of the middlebox are provided in a json file name [peer2_config.json](../../hardware/server_middlebox/peer2_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The python script [set_params.py](helpers/set_params.py) is used to set the parameters for middlebxes according to the configuration file of the experiment, [video_latency.json](configs/video_latency.json).
 
 
 ## Middlebox at the client side (MB-1)
@@ -125,6 +127,9 @@ With the successful build of the middlebox, build peer1 container with the follo
 docker build -t amirsabzi/netshaper:peer1-shaping ./peer1/
 ```
 
+### Configuration
+All configuration parameters of the middlebox are provided in a json file name [peer1_config.json](../../hardware/client_middlebox/peer1_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The python script [set_params.py](helpers/set_params.py) is used to set the parameters for middlebxes according to the configuration file of the experiment, [video_latency.json](configs/video_latency.json).
+
 
 ## Client
 ### Prerequisites
@@ -149,6 +154,10 @@ To build the client container, execute the following command:
 ```bash
 docker build -t amirsabzi/netshaper:video-client .
 ```
+
+### Configuration
+The run script for video cliet, [hardware/video_client/run.sh](../../hardware/video_client/run.sh), receives the configuration parameters as arguments. This includes, instance number, title of video for logging, interation number, timeout for execution.  
+
 
 ## Running the Experiments
 To run the experiments, follow these steps:
