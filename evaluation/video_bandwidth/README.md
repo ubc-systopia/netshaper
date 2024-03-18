@@ -1,5 +1,5 @@
 # Bandwidth overhead and latency for video application 
-This directory contains the code for evaluating the bandwidth overhead and latency of NetShaper with video streaming application.  
+This directory contains the code for evaluating the bandwidth overhead of NetShaper with video streaming application.  
 
 
 ## Installing Python Dependencies
@@ -11,9 +11,5 @@ pip install -r ../../simulator/requirements.txt
 To calculate the bandwidth overhead of NetShaper for different values of `dp_interval`, run the following command:
 ```bash
 ./run.sh --experiment="dp_interval_vs_overhead_video"  --config_file="configs/dp_interval_vs_overhead_video.json"
-```
-To calculate the end-to-end latency of NetShaper for different values of `dp_interval`, run the following command:
-```bash
-./run.sh --experiment="dp_interval_vs_latency_video"  --config_file="configs/dp_interval_vs_latency_video.json"
 ```
 The results will be saved in the `/results` directory. The corresponding plots are saved in the `/plots` directory.

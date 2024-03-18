@@ -176,7 +176,6 @@ def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
                'std_aggregated_overhead_constant_rate_dynamic': [],
                'average_aggregated_overhead_constant_rate_anonymized':[],
                'std_aggregated_overhead_constant_rate_anonymized':[],
-               'std_aggregated_overhead_dynamic_shaping': [],
                'average_aggregated_overhead_pacer':[],
                'std_aggregated_overhead_pacer': []
                }
@@ -186,7 +185,7 @@ def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
     
     privacy_window_size_s_to_c_us = config.privacy_window_size_server_to_client_s * 1e6
     privacy_window_size_c_to_s_us = config.privacy_window_size_client_to_server_s * 1e6
-
+    # print(len(filtered_data_list))
     for index, filtered_data in enumerate(filtered_data_list):
 
 
@@ -326,7 +325,6 @@ def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
                     results['std_aggregated_overhead_constant_rate_anonymized'].append(std_aggregated_overhead_constant_rate_anonymized/video_num)
                     results['average_aggregated_overhead_pacer'].append(average_aggregated_overhead_pacer)
                     results['std_aggregated_overhead_pacer'].append(std_aggregated_overhead_pacer)
-                    results['video_num'].append(video_num)
                     
                     del original_data_s_to_c, DP_data_s_to_c, dummy_data_s_to_c
                     del original_data_c_to_s, DP_data_c_to_s, dummy_data_c_to_s
@@ -334,7 +332,7 @@ def overhead_video_bidirectional(config: configlib.Config, filtered_data_list):
                     
                     
                     pbar.update(1)
-        return results 
+    return results 
                     
                 
                 

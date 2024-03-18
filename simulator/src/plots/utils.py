@@ -30,6 +30,7 @@ def all_params_match(data, params, i):
 
 
 def filter_data_based_on_params(data, params):
+    # print(params)
     filtered_data = {key: [] for key in data.keys()}
     # going through all iteration of the parameters in the data
     for i in range(len(data[next(iter(data.keys()))])):
@@ -201,29 +202,6 @@ def plot_overhead_comparison_video_loglog(config, results):
     plt.savefig(f'figures/overhead_vs_number_of_traces_video_{config.communication_type}_loglog_updated.pdf', bbox_inches='tight', transparent=True)
     plt.close()
 
-    
-def plot_dp_interval_vs_overhead_web(config, results):
-    fig, ax = plt.subplots(dpi=300, figsize=(5,2.2))
-    markers = ['o', 's', '^']
-    colors = ['tab:blue', 'tab:orange', 'tab:green' ]
-    parr = []
-    label_arr = []
-    for ind, client_num in enumerate(data_handwritten_web.keys()):
-        plt.plot(data_handwritten_web[client_num]['dp_interval_ms'], data_handwritten_web[client_num]['overhead_avg'], label=f'{client_num} clients', markersize=8, marker=markers[ind], color=colors[ind]) 
-        plt.errorbar(data_handwritten_web[client_num]['dp_interval_ms'],
-                data_handwritten_web[client_num]['overhead_avg'], yerr=data_handwritten_web[client_num]['overhead_std'],
-                capsize=3, color=colors[ind], linestyle='None')
-    
-    plt.legend(framealpha=0, handlelength=1, fontsize=12, ncol=2, loc=(0.27, 0.65))
-    plt.xlabel('DP interval, $T$ (ms)')
-    plt.ylabel('Per-flow overhead')
-    plt.yticks([i for i in range(0, 26, 5)])
-    plt.xticks([i for i in range(0, 101, 20)])
-    plt.title('$\epsilon_W$=1, $\delta_W$=1e-6, $\Delta_W$=60 KB')
-    plt.savefig('figures/overhead_vs_dp_interval_web_updated.pdf', bbox_inches='tight', transparent=True)
-    plt.close() 
- 
-
 
 def plot_dp_interval_vs_overhead_web(config, results):
     logscale = config.plot_logscale
@@ -255,10 +233,53 @@ def plot_dp_interval_vs_overhead_web(config, results):
     plt.ylabel('Latency (ms)')
     # plt.yticks([i for i in range(0, 3001, 1000)])
     plt.xticks([i for i in range(0, 101, 20)])
-    plt.title('$\epsilon_W$=1, $\delta_W$=1e-6, $\Delta_W$=2.5 MB')
-    plt.savefig('figures/latency_vs_dp_interval_video_updated.pdf', bbox_inches='tight', transparent=True)
+    plt.title('$\epsilon_W$=1, $\delta_W$=1e-6, $\Delta_W$=60 KB')
+    plot_file = os.path.join(config.plot_dir, "latency_vs_dp_interval_web.pdf")
+    plt.savefig(plot_file, bbox_inches='tight', transparent=True)
     plt.close()
     
+
+def plot_dp_interval_vs_overhead_video(config, results):
+    logscale = config.plot_logscale
+    # logscale = True;
+    fig, ax = plt.subplots(dpi=300, figsize=figure_size)
+    markers = ['o', 's', '^']
+    colors = ['tab:blue', 'tab:orange', 'tab:green' ]
+    parr = []
+    label_arr = []
+    number_of_paralell_clients = np.sort(list(set(results["video_num"])))  
+
+    
+    for ind, client_num in enumerate(number_of_paralell_clients):
+        # filtering data based on the number of clients
+        data = filter_data_based_on_params(results, {"video_num": client_num})
+
+        if logscale:
+            plt.semilogy(np.array(data['dp_interval_server_to_client_us'])/1e3, data['average_aggregated_overhead'], label=f'{client_num} clients', markersize=8, marker=markers[ind], color=colors[ind])
+            
+            
+        else:
+            plt.plot(np.array(data['dp_interval_server_to_client_us'])/1e3, data['average_aggregated_overhead'], label=f'{client_num} clients', markersize=8, marker=markers[ind], color=colors[ind])
+
+        plt.errorbar(np.array(data['dp_interval_server_to_client_us'])/1e3,data['average_aggregated_overhead'], yerr=data['std_aggregated_overhead'], capsize=3, color=colors[ind], linestyle='None')
+        
+        
+    
+    plt.legend(framealpha=0, handlelength=1, fontsize=12, ncol=1)
+    plt.xlabel('DP interval, $T$ (ms)')
+    plt.ylabel('Per-flow overhead')
+    # plt.yticks([i for i in range(0, 3001, 1000)])
+    plt.xticks([i for i in range(0, 1001, 200)])
+    plt.title('$\epsilon_W$=1, $\delta_W$=1e-6, $\Delta_W$=2.5 MB')
+    # plot_dir = "/home/ubuntu/workspace/artifact_evaluation/minesvpn/evaluation/video_bandwidth/results/dp_interval_vs_overhead_video_(2024-03-17_16-15)"
+    plot_dir = config.plot_dir
+    ensure_dir(plot_dir)
+    plot_file = os.path.join(plot_dir, "latency_vs_dp_interval_video.pdf")
+    print("saving plot to ", plot_file)
+    plt.savefig(plot_file, bbox_inches='tight', transparent=True)
+    plt.close()
+    
+
 
 
 
