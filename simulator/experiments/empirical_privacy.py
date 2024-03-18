@@ -103,8 +103,9 @@ def empirical_privacy(config: configlib.Config, filtered_data_list):
         ## Traffic analysis attack on DP shaped traffic
 
 
-        privacy_losses = np.linspace(config.min_privacy_loss_server_to_client, config.max_privacy_loss_server_to_client, config.num_privacy_loss_server_to_client)
-        
+        # privacy_losses = np.linspace(config.min_privacy_loss_server_to_client, config.max_privacy_loss_server_to_client, config.num_privacy_loss_server_to_client)
+        privacy_losses = [369.06739641623875, 1238.158842800393, 1496.2012744874667, 1856.8789310576421, 2383.0487447361133, 3193.711556584804, 4538.170054462644, 7013.130441895921, 12360.380909600288, 27638.13648612253, 110138.16066324733, 135940.64208151295, 172013.1950533224] 
+         
         with tqdm(total=len(privacy_losses)) as pbar: 
             for privacy_loss in privacy_losses:
                 pbar.set_description(f'Privacy loss: {privacy_loss} ...')

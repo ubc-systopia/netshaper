@@ -8,7 +8,7 @@
   "transport_type": "DP_dynamic",
   "DP_mechanism" : "Gaussian",
   "max_video_num": 1000,
-  "video_nums_list": [16, 128],
+  "video_nums_list": [1, 16, 128],
   "max_videos_per_single_experiment": 10,
   "privacy_losses_server_to_client": [1], 
   "privacy_losses_client_to_server": [1],
@@ -18,8 +18,8 @@
   "sensitivity_client_to_server": 200,
   "min_dp_decision_server_to_client": 0,
   "min_dp_decision_client_to_server": 0,
-  "static_max_dp_decision": true,
-  "dp_intervals_us": [[1e6, 1e4]] ,
+  "static_max_dp_decision": false,
+  "dp_intervals_us": [[1e6, 1e4], [5e5, 1e4], [1e5, 1e4]] ,
   "privacy_window_size_server_to_client_s": 5,
   "privacy_window_size_client_to_server_s": 1,
 
@@ -27,8 +27,9 @@
   "load_data_dir_server_to_client": "../../dataset/simulator/video/cache/server_to_client/",
   "load_data_dir_client_to_server": "../../dataset/simulator/video/cache/client_to_server/",
   "results_dir": "results/",
-  "pacer_data_dir": "../../dataset/video/pacer/tvseries_720p_sizes.csv", 
+  "pacer_data_dir": "../../dataset/simulator/video/pacer/tvseries_720p_sizes.csv", 
   "plot_dir": "plots/",
+  "plot_logscale": false,
   "max_num_of_unique_streams": 100,
   "max_num_of_traces_per_stream": 100
 }

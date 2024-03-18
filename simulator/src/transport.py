@@ -73,7 +73,7 @@ def NonDP_transport(data, app_time_resolution_us, data_time_resolution_us, metho
         # Sum of all the values in the pacer data
         pacer_sum = pacer_data.sum(axis=1).sum()
         reshaped_sum = reshaped_df.sum(axis=1).sum()
-        print("overhead is: " + str(reshaped_sum/pacer_sum))
+        # print("overhead is: " + str(reshaped_sum/pacer_sum))
         return pacer_data, reshaped_df
     elif (method == "pacer_web"):
         pass

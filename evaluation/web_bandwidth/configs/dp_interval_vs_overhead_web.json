@@ -8,7 +8,7 @@
   "transport_type": "DP_dynamic",
   "DP_mechanism" : "Gaussian",
   "max_webpage_num": 1000,
-  "webpage_nums_list": [1, 16, 128],
+  "webpage_nums_list": [1],
   "max_webpages_per_single_experiment": 10,
   "privacy_losses_server_to_client": [1], 
   "privacy_losses_client_to_server": [1],
