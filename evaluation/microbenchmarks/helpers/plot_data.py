@@ -43,44 +43,62 @@ def plot_throughput_vs_client_num(data, results_dir):
     req_size = np.unique(data["req_size"])
     fig, ax = plt.subplots(dpi=300, figsize=(5, 2))
     client_num = np.array(data["client_number"])     
-    mean_rtt = np.array(data["mean"])
-     
- 
+    mean_throughput = np.array(data["throughput_mean"])
+    ## sort the data based on the client number
 
-
-
-
-
-
-
-
-def plot_latency_vs_dp_interval(data, results_dir):
-    client_nums = np.unique(data["client_num"])
-    fig, ax = plt.subplots(dpi=300, figsize=(5, 2))
-    markers = ['o', 's', '^']
-    colors = ['tab:blue', 'tab:orange', 'tab:green' ]
-    parr = []
-    ind = 0
-    for client_num in client_nums:
-        fixed_params = {"client_num": client_num}        
-        filtered_data = filter_data_based_on_params(data, fixed_params)
-        dp_intervals = np.array(filtered_data["dp_intevals"])/1e3
-        mean = np.array(filtered_data["mean"])/1e3
-        std = np.array(filtered_data["std"])/1e3
+    client_num, mean_throughput = sort_x_based_on_y(client_num, mean_throughput)
+    if req_size == 1460:
+        color = 'tab:orange'
+        marker = 's'
+    elif req_size == 1460000:
+        color = 'tab:blue'
+        marker = 'o'
         
-        mean, dp_intervals = sort_x_based_on_y(mean, dp_intervals)
-        plt.plot(dp_intervals, mean, label=f"{client_num} clients", markersize=8, marker=markers[ind], color=colors[ind])
-        plt.errorbar(dp_intervals, mean, yerr=std, capsize=3, color=colors[ind], linestyle='None')
-        ind += 1 
+    ax.loglog(client_num, mean_throughput, label=f"{req_size/1e3} KB (NS)", markersize=8, marker=marker, color=color)
+    plt.gca().set_xscale("log", base=2)
+    # ax.legend(framealpha=0, handlelength=1, fontsize=12, ncol=1)
+    plt.xticks([2**i for i in range(0,11, 2)])
+    plt.yticks([10**i for i in range(2, 7, 2)])
     plt.legend(framealpha=0, handlelength=1, fontsize=12, ncol=1)
-    plt.xlabel('DP interval, $T$ (ms)')
-    plt.ylabel('Latency (ms)')
-    # plt.yticks([i for i in range(0, 101, 20)])
-    plt.xticks([i for i in range(0, 101, 20)])
-    plt.title('$\epsilon_W$=1, $\delta_W$=1e-6, $\Delta_W$=60 KB')
-    plot_file = os.path.join(results_dir, "latency_vs_dp_interval.pdf")
+    ax.set_xlabel('Number of clients')
+    ax.set_ylabel('Throughput (Reqs/s)')
+    ax.set_title('Throughput vs Number of Clients')
+    
+    plot_file = os.path.join(results_dir, "throughput_vs_client_num.pdf")
+
     plt.savefig(plot_file, bbox_inches='tight', transparent=True)
     plt.close()
+         
+
+def plot_latency_vs_client_num(data, results_dir):
+    req_size = np.unique(data["req_size"])
+    fig, ax = plt.subplots(dpi=300, figsize=(5, 2))
+    client_num = np.array(data["client_number"])     
+    mean_latency = np.array(data["latency_mean"])
+    ## sort the data based on the client number
+    client_num, mean_latency = sort_x_based_on_y(client_num, mean_latency)
+    if req_size == 1460:
+        color = 'tab:orange'
+        marker = 's'
+    elif req_size == 1460000:
+        color = 'tab:blue'
+        marker = 'o'
+        
+    ax.loglog(client_num, mean_latency/1e3, label=f"{req_size/1e3} KB (NS)", markersize=8, marker=marker, color=color)
+    plt.gca().set_xscale("log", base=2)
+    # ax.legend(framealpha=0, handlelength=1, fontsize=12, ncol=1)
+    plt.xticks([2**i for i in range(0,11, 2)])
+    plt.yticks([10**i for i in range(-1, 5)])
+    plt.legend(framealpha=0, handlelength=1, fontsize=12, ncol=1)   
+    ax.set_xlabel('Number of clients')
+    ax.set_ylabel('Latency (ms)')
+    ax.set_title('Latency vs Number of Clients')
+    plot_file = os.path.join(results_dir, "latency_vs_client_num.pdf")
+    plt.savefig(plot_file, bbox_inches='tight', transparent=True)
+    plt.close() 
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Description of your program")
@@ -96,7 +114,7 @@ def main():
     else: 
         results_dir = args.results_dir
         
-    results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-02-09_09-51)"
+    # results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-03-17_17-51)"
 
 
     data_dir = os.path.join(results_dir, "processed_data.pkl")
@@ -106,9 +124,9 @@ def main():
         processed_data = pickle.load(file)
     
     print(processed_data)  
-    plot_latency_vs_dp_interval(processed_data, results_dir)    
-
-
+    # plot_latency_vs_dp_interval(processed_data, results_dir)    
+    plot_throughput_vs_client_num(processed_data, results_dir)
+    plot_latency_vs_client_num(processed_data, results_dir)
 
 
 if __name__=="__main__":
