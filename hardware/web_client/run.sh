@@ -36,7 +36,11 @@ elif [[ $mode == "no-shaping" ]]; then
   path="latencies/iter_$iter_num/req_$request_size"
 fi
 
-
+if [[ $mode == "baseline" ]]; then
+  port=5555
+else 
+  port=$(($iter_num + 8000))
+fi
 
 
 mkdir -p $path
