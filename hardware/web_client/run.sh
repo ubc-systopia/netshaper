@@ -32,7 +32,7 @@ echo -e "${YELLOW}Running the web client${OFF}"
 
 if [[ $mode == "shaping" ]]; then
   path="latencies/iter_$iter_num"
-elif [[ $mode == "no-shaping" ]]; then
+elif [[ $mode == "no-shaping" || $mode=="baseline" ]]; then
   path="latencies/iter_$iter_num/req_$request_size"
 fi
 

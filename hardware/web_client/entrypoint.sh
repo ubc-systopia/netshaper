@@ -40,7 +40,7 @@ if [[ $MODE == "shaping" ]]; then
 
   echo -e "${GREEN}Done!${OFF}"
 
-elif [[ $MODE == "no-shaping" ]]; then
+elif [[ $MODE == "no-shaping" || $MODE == "baseline" ]]; then
   echo -e "${YELLOW}Measuring the latency for a microbenchmark.${OFF}"
 
   echo -e "${YELLOW}Running the web client${OFF}"
