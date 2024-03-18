@@ -1,7 +1,7 @@
 # NetShaper: A Differentially Private Network Side-Channel Mitigation System
 This repository contains the source code and instructions to reproduce the results of the paper "NetShaper: A Differentially Private Network Side-Channel Mitigation System" published in the the 33rd USENIX Security Symposium (USENIX Security '24).
 
-📎 **Paper**: [https://arxiv.org/abs/2310.06293]
+📎 **Paper**: [https://www.usenix.org/conference/usenixsecurity24/presentation/sabzi]
 ## Code
 NetShaper artifact consists of two main components: A testbed that implements a setup of four machine connected with linear topology, and a simulator that models the traffic shaping mechanism to speed up measurements.
 
