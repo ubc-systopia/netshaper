@@ -21,7 +21,7 @@ The machines are connected with 10Gbps links, two of which work as the client an
 
 
 ## General Prerequisites
-You should have physical access to the testbed machines, as well as the ability to SSH into them. The phyical access to middlebox machines is requried to change BIOS settings and reboot the machines. The SSH access is required to run the experiments and collect the results.
+You should have physical access to the testbed machines, as well as the ability to SSH into them. The physical access to middlebox machines is required to change BIOS settings and reboot the machines. SSH access is required to run the experiments and collect the results.
 The following configurations should be applied to machines hosting middleboxes (MB-1 and MB-2). 
 
 ### BIOS Configuration
@@ -54,7 +54,7 @@ sudo apt install docker-compose
 ```
 
 ### Setup
-To setup the server, follow these steps:  
+To set up the server, follow these steps:  
 1. Open an SSH connection to the machine that serves as the server.
 2. Clone the NetShaper repository onto the server machine. 
 3. Change the directory to `Path/To/Netshaper/hardware/server/`
@@ -64,7 +64,7 @@ To setup the server, follow these steps:
 ```
 
 ### Run
-Run the docker container of server with the following command:
+Run the docker container of the server with the following command:
 ```bash
 docker-compose up -d
 ```
@@ -98,7 +98,7 @@ With the successful build of the middlebox, build the peer2 container with the f
 docker build -t amirsabzi/netshaper:peer2-shaping ./peer2/
 ```
 ### Configuration
-All configuration parameters of the middlebox are provided in a json file name [peer2_config.json](../../hardware/server_middlebox/peer2_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The python script [set_params.py](helpers/set_params.py) is used to set the parameters for middlebxes according to the configuration file of the experiment, [video_latency.json](configs/video_latency.json).
+All configuration parameters of the middlebox are provided in a JSON file name [peer2_config.json](../../hardware/server_middlebox/peer2_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The Python script [set_params.py](helpers/set_params.py) is used to set the parameters for middleboxes according to the configuration file of the experiment, [video_latency.json](configs/video_latency.json).
 
 ## Middlebox at the client side (MB-1)
 ### Prerequisites
@@ -108,7 +108,7 @@ sudo apt install docker-compose tcpdump
 ```
 
 ### Setup
-To set up the middlebox at the client side follow these steps:
+To set up the middlebox on the client side follow these steps:
 1. Open an SSH connection to the machine that serves as the middlebox on the client side. 
 2. Clone the NetShaper repository onto the middlebox on the client side.
 3. Change the directory to `Path/To/NetShaper/hardware/client_middlebox/`
@@ -128,7 +128,7 @@ With the successful build of the middlebox, build the peer1 container with the f
 docker build -t amirsabzi/netshaper:peer1-shaping ./peer1/
 ```
 ### Configuration
-All configuration parameters of the middlebox are provided in a json file name [peer1_config.json](../../hardware/client_middlebox/peer1_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The python script [set_params.py](helpers/set_params.py) is used to set the parameters for middlebxes according to the configuration file of the experiment, [video_latency.json](configs/video_latency.json).
+All configuration parameters of the middlebox are provided in a JSON file name [peer1_config.json](../../hardware/client_middlebox/peer1_config.json). The description of all these configurations is provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The Python script [set_params.py](helpers/set_params.py) is used to set the parameters for middleboxes according to the configuration file of the experiment, [video_latency.json](configs/video_latency.json).
 
 ## Client
 ### Prerequisites
@@ -160,7 +160,7 @@ docker build -t amirsabzi/netshaper:web-client .
 ```
 
 ### Configuration
-The run script for web cliet, [hardware/web_client/run.sh](../../hardware/web_client/run.sh), receives the configuration parameters as arguments. This includes the shaping mode, number of parallel clients, request rate, request size, number of iterations, and IP address of the middlebox at client side. 
+The run script for the web client, [hardware/web_client/run.sh](../../hardware/web_client/run.sh), receives the configuration parameters as arguments. This includes the shaping mode, number of parallel clients, request rate, request size, number of iterations, and IP address of the middlebox on the client side. 
 
 ## Running the Experiments
 
@@ -188,18 +188,18 @@ The following parameters are used to configure the experiments:
 1. `iter_num`: The number of iterations for each configuration.
 2. `max_client_numbers`: The number of parallel clients.
 3. `request_rate`: The request rate of the clients.
-4. `privacy_loss_peer1`: The privacy loss parameter for the middlebox at the client side (client to server communication).
-5. `privacy_loss_peer2`: The privacy loss parameter for the middlebox at the server side (server to client communication).
-6. `sensitivity_peer1`: The sensitivity parameter for the middlebox at the client side (client to server communication).
-7. `sensitivity_peer2`: The sensitivity parameter for the middlebox at the server side (server to client communication).
-8. `dp_interval_peer1`: The differential privacy interval for the middlebox at the client side (client to server communication).
-9. `sender_loop_interval_peer1`: The sender loop interval for the middlebox at the client side (client to server communication).
-10. `dp_intervals_peer2`: A list of different differential privacy intervals for the middlebox at the server side (server to client communication).
-11. `sender_loop_interval_peer2`: The sender loop interval for the middlebox at the server side (server to client communication).
-12. `max_decision_size_peer1`: The maximum decision size for the middlebox at the client side (client to server communication).
-13. `min_decision_size_peer1`: The minimum decision size for the middlebox at the client side (client to server communication).
-14. `max_decision_size_peer2`: The maximum decision size for the middlebox at the server side (server to client communication).
-15. `min_decision_size_peer2`: The minimum decision size for the middlebox at the server side (server to client communication).
+4. `privacy_loss_peer1`: The privacy loss parameter for the middlebox on the client side (client-to-server communication).
+5. `privacy_loss_peer2`: The privacy loss parameter for the middlebox on the server side (server-to-client communication).
+6. `sensitivity_peer1`: The sensitivity parameter for the middlebox on the client side (client-to-server communication).
+7. `sensitivity_peer2`: The sensitivity parameter for the middlebox on the server side (server-to-client communication).
+8. `dp_interval_peer1`: The differential privacy interval for the middlebox on the client side (client-to-server communication).
+9. `sender_loop_interval_peer1`: The sender loop interval for the middlebox on the client side (client-to-server communication).
+10. `dp_intervals_peer2`: A list of different differential privacy intervals for the middlebox on the server side (server-to-client communication).
+11. `sender_loop_interval_peer2`: The sender loop interval for the middlebox on the server side (server-to-client communication).
+12. `max_decision_size_peer1`: The maximum decision size for the middlebox on the client side (client-to-server communication).
+13. `min_decision_size_peer1`: The minimum decision size for the middlebox on the client side (client-to-server communication).
+14. `max_decision_size_peer2`: The maximum decision size for the middlebox on the server side (server-to-client communication).
+15. `min_decision_size_peer2`: The minimum decision size for the middlebox on the server side (server-to-client communication).
 
 
 
@@ -225,13 +225,13 @@ peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
 peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
 #************************************************************
 ```
-1. `peer2_ssh_host`: The hostname of the middlebox at the server side. For example, `desh03`.
-2. `peer2_ssh_username`: The username for the middlebox at the server side. For example, `minesvpn`.
-3. `peer1_ssh_host`: The hostname of the middlebox at the client side. For example, `desh02`.
-4. `peer1_ssh_username`: The username for the middlebox at the client side. For example, `minesvpn`.
-5. `peer1_IP`: The IP address of the middlebox at the client side. For example, `192.168.1.2`.
-6. `peer2_netshaper_dir`: The absolute directory path of the NetShaper repository at the middlebox at the server side. For example, `/home/minesvpn/workspace/artifact_evaluation/code/minesvpn`.
-7. `peer1_netshaper_dir`: The absolute directory path of the NetShaper repository at the middlebox at the client side. For example, `/home/minesvpn/workspace/artifact_evaluation/code/minesvpn`.
+1. `peer2_ssh_host`: The hostname of the middlebox on the server side. For example, `desh03`.
+2. `peer2_ssh_username`: The username for the middlebox on the server side. For example, `minesvpn`.
+3. `peer1_ssh_host`: The hostname of the middlebox on the client side. For example, `desh02`.
+4. `peer1_ssh_username`: The username for the middlebox on the client side. For example, `minesvpn`.
+5. `peer1_IP`: The IP address of the middlebox on the client side. For example, `192.168.1.2`.
+6. `peer2_netshaper_dir`: The absolute directory path of the NetShaper repository at the middlebox on the server side. For example, `/home/minesvpn/workspace/artifact_evaluation/code/minesvpn`.
+7. `peer1_netshaper_dir`: The absolute directory path of the NetShaper repository at the middlebox on the client side. For example, `/home/minesvpn/workspace/artifact_evaluation/code/minesvpn`.
 
 **NOTE: if you are using a different setup, you should modify the run script accordingly.**
 
