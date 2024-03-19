@@ -207,19 +207,19 @@ namespace helpers {
         divisor = decisionInterval / sendingInterval;
         break;
     }
-#ifdef RECORD_STATS
-    // 0 if we want to profile for these values
     auto maskDPDecisionUs = 0;
     auto maskPrepDurationUs = 0;
     auto maskEnqueueDurationUs = 0;
+#ifdef RECORD_STATS
     for (auto i = 0; i < 5; i++) {
       auto shaperStat = new shaperStats{};
       shaperStatsMap[(statElem) i] = shaperStat;
     }
-#else
-    auto maskDPDecisionUs = 0;
-    auto maskPrepDurationUs = 6000;
-    auto maskEnqueueDurationUs = 1000;
+#endif
+#ifdef SHAPING
+    maskDPDecisionUs = 0;
+    maskPrepDurationUs = 6000;
+    maskEnqueueDurationUs = 1000;
 #endif
     auto mask = std::chrono::steady_clock::now();
     auto decisionSleepUntil = std::chrono::steady_clock::now();
