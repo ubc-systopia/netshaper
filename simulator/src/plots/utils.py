@@ -274,7 +274,7 @@ def plot_dp_interval_vs_overhead_video(config, results):
     # plot_dir = "/home/ubuntu/workspace/artifact_evaluation/minesvpn/evaluation/video_bandwidth/results/dp_interval_vs_overhead_video_(2024-03-17_16-15)"
     plot_dir = config.plot_dir
     ensure_dir(plot_dir)
-    plot_file = os.path.join(plot_dir, "latency_vs_dp_interval_video.pdf")
+    plot_file = os.path.join(plot_dir, "bandwidth_vs_dp_interval_video.pdf")
     print("saving plot to ", plot_file)
     plt.savefig(plot_file, bbox_inches='tight', transparent=True)
     plt.close()
