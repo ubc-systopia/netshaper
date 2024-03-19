@@ -9,15 +9,10 @@ RED='\033[0;31m'
 OFF='\033[0m'
 
 
-
 # Maximum capture size of TCPdump (# bytes)
-MAX_CAPTURE_SIZE=300 
-# Length of captured traces (seconds) 
-TIMEOUT=300 
-
-# Number of parallel communication channels
-MAX_PARALLEL=6
-
+MAX_CAPTURE_SIZE=300
+# Length of captured traces (seconds)
+TIMEOUT=180
 
 
 # Function to display usage information
@@ -120,11 +115,6 @@ for ((i=1; i<=$iter_num; i++)); do
 
   sleep $(($TIMEOUT+20))
 done
-
-
-
-echo -e "${YELLOW}Waiting for all container to stop${OFF}"
-sleep $((TIMEOUT+20))
 
 
 # Copy traces from the web client
