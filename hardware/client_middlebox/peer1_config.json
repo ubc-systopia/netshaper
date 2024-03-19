@@ -1,5 +1,5 @@
 {
-  "logLevel": "WARNING",
+  "logLevel": "ERROR",
   "maxClients": 130,
   "appName": "minesVPNPeer1",
   "queueSize": 96000000,

@@ -1,5 +1,5 @@
 {
-  "logLevel": "WARNING",
+  "logLevel": "ERROR",
   "maxStreamsPerPeer": 130,
   "appName": "minesVPNPeer2",
   "queueSize": 96000000,
