@@ -2,7 +2,8 @@ import paramiko
 import json
 import argparse
 
-
+# Constants
+maxAllowedQueueSize = 256*1024*1024 # 256 MB
 
 
 def main():
@@ -116,7 +117,6 @@ def main():
     peer2_config = json.loads(json_data_peer2)
 
     # Modify Peer1 Config file
-    peer1_config["queueSize"] = 13*1024*1024
     peer1_config["maxClients"] = max_client_num + 2
     peer1_config["shapedClient"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer1"]
     peer1_config["shapedClient"]["sensitivity"] = experiment_config["sensitivity_peer1"]
@@ -124,10 +124,12 @@ def main():
     peer1_config["shapedClient"]["sendingLoopInterval"] = experiment_config["sender_loop_interval_peer1"]
     peer1_config["shapedClient"]["maxDecisionSize"] = experiment_config["max_decision_size_peer1"]
     peer1_config["shapedClient"]["minDecisionSize"] = experiment_config["min_decision_size_peer1"]
+
+    maxAvailableQueueSize = 24*1024*1024*1024/(peer1_config["maxClients"] * 2) # 24GB divided by 2 queues/client
+    peer1_config["queueSize"] = min(maxAvailableQueueSize, maxAllowedQueueSize)
     
     
     # Modify Peer2 Config file
-    peer2_config["queueSize"] = 13*1024*1024
     peer2_config["maxStreamsPerPeer"] = max_client_num + 2
     peer2_config["shapedServer"]["noiseMultiplier"] = experiment_config["noise_multiplier_peer2"]
     peer2_config["shapedServer"]["sensitivity"] = experiment_config["sensitivity_peer2"]
@@ -135,6 +137,9 @@ def main():
     peer2_config["shapedServer"]["sendingLoopInterval"] = experiment_config["sender_loop_interval_peer2"]
     peer2_config["shapedServer"]["maxDecisionSize"] = experiment_config["max_decision_size_peer2"]
     peer2_config["shapedServer"]["minDecisionSize"] = experiment_config["min_decision_size_peer2"]
+
+    maxAvailableQueueSize = 24*1024*1024*1024/(peer2_config["maxStreamsPerPeer"] * 2) # 24GB divided by 2 queues/client
+    peer2_config["queueSize"] = min(maxAvailableQueueSize, maxAllowedQueueSize)
 
     
     # Write Peer1 Config file
