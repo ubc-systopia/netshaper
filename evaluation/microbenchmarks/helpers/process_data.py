@@ -66,7 +66,7 @@ def get_latency_stats(csv_files, client_num):
     latencies = []
     for csv_file in csv_files: 
         # read the csv file as a pandas dataframe
-        df = pd.read_csv(csv_file)
+        df = pd.read_csv(csv_file, dtype=str)
         df = df.rename(columns={'start_time 0': ' start_time 0'}) 
         for i in range(client_num):
             columns_to_select = [f' start_time {i}', f' actual_time {i}']
@@ -94,8 +94,16 @@ def get_request_size(log_file):
     return req_number
    
   
-
-
+def partition_files(files):
+    # partition the files into two lists based on the file name which contains "NS" and "baseline"
+    files_NS = []
+    files_baseline = []
+    for file in files:
+        if "NS" in file:
+            files_NS.append(file)
+        elif "baseline" in file:
+            files_baseline.append(file)
+    return files_NS, files_baseline
 
 def main():
     parser = argparse.ArgumentParser(description="Description of your program")
@@ -117,11 +125,23 @@ def main():
         
     # Temporary reults dir for testing
     # TODO: Remove this
-    # results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-03-15_14-13)"
+    # results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-03-18_12-22)"
     
     
     
-    processed_data = {"client_number": [], "latency_mean": [], "latency_std": [], "throughput_mean":[], "throughput_std": [], "req_size": []}
+    processed_data = {"client_number_NS": [],
+                      "latency_mean_NS": [],
+                      "latency_std_NS": [],
+                      "throughput_mean_NS":[],
+                      "throughput_std_NS": [],
+                      "req_size_NS": [],
+                      "client_number_baseline": [],
+                      "latency_mean_baseline": [],
+                      "latency_std_baseline": [],
+                      "throughput_mean_baseline":[],
+                      "throughput_std_baseline": [],
+                      "req_size_baseline": []
+                    }
     
     client_numbers = get_client_num_list(results_dir)        
     
@@ -132,31 +152,43 @@ def main():
         # print(client_number, client_dir) 
         # Get csv files in the client directory
         csv_files = get_csv_files(client_dir)
+        csv_files_NS, csv_files_baseline = partition_files(csv_files)
+
+        if len(csv_files_NS) == 0 or len(csv_files_baseline) == 0:
+            raise Exception(f"No csv files found in {client_dir}")
         
-        if len(csv_files) == 0:
-            raise Exception(f'No csv file found in {client_dir}')
-        
-        latency_mean, latency_std = get_latency_stats(csv_files, client_number)        
-                
+        latency_mean_NS, latency_std_NS = get_latency_stats(csv_files_NS, client_number)        
+        latency_mean_baseline, latency_std_baseline = get_latency_stats(csv_files_baseline, client_number)
+                        
         # Get the log file in the client directory
         log_files = get_log_files(client_dir)
+        log_files_NS, log_files_baseline = partition_files(log_files)
 
-        throughput_mean, throughput_std = get_throughput_stats(log_files, client_number)
+        if len(log_files_NS) == 0 or len(log_files_baseline) == 0:
+            raise Exception(f"No log files found in {client_dir}")
         
+        
+        throughput_mean_NS, throughput_std_NS = get_throughput_stats(log_files_NS, client_number)
+        throughput_mean_baseline, throughput_std_baseline = get_throughput_stats(log_files_baseline, client_number) 
         
         # return
         # Get the request size from the log file
         req_size = get_request_size(log_files[0])
         
         
-        processed_data["client_number"].append(client_number)
-        processed_data["req_size"].append(req_size)
-        processed_data["latency_mean"].append(latency_mean)
-        processed_data["latency_std"].append(latency_std)
-        processed_data["throughput_mean"].append(throughput_mean)
-        processed_data["throughput_std"].append(throughput_std)
-
-
+        processed_data["client_number_NS"].append(client_number)
+        processed_data["latency_mean_NS"].append(latency_mean_NS)
+        processed_data["latency_std_NS"].append(latency_std_NS)
+        processed_data["throughput_mean_NS"].append(throughput_mean_NS)
+        processed_data["throughput_std_NS"].append(throughput_std_NS)
+        processed_data["req_size_NS"].append(req_size)
+        processed_data["client_number_baseline"].append(client_number)
+        processed_data["latency_mean_baseline"].append(latency_mean_baseline)
+        processed_data["latency_std_baseline"].append(latency_std_baseline)
+        processed_data["throughput_mean_baseline"].append(throughput_mean_baseline)
+        processed_data["throughput_std_baseline"].append(throughput_std_baseline)
+        processed_data["req_size_baseline"].append(req_size)
+        
         
     print(processed_data)
     # Saving the processed data in the same results directory as a pickle file

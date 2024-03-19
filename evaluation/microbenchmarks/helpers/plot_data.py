@@ -40,21 +40,32 @@ def filter_data_based_on_params(data, params):
 
 
 def plot_throughput_vs_client_num(data, results_dir):
-    req_size = np.unique(data["req_size"])
-    fig, ax = plt.subplots(dpi=300, figsize=(5, 2))
-    client_num = np.array(data["client_number"])     
-    mean_throughput = np.array(data["throughput_mean"])
-    ## sort the data based on the client number
 
-    client_num, mean_throughput = sort_x_based_on_y(client_num, mean_throughput)
-    if req_size == 1460:
+    req_size = np.unique(data["req_size_NS"])
+    fig, ax = plt.subplots(dpi=300, figsize=(5, 2))
+    if  req_size == 1460:
         color = 'tab:orange'
         marker = 's'
     elif req_size == 1460000:
         color = 'tab:blue'
         marker = 'o'
+
+    client_num_NS = np.array(data["client_number_NS"])     
+    mean_throughput_NS = np.array(data["throughput_mean_NS"])
+    ## sort the data based on the client number
+    client_num_NS, mean_throughput_NS = sort_x_based_on_y(client_num_NS, mean_throughput_NS)
+    
+    
+    client_num_baseline = np.array(data["client_number_baseline"])
+    mean_throughput_baseline = np.array(data["throughput_mean_baseline"])
+    ## sort the data based on the client number
+    client_num_baseline, mean_throughput_baseline = sort_x_based_on_y(client_num_baseline, mean_throughput_baseline)    
         
-    ax.loglog(client_num, mean_throughput, label=f"{req_size/1e3} KB (NS)", markersize=8, marker=marker, color=color)
+    ax.loglog(client_num_NS, mean_throughput_NS, label=f"{req_size/1e3} KB (NS)", markersize=8, marker=marker, color=color)
+    ax.loglog(client_num_baseline, mean_throughput_baseline, label=f"{req_size/1e3} KB (Baseline)", color=color, linestyle='--')
+
+
+
     plt.gca().set_xscale("log", base=2)
     # ax.legend(framealpha=0, handlelength=1, fontsize=12, ncol=1)
     plt.xticks([2**i for i in range(0,11, 2)])
@@ -64,6 +75,7 @@ def plot_throughput_vs_client_num(data, results_dir):
     ax.set_ylabel('Throughput (Reqs/s)')
     ax.set_title('Throughput vs Number of Clients')
     
+
     plot_file = os.path.join(results_dir, "throughput_vs_client_num.pdf")
 
     plt.savefig(plot_file, bbox_inches='tight', transparent=True)
@@ -71,20 +83,32 @@ def plot_throughput_vs_client_num(data, results_dir):
          
 
 def plot_latency_vs_client_num(data, results_dir):
-    req_size = np.unique(data["req_size"])
+    req_size = np.unique(data["req_size_NS"])
     fig, ax = plt.subplots(dpi=300, figsize=(5, 2))
-    client_num = np.array(data["client_number"])     
-    mean_latency = np.array(data["latency_mean"])
-    ## sort the data based on the client number
-    client_num, mean_latency = sort_x_based_on_y(client_num, mean_latency)
     if req_size == 1460:
         color = 'tab:orange'
         marker = 's'
     elif req_size == 1460000:
         color = 'tab:blue'
         marker = 'o'
+
+
+    client_num_NS = np.array(data["client_number_NS"])     
+    mean_latency_NS = np.array(data["latency_mean_NS"])
+    ## sort the data based on the client number
+    client_num_NS, mean_latency_NS = sort_x_based_on_y(client_num_NS, mean_latency_NS)
+
+    
+    client_num_baseline = np.array(data["client_number_baseline"])
+    mean_latency_baseline = np.array(data["latency_mean_baseline"])
+    ## sort the data based on the client number 
+    client_num_baseline, mean_latency_baseline = sort_x_based_on_y(client_num_baseline, mean_latency_baseline)
+     
         
-    ax.loglog(client_num, mean_latency/1e3, label=f"{req_size/1e3} KB (NS)", markersize=8, marker=marker, color=color)
+    ax.loglog(client_num_NS, mean_latency_NS/1e3, label=f"{req_size/1e3} KB (NS)", markersize=8, marker=marker, color=color)
+    ax.loglog(client_num_baseline, mean_latency_baseline/1e3, label=f"{req_size/1e3} KB (Baseline)", color=color, linestyle='--')
+    
+
     plt.gca().set_xscale("log", base=2)
     # ax.legend(framealpha=0, handlelength=1, fontsize=12, ncol=1)
     plt.xticks([2**i for i in range(0,11, 2)])
@@ -114,7 +138,7 @@ def main():
     else: 
         results_dir = args.results_dir
         
-    # results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-03-17_17-51)"
+    # results_dir = "/home/minesvpn/workspace/artifact_evaluation/code/minesvpn/evaluation/microbenchmarks/results/microbenchmark_(2024-03-18_12-22)"
 
 
     data_dir = os.path.join(results_dir, "processed_data.pkl")

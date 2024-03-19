@@ -61,8 +61,9 @@ To set up the server, follow these steps:
 ```bash
 ./setup.sh
 ```
+The setup script will pull the server container from the Docker Hub.
 
-### Build
+### Run
 Run the docker container of the server with the following command:
 ```bash
 docker-compose up -d
@@ -85,8 +86,9 @@ To set the middlebox on the server side follow these steps:
 ```bash
 ./setup.sh
 ```
+The setup script will pull the server-side middlebox containers from the Docker Hub. Alternatively, you can build the server-side middlebox container based on the following instructions.
 
-### Build
+### Build (Optional)
 To disable shaping and measure latency and throughput, in directory `Path/To/NetShaper/hardware/server_middlebox/`, make sure that you commented out the following line from the `CMakeLists.txt` file:
 ```cmake
 # add_compile_definitions(SHAPING) 
@@ -98,9 +100,10 @@ To build the server-side middlebox binary, execute the following command:
 ```
 With the successful build of the middlebox, build the peer2 container with the following command:
 ```bash
-docker build -t peer2 ./peer2/
+docker build -t amirsabzi/netshaper:peer2-no-shaping ./peer2/
 ```
-
+### Configuration
+All configuration parameters of the middlebox are provided in a json file name [peer2_config.json](../../hardware/server_middlebox/peer2_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The python script [set_params.py](helpers/set_params.py) is used to set the parameters for middlebxes according to the configuration files of the experiment, [microbenchmarks_large_requests.json](configs/microbenchmarks_large_requests.json) and [microbenchmarks_small_requests.json](configs/microbenchmarks_small_requests.json).
 
 ## Middlebox at the client side (MB-1)
 ### Prerequisites
@@ -118,8 +121,8 @@ To set up the middlebox at the client side follow these steps:
 ```bash
 ./setup.sh
 ```
-
-### Build
+The setup script will pull the client-side middlebox containers from the Docker Hub. Alternatively, you can build the client-side middlebox container based on the following instructions.
+### Build (Optional)
 To disable shaping and measure latency and throughput, in directory `Path/To/NetShaper/hardware/client_middlebox/`, make sure that you commented out the following line from the `CMakeLists.txt` file:
 ```cmake
 # add_compile_definitions(SHAPING) 
@@ -132,9 +135,12 @@ To build the client-side middlebox binary, execute the following command:
 ```
 With the successful build of the middlebox, build the peer1 container with the following command:
 ```bash
-docker build -t peer1 ./peer1/
+docker build -t amirsabzi/netshaper:peer1-no-shaping ./peer1/
 ```
 
+### Configuration
+All configuration parameters of the middlebox are provided in a json file name [peer1_config.json](../../hardware/client_middlebox/peer1_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment.
+The python script [set_params.py](helpers/set_params.py) is used to set the parameters for middlebxes according to the configuration files of the experiment, [microbenchmarks_large_requests.json](configs/microbenchmarks_large_requests.json) and [microbenchmarks_small_requests.json](configs/microbenchmarks_small_requests.json).
 
 ## Client
 ### Prerequisites
@@ -152,15 +158,79 @@ To setup the client, follow these steps:
 ```bash
 ./setup.sh
 ```
+The setup script will pull the client container from the Docker Hub. Alternatively, you can build the client container based on the following instructions.
 
-
-### Build 
+### Build (Optional) 
 To build the client container, execute the following command:
 ```bash
-./build.sh
+ocker build -t amirsabzi/netshaper:web-client .
 ```
+### Configuration
+The run script for web cliet, [hardware/web_client/run.sh](../../hardware/web_client/run.sh), receives the configuration parameters as arguments. This includes the shaping mode, number of parallel clients, request rate, request size, number of iterations, and IP address of the middlebox at client side. 
+
 
 ## Running the Experiments
+
+### Experiment Configuration
+The following parameters are used to configure the experiments:
+```json
+{
+  "iter_num": 3,
+  "max_client_numbers": [1, 4, 16, 64, 256, 1024],
+  "request_rate": 30000,
+  "request_size": 1460
+}
+```
+1. `iter_num`: The number of iterations for each experiment.
+2. `max_client_numbers`: The number of parallel clients used in the experiment.
+3. `request_rate`: The request rate of each client in the experiment.
+4. `request_size`: The size of each request in the experiment.
+The rest of parameters are set to be zero or empty, as they do not affect the results of this experiment.
+
+### Run Script Parameters
+To enhance the readability and maintainability of the run script, we do not use command line arguments for the run script. Instead, the first section of the run script is used to set the parameters for the experiment. The parameters are set as follows:
+
+```bash
+
+# ************************************************************
+# *                    Run Parameters                        *
+# ************************************************************
+
+# SSH Host and Username for server-side middlebox (peer2)
+peer2_ssh_host="desh03"
+peer2_ssh_username="minesvpn"
+
+# SSH Host and Username for client-side middlebox (peer1)
+peer1_ssh_host="desh02"
+peer1_ssh_username="minesvpn"
+
+peer1_IP="192.168.1.2"
+server_IP="192.168.3.4"
+
+# NetShaper directory at server-side middlebox (peer2)
+peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+
+# NetShaper directory at client-side middlebox (peer1)
+peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+
+# Config directory
+config_file_dir="$(pwd)/configs/microbenchmarks_small_requests.json"
+
+#************************************************************
+```
+The parameters are set as follows:
+1. `peer2_ssh_host`: The hostname of the server-side middlebox.
+2. `peer2_ssh_username`: The username for the server-side middlebox.
+3. `peer1_ssh_host`: The hostname of the client-side middlebox.
+4. `peer1_ssh_username`: The username for the client-side middlebox.
+5. `peer1_IP`: The IP address of the client-side middlebox.
+6. `server_IP`: The IP address of the server (For measuring the latency of direct communication as baseline).
+7. `peer2_netshaper_dir`: The directory of the NetShaper repository at the server-side middlebox.
+8. `peer1_netshaper_dir`: The directory of the NetShaper repository at the client-side middlebox.
+9. `config_file_dir`: The directory of the configuration file for the experiment (e.g., `microbenchmarks_small_requests.json` or `microbenchmarks_large_requests.json`).
+
+
+### Run
 To run the experiments, follow these steps:
 1. **Ensure that the server, middleboxes, and client have been set up and built.**
 2. Open an SSH connection to the client machine.
