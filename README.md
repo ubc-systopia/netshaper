@@ -26,11 +26,14 @@ GPU with 24 GB of memory. Simulator also requires Python 3.10.6 and can be execu
 
 Each experiment contains a README file with the instructions to run the experiments and it contains a config file to configure the parameters for the experiment. The current configuration is set to match the parameters used in the paper.
 
+After downloading the dataset, to test the simulator, you can run the following commands:
+```bash
+cd evaluation/web_bandwidth
+./run.sh --experiment="dp_interval_vs_overhead_web"  --config_file="configs/dp_interval_vs_overhead_web.json"
+```
+
 ### Testbed
 The evaluation directory contains the scripts and instructions to set up the testbed and run the experiments on the testbed to reproduce the results. Video streaming latency, web service latency, and microbenchmarks are executed on the testbed.
-
-
-
 
 
 These experiments require the testbed to be setup. The testbed setup is described in the  directory of the corresponding experiment.
