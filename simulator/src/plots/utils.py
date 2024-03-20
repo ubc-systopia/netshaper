@@ -237,7 +237,9 @@ def plot_dp_interval_vs_overhead_web(config, results):
     # plt.yticks([i for i in range(0, 3001, 1000)])
     plt.xticks([i for i in range(0, 101, 20)])
     plt.title('$\epsilon_W$=1, $\delta_W$=1e-6, $\Delta_W$=60 KB')
-    plot_file = os.path.join(config.plot_dir, "latency_vs_dp_interval_web.pdf")
+    plot_dir = config.plot_dir
+    ensure_dir(plot_dir)
+    plot_file = os.path.join(plot_dir, "bandwidth_vs_dp_interval_web.pdf")
     plt.savefig(plot_file, bbox_inches='tight', transparent=True)
     plt.close()
     
@@ -278,7 +280,6 @@ def plot_dp_interval_vs_overhead_video(config, results):
     plot_dir = config.plot_dir
     ensure_dir(plot_dir)
     plot_file = os.path.join(plot_dir, "bandwidth_vs_dp_interval_video.pdf")
-    print("saving plot to ", plot_file)
     plt.savefig(plot_file, bbox_inches='tight', transparent=True)
     plt.close()
     
