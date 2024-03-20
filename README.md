@@ -5,6 +5,11 @@ This repository contains the source code and instructions to reproduce the resul
 ## Code
 NetShaper artifact consists of two main components: A testbed that implements a setup of four machine connected with linear topology, and a simulator that models the traffic shaping mechanism to speed up measurements.
 
+To clone the repository, run the following command:
+```bash
+git clone --recursive-submodules https://github.com/ubc-systopia/netshaper.git
+``` 
+
 The directory structure is as follows:
 - `hardware/`: Contains the code for different components of the testbed and the scripts to setup the testbed machines.
 - `simulator/`: Contains the scripts to run the simulator.
