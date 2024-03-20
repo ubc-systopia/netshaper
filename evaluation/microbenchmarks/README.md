@@ -105,6 +105,8 @@ docker build -t amirsabzi/netshaper:peer2-no-shaping ./peer2/
 ### Configuration
 All configuration parameters of the middlebox are provided in a json file name [peer2_config.json](../../hardware/server_middlebox/peer2_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The python script [set_params.py](helpers/set_params.py) is used to set the parameters for middlebxes according to the configuration files of the experiment, [microbenchmarks_large_requests.json](configs/microbenchmarks_large_requests.json) and [microbenchmarks_small_requests.json](configs/microbenchmarks_small_requests.json).
 
+
+
 ## Middlebox at the client side (MB-1)
 ### Prerequisites
 Ensure that Docker, Docker Compose, and tcpdump are installed on the middlebox machine.
@@ -141,6 +143,8 @@ docker build -t amirsabzi/netshaper:peer1-no-shaping ./peer1/
 ### Configuration
 All configuration parameters of the middlebox are provided in a json file name [peer1_config.json](../../hardware/client_middlebox/peer1_config.json). The description of all these configurations are provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment.
 The python script [set_params.py](helpers/set_params.py) is used to set the parameters for middlebxes according to the configuration files of the experiment, [microbenchmarks_large_requests.json](configs/microbenchmarks_large_requests.json) and [microbenchmarks_small_requests.json](configs/microbenchmarks_small_requests.json).
+
+**Note**: Peer1 receives the IP address of the server and the port number of the server from the configuration file, currently set as `localhost:5555`. If you are running the experiment on a different set of machines, you should change the IP address and port number in the configuration file accordingly.
 
 ## Client
 ### Prerequisites
@@ -229,6 +233,7 @@ The parameters are set as follows:
 8. `peer1_netshaper_dir`: The directory of the NetShaper repository at the client-side middlebox.
 9. `config_file_dir`: The directory of the configuration file for the experiment (e.g., `microbenchmarks_small_requests.json` or `microbenchmarks_large_requests.json`).
 
+**Note**: The IP addresses of the middleboxes and the server should be set according to the actual IP addresses of the machines in the testbed.
 
 ### Run
 To run the experiments, follow these steps:

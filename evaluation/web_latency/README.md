@@ -130,6 +130,8 @@ docker build -t amirsabzi/netshaper:peer1-shaping ./peer1/
 ### Configuration
 All configuration parameters of the middlebox are provided in a JSON file name [peer1_config.json](../../hardware/client_middlebox/peer1_config.json). The description of all these configurations is provided in [configuration.md](../../hardware/configuation.md). Note that this is not necessarily the same configuration used for this particular experiment. The Python script [set_params.py](helpers/set_params.py) is used to set the parameters for middleboxes according to the configuration file of the experiment, [video_latency.json](configs/video_latency.json).
 
+**Note**: Peer1 receives the IP address of the server and the port number of the server from the configuration file, currently set as `localhost:5555`. If you are running the experiment on a different set of machines, you should change the IP address and port number in the configuration file accordingly.
+
 ## Client
 ### Prerequisites
 Ensure that Docker, Docker Compose, and Python are installed on the client machine.
