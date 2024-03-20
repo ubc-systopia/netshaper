@@ -140,7 +140,7 @@ def plot_overhead_comparison_video_loglog(config, results):
     
     legend_handles = []
     legend_labels = []
-    marker_indices = [0, 1, 10 , 99]
+    marker_indices = [0, 1, 10]
     for ind, aggregated_privacy_loss in enumerate(privacy_losses_of_interest):
 
         # Filtering data based on aggregated_privacy_loss
@@ -199,7 +199,10 @@ def plot_overhead_comparison_video_loglog(config, results):
     ax.add_artist(legend1)
     ax.add_artist(legend2)
     plt.title('$\delta_W$=1e-6, $\Delta_W$=2.5 MB, $T$=1 s')
-    plt.savefig(f'figures/overhead_vs_number_of_traces_video_{config.communication_type}_loglog_updated.pdf', bbox_inches='tight', transparent=True)
+    plot_dir = config.plot_dir
+    ensure_dir(plot_dir)
+    plot_file = os.path.join(plot_dir, "overhead_comparsion_video_loglog.pdf")
+    plt.savefig(plot_file, bbox_inches='tight', transparent=True)
     plt.close()
 
 
