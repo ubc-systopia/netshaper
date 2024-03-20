@@ -7,9 +7,9 @@
 
   "transport_type": "DP_dynamic",
   "DP_mechanism" : "Gaussian",
-  "min_video_num": 100,
+  "min_video_num": 1,
   "max_video_num": 1000,
-  "num_of_video_nums": 10,
+  "num_of_video_nums": 100,
   "max_videos_per_single_experiment": 10,
   "privacy_losses_server_to_client": [1, 4, 16], 
   "privacy_losses_client_to_server": [1, 4, 16],
