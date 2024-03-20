@@ -140,7 +140,7 @@ def plot_overhead_comparison_video_loglog(config, results):
     
     legend_handles = []
     legend_labels = []
-    marker_indices = [0, 1, 10]
+    marker_indices = [0, 1, 10, 99]
     for ind, aggregated_privacy_loss in enumerate(privacy_losses_of_interest):
 
         # Filtering data based on aggregated_privacy_loss
