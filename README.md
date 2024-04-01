@@ -7,7 +7,7 @@ NetShaper artifact consists of two main components: A testbed that implements a 
 
 To clone the repository, run the following command:
 ```bash
-git clone --recursive-submodules https://github.com/ubc-systopia/netshaper.git
+git clone --recurse-submodules https://github.com/ubc-systopia/netshaper.git
 ``` 
 
 The directory structure is as follows:
@@ -27,7 +27,7 @@ These experiments are privacy microbenchmarks, classification of traffic traces,
 
 The simulator requires a machine that
 should have at least 8 CPU cores, 64 GB of RAM, and a
-GPU with 24 GB of memory. Simulator also requires Python 3.10.6 and can be executed on arbitrary OS without root access. The list of required Python packages is available in [requirments.txt](simulator/requirements.txt). 
+GPU with 24 GB of memory. The simulator also requires Python 3.10.6 and can be executed on arbitrary OS without root access. The list of required Python packages is available in [requirments.txt](simulator/requirements.txt). 
 
 Each experiment contains a README file with the instructions to run the experiments and it contains a config file to configure the parameters for the experiment. The current configuration is set to match the parameters used in the paper.
 
@@ -41,7 +41,7 @@ cd evaluation/web_bandwidth
 The evaluation directory contains the scripts and instructions to set up the testbed and run the experiments on the testbed to reproduce the results. Video streaming latency, web service latency, and microbenchmarks are executed on the testbed.
 
 
-These experiments require the testbed to be setup. The testbed setup is described in the  directory of the corresponding experiment.
+These experiments require the testbed to be set up. The testbed setup is described in the  directory of the corresponding experiment.
 The testbed setup requires physical access to the machines and the ability to SSH into them. Each machine should have at least 8 CPU
 cores, 32 GB of RAM, and a 10 Gbps NIC. The following figure represents the testbed topology:
 
@@ -60,13 +60,13 @@ cores, 32 GB of RAM, and a 10 Gbps NIC. The following figure represents the test
           +--------------------------------------------------------------------------+
 ```
 Our implementation is specific
-to Ubuntu 22.04. For video server, we use Nginx 1.23.4.
-For transport protocol we use Microsoft implementation
+to Ubuntu 22.04. For the video server, we use Nginx 1.23.4.
+For transport protocol, we use Microsoft implementation
 of the QUIC protocol, MsQUIC 2.2.4. 
 
 Each experiment contains a README file with the instructions to set up the server, configure it, and run the experiments. It also contains a config file to configure the parameters for the experiment. The current configuration is set to match the parameters used in the paper
 
-The experiments executed from the local machine and are managed through the client machine. Therefore, **the client machine should have the ability to SSH into the other machines** to start different stages of experiment and collect the result.
+The experiments are executed from the local machine and are managed through the client machine. Therefore, **the client machine should have the ability to SSH into the other machines** to start different stages of experiment and collect the result.
 
 
 
