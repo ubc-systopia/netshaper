@@ -10,3 +10,5 @@ hardware/msquic/*
 *.pkl
 *.pcap
 *results
+helper_local.sh
+
