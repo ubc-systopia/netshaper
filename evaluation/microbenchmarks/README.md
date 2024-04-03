@@ -167,7 +167,7 @@ The setup script will pull the client container from the Docker Hub. Alternative
 ### Build (Optional) 
 To build the client container, execute the following command:
 ```bash
-ocker build -t amirsabzi/netshaper:web-client .
+docker build -t amirsabzi/netshaper:web-client .
 ```
 ### Configuration
 The run script for web cliet, [hardware/web_client/run.sh](../../hardware/web_client/run.sh), receives the configuration parameters as arguments. This includes the shaping mode, number of parallel clients, request rate, request size, number of iterations, and IP address of the middlebox at client side. 
