@@ -7,3 +7,6 @@ sklearn
 scipy
 configlib
 tqdm
+scikit-learn
+torch 
+torchvision
