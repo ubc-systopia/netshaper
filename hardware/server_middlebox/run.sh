@@ -29,7 +29,7 @@ fi
 
 videoMPD=$2
 i=$3
-port=$(($1 + 4560))
+# port=4567
 TIMEOUT=$4 # Seconds
 
 # Maximum capture size of TCPdump (# bytes)
@@ -61,7 +61,7 @@ docker run \
   --name "peer2-$(basename $videoMPD .mpd)-${i}" \
   -v "$(pwd)/traces/peer2/$i:/root/traces" \
   -v "$(pwd)/peer2_config.json:/root/config.json" \
-  -p $port:4567/udp \
+  --network host \
   $container
 
 echo -e "${YELLOW}Waiting for 3s${OFF}"

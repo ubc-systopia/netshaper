@@ -25,7 +25,6 @@ request_size=$4
 iter_num=$5
 peer1_IP=$6
 
-port=$(($iter_num + 8000))
 
 echo -e "${YELLOW}Running the web client${OFF}"
 
@@ -39,7 +38,7 @@ fi
 if [[ $mode == "baseline" ]]; then
   port=5555
 else 
-  port=$(($iter_num + 8000))
+  port=8000
 fi
 
 
