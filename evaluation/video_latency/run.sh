@@ -15,19 +15,19 @@ OFF='\033[0m'
 
 # SSH Host and Username for server-side middlebox (peer2)
 peer2_ssh_host="desh03"
-peer2_ssh_username="minesvpn"
+peer2_ssh_username="reviewer"
 
 # SSH Host and Username for client-side middlebox (peer1)
 peer1_ssh_host="desh02"
-peer1_ssh_username="minesvpn"
+peer1_ssh_username="reviewer"
 
 
 # NetShaper directory at server-side middlebox (peer2)
-peer2_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+peer2_netshaper_dir="/home/reviewer/workspace/netshaper"
 
 
 # NetShaper directory at client-side middlebox (peer1)
-peer1_netshaper_dir="/home/minesvpn/workspace/artifact_evaluation/code/minesvpn"
+peer1_netshaper_dir="/home/reviewer/workspace/netshaper"
 #************************************************************
 
 
