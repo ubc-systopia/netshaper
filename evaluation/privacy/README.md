@@ -2,6 +2,8 @@
 This directory contains the code for the privacy microbenchmarks.
 Here, we measure the relation between standard deviation of the noise added to the queue size and the privacy loss, and the relation between number of DP queries (i.e. number of times the algorithm measures the size of the queue) and the privacy loss.
 
+This experiment requires 5 human minutes and 1 compute minute to finish.
+
 
 ## Prerequisites
 To install the python dependencies, run the following command:
@@ -14,7 +16,7 @@ You can find the configuration file for each microbenchmark in the `/configs` di
 ### Privacy loss VS noise standard deviation
 ```json
 {
-  "sensitivity" : 100e3,
+  "sensitivity" : 2.5e6,
   "delta" : 1e-6,
   "num_of_queries" : [1, 4, 16, 64],
   "results_dir": "results/",
@@ -25,7 +27,7 @@ You can find the configuration file for each microbenchmark in the `/configs` di
 ### Privacy loss VS number of queries
 ```json
 {
-  "sensitivity" : 100e3,
+  "sensitivity" : 2.5e6,
   "delta" : 1e-6,
   "noise_variances" : [100e3, 400e3, 1600e3, 6400e3],
   "results_dir": "results/",

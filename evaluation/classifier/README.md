@@ -1,6 +1,6 @@
-# Privacy Microbenchmarks
+# Empirical Privacy 
 This directory contains the code for the empirical privacy benchmarks, where we measure the effectiveness of traffic analysis attacks with and without DP shaping.
-We report the accuracy, precision and recall of the attack.
+We report the accuracy, precision and recall of the attack. The experiment requires 5 human minutes and 72 compute hours to finish.
 
 ## Installing Python Dependencies
 To install the python dependencies, run the following command:

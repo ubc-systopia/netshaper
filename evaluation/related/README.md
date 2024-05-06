@@ -1,6 +1,6 @@
 # NetShaper vs Other Shaping Mechanisms
 This directory contains the code for the NetShaper vs Other Shaping Mechanisms experiment. 
-We compare NetShaper with [Pacer](https://www.usenix.org/system/files/sec22-mehta.pdf) and Constant-Rate Shaping.
+We compare NetShaper with [Pacer](https://www.usenix.org/system/files/sec22-mehta.pdf) and Constant-Rate Shaping. This experiment requires 5 human minutes and 4 compute hours to finish.
 
 
 ## Prerequisites

@@ -24,6 +24,8 @@ The machines are connected with 10Gbps links, two of which work as the client an
 You should have physical access to the testbed machines, as well as the ability to SSH into them. The physical access to middlebox machines is required to change BIOS settings and reboot the machines. SSH access is required to run the experiments and collect the results.
 The following configurations should be applied to machines hosting middleboxes (MB-1 and MB-2). 
 
+This experiment requires 30 human minutes and 2 compute hours to finish.
+
 ### BIOS Configuration
 1. Disable hyperthreading.
 2. Disable BIOS CPU Frequency control (if enabled). Some servers refer to it as OS DBPM (should be on).

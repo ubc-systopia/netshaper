@@ -1,5 +1,5 @@
 # Bandwidth overhead and latency for video application 
-This directory contains the code for evaluating the bandwidth overhead of NetShaper with web service application.  
+This directory contains the code for evaluating the bandwidth overhead of NetShaper with web service application. This experiment requires 5 human minutes and 1 compute hours to finish.
 
 
 ## Prerequisites

@@ -1,5 +1,5 @@
 # Bandwidth overhead video application 
-This directory contains the code for evaluating the bandwidth overhead of NetShaper with video streaming application.  
+This directory contains the code for evaluating the bandwidth overhead of NetShaper with video streaming application. This experiment requires 5 human minutes and 3 compute hours to finish.  
 
 
 ## Prerequisites
