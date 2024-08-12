@@ -1,3 +1,9 @@
+<div float="right">
+  <img src="https://raw.githubusercontent.com/secartifacts/secartifacts.github.io/main/images/usenixbadges-available.png" width="100" />
+  <img src="https://raw.githubusercontent.com/secartifacts/secartifacts.github.io/main/images/usenixbadges-functional.png" width="100" /> 
+  <img src="https://raw.githubusercontent.com/secartifacts/secartifacts.github.io/main/images/usenixbadges-reproduced.png" width="100" />
+</div>
+
 # NetShaper: A Differentially Private Network Side-Channel Mitigation System
 This repository contains the source code and instructions to reproduce the results of the paper "NetShaper: A Differentially Private Network Side-Channel Mitigation System" published in the the 33rd USENIX Security Symposium (USENIX Security '24).
 
