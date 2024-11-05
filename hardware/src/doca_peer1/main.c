@@ -13,13 +13,11 @@ main(int argc, char* argv[])
 {
     int exit_status = EXIT_FAILURE;
     struct application_dpdk_config dpdk_config = {
-	    .port_config = {
-		    .nb_ports = 2,
-		    .nb_queues = 1,
+	.port_config.nb_ports = 2,
+	.port_config.nb_queues = 1,
         // TODO(arun): do we need this hairpin queue
-		    .nb_hairpin_q = 1,
-		    .isolated_mode = 1,
-	    },
+	.port_config.nb_hairpin_q = 1,
+	.port_config.isolated_mode = 1,
 	.sft_config = {0}
 	};
     // Initialize the DOCA logger backend
