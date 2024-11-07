@@ -1,0 +1,26 @@
+{
+  "logLevel": "ERROR",
+  "maxClients": 130,
+  "appName": "minesVPNPeer1",
+  "queueSize": 96000000,
+  "shapedClient": {
+    "peer2Addr": "192.168.2.3",
+    "peer2Port": 4567,
+    "noiseMultiplier": 0,
+    "sensitivity": 300,
+    "maxDecisionSize": 1000000,
+    "minDecisionSize": 0,
+    "DPCreditorLoopInterval": 10000,
+    "sendingLoopInterval": 0,
+    "sendingStrategy": "BURST",
+    "shaperCores" :[2],
+    "workerCores" :[3]
+  },
+  "unshapedServer": {
+    "bindAddr": "",
+    "bindPort": 8000,
+    "checkQueuesInterval": 0,
+    "serverAddr": "192.168.3.4:5555",
+    "cores": [4]
+  }
+}
