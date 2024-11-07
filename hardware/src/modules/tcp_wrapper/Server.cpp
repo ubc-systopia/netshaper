@@ -4,6 +4,7 @@
 
 #include "Server.h"
 
+#include <linux/net_tstamp.h>
 #include <utility>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -106,6 +107,12 @@ namespace TCP {
     int optVal = 1;
     if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &optVal, sizeof
         (optVal)) < 0) {
+      return SERVER_SETSOCKOPT_ERROR;
+    }
+
+    int timestampingVal = SOF_TIMESTAMPING_RX_HARDWARE;
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_TIMESTAMPING, &timestampingVal,
+                     sizeof(timestampingVal)) < 0) {
       return SERVER_SETSOCKOPT_ERROR;
     }
 
