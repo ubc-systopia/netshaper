@@ -19,6 +19,8 @@
 
 
 #include <iostream>
+#include <linux/net_tstamp.h>
+#include <linux/errqueue.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <functional>
@@ -133,6 +135,9 @@ namespace TCP {
                        uint8_t *buffer, size_t length,
                        enum connectionStatus connStatus)> onReceive;
 
+    void handleTimestamps(msghdr *msg);
+
+    void handleScmTimestamping(const struct scm_timestamping *ts);
   };
 }
 

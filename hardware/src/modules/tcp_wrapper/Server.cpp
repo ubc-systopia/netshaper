@@ -4,7 +4,6 @@
 
 #include "Server.h"
 
-#include <linux/net_tstamp.h>
 #include <utility>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -201,8 +200,24 @@ namespace TCP {
     ssize_t bytesReceived;  // Number of bytes received
     uint8_t buffer[BUF_SIZE];
 
+    char ctrl[2048];
+    struct iovec iov = {
+        .iov_base = buffer,
+        .iov_len = BUF_SIZE
+    };
+    struct msghdr msg = {
+        .msg_name = nullptr,
+        .msg_namelen = 0,
+        .msg_iov = &iov,
+        .msg_iovlen = 1,
+        .msg_control = ctrl,
+        .msg_controllen = sizeof(ctrl),
+        .msg_flags = 0
+    };
     // Read from fromSocket and send to toSocket
-    while ((bytesReceived = recv(socket, buffer, BUF_SIZE, 0)) > 0) {
+    while((bytesReceived = recvmsg(socket, &msg, 0)) > 0) {
+        handleTimestamps(&msg);
+    //while ((bytesReceived = recv(socket, buffer, BUF_SIZE, 0)) > 0) {
 #ifdef DEBUGGING
       log(DEBUG, "Data received on socket " + std::to_string(socket));
 #endif
@@ -264,6 +279,41 @@ namespace TCP {
     if (logLevel >= level) {
       std::cerr << std::put_time(localTime, "[%H:%M:%S] ") << levelStr
                 << log << std::endl;
+    }
+  }
+
+  void Server::handleTimestamps(msghdr *hdr) {
+    for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(hdr); cmsg; cmsg = CMSG_NXTHDR(hdr, cmsg)) {
+        if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) {
+            struct sock_extended_err *ext =
+                (struct sock_extended_err *)CMSG_DATA(cmsg);
+            (void) ext;
+            continue;
+        }
+
+        if (cmsg->cmsg_level != SOL_SOCKET)
+          continue;
+
+        switch (cmsg->cmsg_type) {
+            case SO_TIMESTAMPNS: {
+              struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
+              handleScmTimestamping(ts);
+            } break;
+            case SO_TIMESTAMPING: {
+              struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
+              handleScmTimestamping(ts);
+            } break;
+            default:
+              /* Ignore other cmsg options */
+              break;
+        }
+    }
+  }
+
+  void Server::handleScmTimestamping(const struct scm_timestamping *ts) {
+    for (size_t i = 0; i < sizeof(ts->ts) / sizeof(*ts->ts); i++) {
+        (void) ts->ts[i].tv_sec;
+        (void) ts->ts[i].tv_nsec;
     }
   }
 }

@@ -2,23 +2,21 @@
 // Created by Rut Vora
 //
 
-#include <sys/prctl.h>
-#include "UnshapedServer.h"
-#include "ShapedClient.h"
-#include <nlohmann/json.hpp>
+#include "UnshapedClient.h"
+#include "ShapedServer.h"
 #include <fstream>
 #include "../../../msquic/src/inc/external_sync.h"
 
 pthread_rwlock_t quicSendLock;
 
-UnshapedServer *unshapedServer = nullptr;
-ShapedClient *shapedClient = nullptr;
+UnshapedClient *unshapedClient = nullptr;
+ShapedServer *shapedServer = nullptr;
 // Load the API table. Necessary before any calls to MsQuic
 // It is defined as an extern const in "msquic.hpp"
 // This needs to be here (on the heap)
 const MsQuicApi *MsQuic;
 
-inline config::Peer1Config loadConfig(char *configFileName) {
+inline config::Peer2Config loadConfig(char *configFileName) {
   std::ifstream configFile(configFileName);
   json config;
   try {
@@ -28,13 +26,13 @@ inline config::Peer1Config loadConfig(char *configFileName) {
               std::endl;
     config = json::parse(R"({})");
   }
-  config::Peer1Config peer1Config = config.get<config::Peer1Config>();
+  config::Peer2Config peer2Config = config.get<config::Peer2Config>();
   // Check DPDecisionLoop is a multiple of sender loop
   {
-    auto DPLoopInterval = peer1Config.shapedClient.DPCreditorLoopInterval;
-    auto sendingLoopInterval = peer1Config.shapedClient.sendingLoopInterval;
+    auto DPLoopInterval = peer2Config.shapedServer.DPCreditorLoopInterval;
+    auto sendingLoopInterval = peer2Config.shapedServer.sendingLoopInterval;
     if (sendingLoopInterval == 0) {
-      if (peer1Config.shapedClient.strategy != BURST) {
+      if (peer2Config.shapedServer.strategy != BURST) {
         std::cerr << "sendingLoopInterval is 0 with strategy != BURST. This "
                      "is not allowed!" << std::endl;
         exit(1);
@@ -52,29 +50,31 @@ inline config::Peer1Config loadConfig(char *configFileName) {
   }
   // Check that shaperCore and workerCore exist and are different
   {
-    if (peer1Config.shapedClient.shaperCores.empty()
-        || peer1Config.shapedClient.workerCores.empty()) {
+    if (peer2Config.shapedServer.shaperCores.empty()
+        || peer2Config.shapedServer.workerCores.empty()) {
       std::cerr << "Shaper and Worker should ideally be on different cores!"
                 << std::endl;
-    } else if (!peer1Config.shapedClient.shaperCores.empty()
-               && !peer1Config.shapedClient.workerCores.empty()) {
+    } else if (!peer2Config.shapedServer.shaperCores.empty()
+               && !peer2Config.shapedServer.workerCores.empty()) {
       std::vector<int> commonElements(
-          peer1Config.shapedClient.shaperCores.size() +
-          peer1Config.shapedClient.workerCores.size());
+          peer2Config.shapedServer.shaperCores.size() +
+          peer2Config.shapedServer.workerCores.size());
       auto end =
-          std::set_intersection(peer1Config.shapedClient.shaperCores.begin(),
-                                peer1Config.shapedClient.shaperCores.end(),
-                                peer1Config.shapedClient.workerCores.begin(),
-                                peer1Config.shapedClient.workerCores.end(),
+          std::set_intersection(peer2Config.shapedServer.shaperCores.begin(),
+                                peer2Config.shapedServer.shaperCores.end(),
+                                peer2Config.shapedServer.workerCores.begin(),
+                                peer2Config.shapedServer.workerCores.end(),
                                 commonElements.begin());
+
       if (end != commonElements.begin()) {
         std::cerr << "shaperCores and workerCores should not be the same!"
                   << std::endl;
+        exit(1);
       }
     }
   }
-  std::cout << "Config:" << peer1Config << std::endl;
-  return peer1Config;
+  std::cout << "Config:" << peer2Config << std::endl;
+  return peer2Config;
 }
 
 int main(int argc, char *argv[]) {
@@ -82,28 +82,28 @@ int main(int argc, char *argv[]) {
   // Load configurations
   if (argc != 2) {
     std::cerr <<
-              "No config file entered! Please call this using `./peer_1 "
+              "No config file entered! Please call this using `./peer_2 "
               "config.json`" << std::endl;
     exit(1);
   }
   auto config = loadConfig(argv[1]);
 
   if (fork() == 0) {
-    // Child process - Unshaped Server
-    unshapedServer = new UnshapedServer{config};
+    // Child process - Unshaped Client
+    unshapedClient = new UnshapedClient{config};
     // Wait for signal to exit
     waitForSignal(false);
   } else {
-    // Parent Process - Shaped Client
+    // Parent Process - Shaped Server
     // Set CPU affinity of this process to worker cores.
-    // The instantiation of ShapedClient will set the shaper thread affinity
+    // The instantiation of ShapedServer will set the shaper thread affinity
     // separately
-    if (!config.shapedClient.workerCores.empty())
-      setCPUAffinity(config.shapedClient.workerCores);
-    sleep(2); // Wait for unshapedServer to initialise
+    if (!config.shapedServer.workerCores.empty())
+      setCPUAffinity(config.shapedServer.workerCores);
+    sleep(2); // Wait for unshapedClient to initialise
     MsQuic = new MsQuicApi{};
-    shapedClient = new ShapedClient{config};
-    sleep(2);
+    shapedServer = new ShapedServer{config};
+    sleep(1);
     std::cout << "Peer is ready!" << std::endl;
     // Wait for signal to exit
     waitForSignal(true);

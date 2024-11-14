@@ -1,0 +1,25 @@
+{
+  "logLevel": "WARNING",
+  "maxStreamsPerPeer": 40,
+  "appName": "minesVPNPeer2",
+  "queueSize": 2097152,
+  "shapedServer": {
+    "serverCert": "server.cert",
+    "serverKey": "server.key",
+    "listeningPort": 4567,
+    "noiseMultiplier": 38,
+    "sensitivity": 500000,
+    "maxDecisionSize": 500000,
+    "minDecisionSize": 0,
+    "DPCreditorLoopInterval": 50000,
+    "sendingLoopInterval": 50000,
+    "sendingStrategy": "BURST",
+    "idleTimeout": 100000,
+    "shaperCores": [],
+    "workerCores": []
+  },
+  "unshapedClient": {
+    "checkQueuesInterval": 50000,
+    "cores": []
+  }
+}
