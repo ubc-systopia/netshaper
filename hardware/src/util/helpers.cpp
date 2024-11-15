@@ -243,8 +243,8 @@ namespace helpers {
       mapLock.unlock_shared();
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
       end = std::chrono::steady_clock::now();
-      if (std::chrono::steady_clock::now() < mask)
-        std::this_thread::sleep_until(mask);
+      //if (std::chrono::steady_clock::now() < mask)
+      //  std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
       else if (maskDPDecisionUs > 0) failedDPMask++;
 #endif
@@ -275,8 +275,8 @@ namespace helpers {
           updateStats(PREP, (end - start).count() / 1000);
           updateStats(DECISION_PREP, (end - loopStart).count() / 1000);
 #endif
-          if (std::chrono::steady_clock::now() < mask)
-            std::this_thread::sleep_until(mask);
+          //if (std::chrono::steady_clock::now() < mask)
+          //  std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
           else if (maskPrepDurationUs > 0) failedPrepMask++;
 #endif
@@ -296,15 +296,15 @@ namespace helpers {
 #ifdef RECORD_STATS
             updateStats(ENQUEUE, (end - start).count() / 1000);
 #endif
-            if (std::chrono::steady_clock::now() < mask)
-              std::this_thread::sleep_until(mask);
+            //if (std::chrono::steady_clock::now() < mask)
+            //  std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
             else if (maskEnqueueDurationUs > 0) failedEnqueueMask++;
 #endif
             pthread_rwlock_unlock(&quicSendLock);
           }
-          if (std::chrono::steady_clock::now() < sendingSleepUntil)
-            std::this_thread::sleep_until(sendingSleepUntil);
+          //if (std::chrono::steady_clock::now() < sendingSleepUntil)
+          //  std::this_thread::sleep_until(sendingSleepUntil);
         }
       } else {
         prepareData(0); // For state management of client who disconnected
@@ -314,9 +314,9 @@ namespace helpers {
       if (DPDecision > 0)
         updateStats(LOOP, (loopEnd - loopStart).count() / 1000);
 #endif
-      if (std::chrono::steady_clock::now() < decisionSleepUntil) {
-        std::this_thread::sleep_until(decisionSleepUntil);
-      }
+      //if (std::chrono::steady_clock::now() < decisionSleepUntil) {
+      //  std::this_thread::sleep_until(decisionSleepUntil);
+      //}
     }
   }
 }

@@ -45,6 +45,8 @@ namespace QUIC {
            bool noServerValidation = false, logLevels _logLevel = DEBUG,
            uint64_t idleTimeoutMs = 1000);
 
+    void printCopyStats();
+
 
   private:
     std::mutex connectionLock;
@@ -53,6 +55,11 @@ namespace QUIC {
 
     MsQuicConfiguration *configuration;
     MsQuicConnection *connection;
+
+    // Timestamps
+    static constexpr std::size_t QUIC_ELAPSED_TIME_SIZE = 16384;
+    int timestampIndex = 0;
+    int copyToQuic[QUIC_ELAPSED_TIME_SIZE];
 
 
     /**

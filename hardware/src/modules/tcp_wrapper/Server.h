@@ -77,6 +77,13 @@ namespace TCP {
     int inetFamily = 0; //Valid values are AF_INET or AF_INET6
     const enum logLevels logLevel;
 
+    // Timestamps
+    int timestampIndex = 0;
+    struct timespec timestamps[BUF_SIZE];
+
+    int copyIntoBufferIndex = 0;
+    int unshapedToShaped[BUF_SIZE];
+
     /**
      * @brief If log level set by user is equal or more verbose than the log
      * level passed to this function, print the given string

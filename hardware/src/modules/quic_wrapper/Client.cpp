@@ -281,6 +281,7 @@ namespace QUIC {
   }
 
   bool Client::send(MsQuicStream *stream, uint8_t *data, size_t length) {
+    auto start = std::chrono::high_resolution_clock::now();
     auto SendBuffer =
         reinterpret_cast<QUIC_BUFFER *>(malloc(sizeof(QUIC_BUFFER)));
     if (SendBuffer == nullptr) {
@@ -292,6 +293,13 @@ namespace QUIC {
     SendBuffer->Length = length;
     ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
     context->buffer = SendBuffer;
+    auto end = std::chrono::high_resolution_clock::now();
+    int elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        end - start).count();
+    if (timestampIndex < QUIC_ELAPSED_TIME_SIZE) {
+      copyToQuic[timestampIndex] = elapsed_ns;
+      timestampIndex++;
+    }
     if (QUIC_FAILED(
         stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
       std::stringstream ss;
@@ -309,4 +317,11 @@ namespace QUIC {
 #endif
     return true;
   }
+
+    void Client::printCopyStats() {
+      std::cout << "Copy to QUIC elapsed times: ";
+      for (int i = 0; i < timestampIndex; i++) {
+        std::cout << "i: " << i << " " << copyToQuic[i] << "ns" << std::endl;
+      }
+    }
 }

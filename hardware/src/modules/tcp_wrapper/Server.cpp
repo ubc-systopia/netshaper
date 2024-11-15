@@ -42,6 +42,13 @@ namespace TCP {
 #ifdef DEBUGGING
     log(DEBUG, "Server destructed");
 #endif
+    for (int i = 0; i < timestampIndex; ++i) {
+        std::cout << "RX Timestamp " << i << ": " << timestamps[i].tv_sec << "." << timestamps[i].tv_nsec << std::endl;
+    }
+
+    for (int i = 0; i < copyIntoBufferIndex; ++i) {
+        std::cout << "Copy times[" << i << "]: " << unshapedToShaped[i] << " ns" << std::endl;
+    }
     exit(0);
   }
 
@@ -192,8 +199,16 @@ namespace TCP {
       close(clientSocket);
       return;
     }
+
+    auto begin = std::chrono::high_resolution_clock::now();
     // Read data from the client socket
     receiveData(clientSocket, clientAddress);
+    auto end = std::chrono::high_resolution_clock::now();
+    int duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+    if (copyIntoBufferIndex < BUF_SIZE) {
+        unshapedToShaped[copyIntoBufferIndex] = duration_ns;
+        ++copyIntoBufferIndex;
+    }
   }
 
   void Server::receiveData(int socket, std::string &clientAddress) {
@@ -312,8 +327,10 @@ namespace TCP {
 
   void Server::handleScmTimestamping(const struct scm_timestamping *ts) {
     for (size_t i = 0; i < sizeof(ts->ts) / sizeof(*ts->ts); i++) {
-        (void) ts->ts[i].tv_sec;
-        (void) ts->ts[i].tv_nsec;
+        if (timestampIndex < BUF_SIZE) {
+            timestamps[timestampIndex] = ts->ts[i];
+            ++timestampIndex;
+        }
     }
   }
 }
