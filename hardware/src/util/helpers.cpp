@@ -246,7 +246,7 @@ namespace helpers {
       //if (std::chrono::steady_clock::now() < mask)
       //  std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
-      else if (maskDPDecisionUs > 0) failedDPMask++;
+      //else if (maskDPDecisionUs > 0) failedDPMask++;
 #endif
 
 #ifndef SHAPING
@@ -278,7 +278,7 @@ namespace helpers {
           //if (std::chrono::steady_clock::now() < mask)
           //  std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
-          else if (maskPrepDurationUs > 0) failedPrepMask++;
+          //else if (maskPrepDurationUs > 0) failedPrepMask++;
 #endif
           int err = pthread_rwlock_wrlock(&quicSendLock);
           mask = std::chrono::steady_clock::now() +
@@ -299,7 +299,7 @@ namespace helpers {
             //if (std::chrono::steady_clock::now() < mask)
             //  std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
-            else if (maskEnqueueDurationUs > 0) failedEnqueueMask++;
+            //else if (maskEnqueueDurationUs > 0) failedEnqueueMask++;
 #endif
             pthread_rwlock_unlock(&quicSendLock);
           }
