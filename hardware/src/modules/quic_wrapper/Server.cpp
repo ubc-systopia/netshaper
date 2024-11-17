@@ -108,6 +108,10 @@ namespace QUIC {
     const void *connectionPtr = static_cast<const void *>(connection);
     ss << "[Connection] " << connectionPtr << " ";
 
+#ifdef DEBUGGING
+    ss << "Connection event received.";
+    server->log(DEBUG, ss.str());
+#endif
     switch (event->Type) {
       case QUIC_CONNECTION_EVENT_CONNECTED:
         // The handshake has completed for the connection.
