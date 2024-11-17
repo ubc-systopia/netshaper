@@ -58,7 +58,7 @@ namespace QUIC {
 
     // Timestamps
     static constexpr std::size_t QUIC_ELAPSED_TIME_SIZE = 16384;
-    int timestampIndex = 0;
+    std::size_t timestampIndex = 0;
     int copyToQuic[QUIC_ELAPSED_TIME_SIZE];
 
 

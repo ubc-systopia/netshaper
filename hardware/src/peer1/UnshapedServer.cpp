@@ -222,8 +222,8 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
 #ifdef SHAPING
         // Sleep for some time. For performance reasons, this is the same as
         // the interval with which DP Logic thread runs in Shaped component.
-        std::this_thread::sleep_for(
-            std::chrono::microseconds(shapedProcessLoopInterval));
+        //std::this_thread::sleep_for(
+        //    std::chrono::microseconds(shapedProcessLoopInterval));
 #endif
       }
       return true;
@@ -291,4 +291,10 @@ void UnshapedServer::log(logLevels level, const std::string &log) {
   std::scoped_lock lock(logWriter);
   std::cerr << std::put_time(localTime, "[%H:%M:%S] ")
             << levelStr << log << std::endl;
+}
+
+void UnshapedServer::printStats() {
+    if (unshapedServer != nullptr) {
+        unshapedServer->printStats();
+    }
 }

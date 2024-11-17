@@ -4,6 +4,10 @@
 
 #include "Server.h"
 
+#include <linux/net_tstamp.h>
+#include <linux/sockios.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
 #include <utility>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -39,17 +43,24 @@ namespace TCP {
 
   Server::~Server() {
     close(localSocket);
+    exit(0);
+  }
+
+  void Server::printStats() {
 #ifdef DEBUGGING
     log(DEBUG, "Server destructed");
 #endif
     for (int i = 0; i < timestampIndex; ++i) {
-        std::cout << "RX Timestamp " << i << ": " << timestamps[i].tv_sec << "." << timestamps[i].tv_nsec << std::endl;
+        std::stringstream ss;
+        ss << "RX Timestamp " << i << ": " << timestamps[i].tv_sec << "." << timestamps[i].tv_nsec << std::endl;
+        log(DEBUG, ss.str());
     }
 
     for (int i = 0; i < copyIntoBufferIndex; ++i) {
-        std::cout << "Copy times[" << i << "]: " << unshapedToShaped[i] << " ns" << std::endl;
+        std::stringstream ss;
+        ss << "Copy times[" << i << "]: " << unshapedToShaped[i] << " ns" << std::endl;
+        log(DEBUG, ss.str());
     }
-    exit(0);
   }
 
   void Server::startListening() {
@@ -110,13 +121,31 @@ namespace TCP {
       return SERVER_SOCKET_ERROR;
     }
 
+    struct ifreq ifr;
+    struct hwtstamp_config cfg;
+    memset(&ifr, 0, sizeof(ifr));
+    memset(&cfg, 0, sizeof(cfg));
+    strncpy(ifr.ifr_name, "enp1s0f0np0", sizeof(ifr.ifr_name));
+
+    cfg.tx_type = HWTSTAMP_TX_ON;
+    cfg.rx_filter = HWTSTAMP_FILTER_ALL;
+
+    ifr.ifr_data = (char *)&cfg;
+
+    if (ioctl(serverSocket, SIOCSHWTSTAMP, &ifr) < 0) {
+     log(ERROR, "Could not set hardware timestamping");
+      return SERVER_SETSOCKOPT_ERROR;
+    }
+
     int optVal = 1;
     if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &optVal, sizeof
         (optVal)) < 0) {
       return SERVER_SETSOCKOPT_ERROR;
     }
 
-    int timestampingVal = SOF_TIMESTAMPING_RX_HARDWARE;
+    int timestampingVal = SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_TX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE
+        | SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RAW_HARDWARE | SOF_TIMESTAMPING_SYS_HARDWARE | 
+        SOF_TIMESTAMPING_SOFTWARE;
     if (setsockopt(serverSocket, SOL_SOCKET, SO_TIMESTAMPING, &timestampingVal,
                      sizeof(timestampingVal)) < 0) {
       return SERVER_SETSOCKOPT_ERROR;

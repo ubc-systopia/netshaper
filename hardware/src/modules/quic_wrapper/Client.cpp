@@ -248,6 +248,11 @@ namespace QUIC {
     connection = new MsQuicConnection(*reg, autoCleanup ? CleanUpAutoDelete :
                                             CleanUpManual,
                                       connectionHandler, this);
+#ifdef DEBUGGING
+    std::stringstream ss;
+    ss << "Connecting to " << serverName << ":" << port;
+    log(DEBUG, ss.str());
+#endif
     connection->Start(*configuration, serverName.c_str(), port);
     if (!connection->IsValid()) {
       std::stringstream ss;
@@ -257,11 +262,20 @@ namespace QUIC {
       throw std::runtime_error("Connection Failed!");
     }
 
+#ifdef DEBUGGING
+    log(DEBUG, "QUIC::Client constructor completed");
+#endif
   }
 
   MsQuicStream *Client::startStream() {
+#ifdef DEBUGGING
+    log(DEBUG, "Waiting for connection to be established");
+#endif
     std::unique_lock<std::mutex> lock(connectionLock);
     connected.wait(lock, [this]() { return isConnected; });
+#ifdef DEBUGGING
+    log(DEBUG, "Connection established");
+#endif
     auto *stream = new MsQuicStream{*connection, QUIC_STREAM_OPEN_FLAG_NONE,
                                     autoCleanup ? CleanUpAutoDelete
                                                 : CleanUpManual,
@@ -319,9 +333,11 @@ namespace QUIC {
   }
 
     void Client::printCopyStats() {
-      std::cout << "Copy to QUIC elapsed times: ";
-      for (int i = 0; i < timestampIndex; i++) {
-        std::cout << "i: " << i << " " << copyToQuic[i] << "ns" << std::endl;
+      std::stringstream ss;
+      ss << "Copy to QUIC elapsed times: ";
+      for (std::size_t i = 0; i < timestampIndex; i++) {
+        ss << "i: " << i << " " << copyToQuic[i] << "ns" << std::endl;
       }
+      log(DEBUG, ss.str());
     }
 }

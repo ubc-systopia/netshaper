@@ -69,6 +69,7 @@ public:
 
   [[noreturn]] void getUpdatedConnectionStatus() override;
 
+  void printStats();
 };
 
 

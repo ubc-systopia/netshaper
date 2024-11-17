@@ -130,7 +130,7 @@ namespace helpers {
  * or the unshaped process (only used when compiled with RECORD_STATS) to
  * print/save the relevant statistics
  */
-  void waitForSignal(bool isShapedProcess);
+  void waitForSignal(bool isShapedProcess, std::vector<std::function<void()>> &callbacks);
 
   /**
    * @brief Initialise Shared Memory in the given process

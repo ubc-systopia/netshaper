@@ -86,6 +86,16 @@ ShapedClient::ShapedClient(config::Peer1Config &peer1Config) {
   updateQueueStatus.detach();
 }
 
+void ShapedClient::printStats() {
+#ifdef DEBUGGING
+    log(DEBUG, "Printing stats for shaped client");
+#endif
+
+    if (shapedClient != nullptr) {
+        shapedClient->printCopyStats();
+    }
+}
+
 QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {
   for (const auto &[queues, stream]: *queuesToStream) {
     if (queues.toShaped->ID == queueID) {
@@ -159,6 +169,10 @@ void ShapedClient::updateConnectionStatus(uint64_t ID,
 
 inline void ShapedClient::initialiseSHM(int maxClients, size_t queueSize) {
   auto shmAddr = helpers::initialiseSHM(maxClients, appName, queueSize, true);
+#ifdef DEBUGGING
+  log(DEBUG, "Configuring SHM for " + std::to_string(maxClients) +
+             " clients with queue size " + std::to_string(queueSize));
+#endif
 
   // The beginning of the SHM contains the signalStruct struct
   sigInfo = reinterpret_cast<class SignalInfo *>(shmAddr);

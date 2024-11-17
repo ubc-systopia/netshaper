@@ -130,7 +130,7 @@ namespace helpers {
 
 #endif
 
-  void waitForSignal(bool isShapedProcess) {
+  void waitForSignal(bool isShapedProcess, std::vector<std::function<void()>> &callbacks) {
     signal(SIGPIPE, SIG_IGN);
     sigset_t set;
     int sig;
@@ -150,6 +150,9 @@ namespace helpers {
         std::cout << "\nReceived SIG" << sigabbrev_np(sig) << " on "
                   << (isShapedProcess ? "shaped" : "unshaped")
                   << " process. Writing stats..." << std::endl;
+        for (auto &callback: callbacks) {
+          callback();
+        }
 #ifdef RECORD_STATS
         printStats(isShapedProcess);
 #endif

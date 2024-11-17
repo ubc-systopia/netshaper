@@ -69,6 +69,8 @@ namespace TCP {
       shutdown(socket, SHUT_WR);
     };
 
+    void printStats();
+
 
   private:
     std::string bindAddr;
