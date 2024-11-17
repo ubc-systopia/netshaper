@@ -172,6 +172,10 @@ namespace QUIC {
         break;
 
       default:
+#ifdef DEBUGGING
+        ss << " received an unknown event" + std::to_string(event->Type);
+        server->log(DEBUG, ss.str());
+#endif
         break;
     }
     return QUIC_STATUS_SUCCESS;
