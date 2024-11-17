@@ -91,8 +91,9 @@ int main(int argc, char *argv[]) {
   if (fork() == 0) {
     // Child process - Unshaped Client
     unshapedClient = new UnshapedClient{config};
+    std::vector<std::function<void()>> callbacks;
     // Wait for signal to exit
-    waitForSignal(false);
+    waitForSignal(false, callbacks);
   } else {
     // Parent Process - Shaped Server
     // Set CPU affinity of this process to worker cores.
@@ -105,7 +106,8 @@ int main(int argc, char *argv[]) {
     shapedServer = new ShapedServer{config};
     sleep(1);
     std::cout << "Peer is ready!" << std::endl;
+    std::vector<std::function<void()>> callbacks;
     // Wait for signal to exit
-    waitForSignal(true);
+    waitForSignal(true, callbacks);
   }
 }
