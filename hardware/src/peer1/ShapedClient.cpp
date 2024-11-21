@@ -74,6 +74,9 @@ ShapedClient::ShapedClient(config::Peer1Config &peer1Config) {
                                },
                                [this](MsQuicStream *stream, uint8_t *buffer,
                                       size_t length) {
+#ifdef DEBUGGING
+                                 log(DEBUG, "Sending shaped data");
+#endif
                                  shapedClient->send(stream, buffer, length);
                                },
                                config.sendingLoopInterval,
@@ -95,6 +98,7 @@ void ShapedClient::printStats() {
         shapedClient->printCopyStats();
     }
 }
+
 
 QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {
   for (const auto &[queues, stream]: *queuesToStream) {

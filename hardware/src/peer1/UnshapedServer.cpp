@@ -211,10 +211,15 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
       return true;
     }
     case ONGOING: {
+#ifdef DEBUGGING
+        log(DEBUG, "Received data from socket " + std::to_string(fromSocket)
+                     + " (client: " + clientAddress + ")");
+#endif
       mapLock.lock_shared();
       auto queues = (*socketToQueues)[fromSocket];
       mapLock.unlock_shared();
       auto toShaped = queues.toShaped;
+      auto begin = std::chrono::high_resolution_clock::now();
       while (toShaped->push(buffer, length) == -1) {
         log(WARNING, "(toShaped) " + std::to_string(toShaped->ID) +
                      +" mapped to socket " + std::to_string(fromSocket) +
@@ -225,6 +230,12 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
         //std::this_thread::sleep_for(
         //    std::chrono::microseconds(shapedProcessLoopInterval));
 #endif
+      }
+      auto end = std::chrono::high_resolution_clock::now();
+      int duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+          end - begin).count();
+      if (copyIntoBufferIndex < BUF_SIZE) {
+        unshapedToShaped[copyIntoBufferIndex++] = duration_ns;
       }
       return true;
     }
@@ -296,5 +307,16 @@ void UnshapedServer::log(logLevels level, const std::string &log) {
 void UnshapedServer::printStats() {
     if (unshapedServer != nullptr) {
         unshapedServer->printStats();
+    }
+#ifdef DEBUGGING
+    log(DEBUG, "Num of copyIntoBuffer: " + std::to_string(copyIntoBufferIndex));
+#endif
+
+    for (int i = 0; i < copyIntoBufferIndex; ++i) {
+        std::stringstream ss;
+        ss << "Copy times[" << i << "]: " << unshapedToShaped[i] << " ns" << std::endl;
+#ifdef DEBUGGING
+        log(DEBUG, ss.str());
+#endif
     }
 }

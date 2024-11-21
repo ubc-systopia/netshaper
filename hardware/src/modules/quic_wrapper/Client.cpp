@@ -3,11 +3,18 @@
 //
 
 #include "Client.h"
+
+#include <linux/net_tstamp.h>
+#include <linux/sockios.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
 #include <sstream>
 #include <iostream>
 #include <utility>
 #include <ctime>
 #include <iomanip>
+
+#define BUF_SIZE 16384
 
 namespace QUIC {
   void Client::log(logLevels level, const std::string &log) {
@@ -240,6 +247,45 @@ namespace QUIC {
                  logLevels _logLevel,
                  uint64_t idleTimeoutMs) : configuration(nullptr),
                                            connection(nullptr) {
+    memset(&tx_timestamping_addr, 0, sizeof(tx_timestamping_addr));
+    tx_timestamping_addr.sin_family = AF_INET;
+    tx_timestamping_addr.sin_port = htons(1234);
+    if (inet_pton(AF_INET, "192.168.6.2", &tx_timestamping_addr.sin_addr) <= 0) {
+      log(ERROR, "Invalid address/ Address not supported");
+      throw std::runtime_error("Invalid address/ Address not supported");
+    }
+
+    tx_timestamping_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (tx_timestamping_fd < 0) {
+      log(ERROR, "Socket creation failed");
+      throw std::runtime_error("Socket creation failed");
+    }
+
+    struct ifreq ifr;
+    struct hwtstamp_config cfg;
+    memset(&ifr, 0, sizeof(ifr));
+    memset(&cfg, 0, sizeof(cfg));
+    strncpy(ifr.ifr_name, "enp1s0f0np0", sizeof(ifr.ifr_name));
+
+    cfg.tx_type = HWTSTAMP_TX_ON;
+    cfg.rx_filter = HWTSTAMP_FILTER_ALL;
+
+    ifr.ifr_data = (char *)&cfg;
+
+    if (ioctl(tx_timestamping_fd, SIOCSHWTSTAMP, &ifr) < 0) {
+     log(ERROR, "Could not set hardware timestamping");
+     throw std::runtime_error("Could not set hardware timestamping");
+    }
+
+    uint32_t timestampingVal = SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_TX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE
+        | SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RAW_HARDWARE |
+        SOF_TIMESTAMPING_SOFTWARE;
+    if (setsockopt(tx_timestamping_fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampingVal,
+                     sizeof(timestampingVal)) < 0) {
+        log(ERROR, "Setting socket options failed");
+        throw std::runtime_error("Setting socket options failed");
+    }
+
     reg = new MsQuicRegistration{appName.c_str(), profile, autoCleanup};
     this->idleTimeoutMs = idleTimeoutMs;
     onReceive = std::move(onReceiveFunc);
@@ -257,7 +303,7 @@ namespace QUIC {
     if (!connection->IsValid()) {
       std::stringstream ss;
       ss << "Connection to " << serverName << ":" << port << " failed!";
-      log(ERROR, ss.str());
+     log(ERROR, ss.str());
       connection->Close();
       throw std::runtime_error("Connection Failed!");
     }
@@ -295,7 +341,6 @@ namespace QUIC {
   }
 
   bool Client::send(MsQuicStream *stream, uint8_t *data, size_t length) {
-    auto start = std::chrono::high_resolution_clock::now();
     auto SendBuffer =
         reinterpret_cast<QUIC_BUFFER *>(malloc(sizeof(QUIC_BUFFER)));
     if (SendBuffer == nullptr) {
@@ -307,13 +352,7 @@ namespace QUIC {
     SendBuffer->Length = length;
     ctx *context = reinterpret_cast<ctx *>(malloc(sizeof(ctx)));
     context->buffer = SendBuffer;
-    auto end = std::chrono::high_resolution_clock::now();
-    int elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        end - start).count();
-    if (timestampIndex < QUIC_ELAPSED_TIME_SIZE) {
-      copyToQuic[timestampIndex] = elapsed_ns;
-      timestampIndex++;
-    }
+    log(DEBUG, "Sending data to QUIC");
     if (QUIC_FAILED(
         stream->Send(SendBuffer, 1, QUIC_SEND_FLAG_NONE, context))) {
       std::stringstream ss;
@@ -326,18 +365,91 @@ namespace QUIC {
 #ifdef DEBUGGING
     std::stringstream ss;
     ss << "[Stream " << stream->ID() << "] ";
-    ss << " Data sent successfully";
+    ss << std::to_string(length) << "bytes sent successfully";
     log(DEBUG, ss.str());
+
+    //auto begin = std::chrono::high_resolution_clock::now();
+    //sendto(tx_timestamping_fd, data, length, 0, (struct sockaddr *) &tx_timestamping_addr, sizeof(tx_timestamping_addr));
+
+    //char buf[BUF_SIZE];
+    //struct iovec iov = (struct iovec){.iov_base = buf, .iov_len = BUF_SIZE};
+    //char ctrl[2048];
+    //struct msghdr msg = (struct msghdr){
+    //                                    .msg_name = &tx_timestamping_addr,
+    //                                    .msg_namelen = sizeof tx_timestamping_addr,
+    //                                    .msg_iov = &iov,
+    //                                    .msg_iovlen = 1,
+    //                                    .msg_control = ctrl,
+    //                                    .msg_controllen = sizeof ctrl,
+    //                                    .msg_flags = 0
+    //};
+    //while (recvmsg(tx_timestamping_fd, &msg, MSG_ERRQUEUE) > 0) {
+    //  struct cmsghdr *cmsg;
+    //  for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+    //    if (cmsg->cmsg_level == SOL_SOCKET) {
+    //        struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
+    //        std::stringstream ss;
+    //        switch (cmsg->cmsg_type) {
+    //            case SO_TIMESTAMPING:
+    //            case SO_TIMESTAMPNS:
+    //                handleScmTimestamping(ts);
+
+    //                ss << "[Stream " << stream->ID() << "] ";
+    //                ss << "Got a timestamp " << txTimestampIndex - 1;
+    //                log(DEBUG, ss.str());
+    //                break;
+    //            default:
+    //                break;
+    //        }
+    //    }
+    //  }
+    //}
+    //auto end = std::chrono::high_resolution_clock::now();
+    //auto elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+    //    end - begin).count();
+    //if (extraProcessingTimestampIndex < QUIC_ELAPSED_TIME_SIZE) {
+    //  extraProcessingTimestamps[extraProcessingTimestampIndex] = elapsed_ns;
+    //  extraProcessingTimestampIndex++;
+    //} 
+    //ss = std::stringstream();
+    //ss << "[Stream " << stream->ID() << "] "; 
+    //ss << "Processed at timestamp " << extraProcessingTimestampIndex - 1;
+    //log(DEBUG, ss.str());
 #endif
     return true;
   }
 
     void Client::printCopyStats() {
+#ifdef DEBUGGING
       std::stringstream ss;
-      ss << "Copy to QUIC elapsed times: ";
-      for (std::size_t i = 0; i < timestampIndex; i++) {
-        ss << "i: " << i << " " << copyToQuic[i] << "ns" << std::endl;
+      ss << "TX Timestamping: \n";
+      for (std::size_t i = 0; i < txTimestampIndex; i++) {
+        ss << "TX[" << i << "]: " << txTimestamps[i].tv_sec << "s " << txTimestamps[i].tv_nsec << "ns" << std::endl;
       }
       log(DEBUG, ss.str());
+
+      ss = std::stringstream();
+      ss << "Extra Processing: \n";
+      for (std::size_t i = 0; i < extraProcessingTimestampIndex; i++) {
+        ss << "Extra[" << i << "]: " << extraProcessingTimestamps[i] << "ns" << std::endl;
+      }
+      log(DEBUG, ss.str());
+
+    ss = std::stringstream();
+    ss << "g_NetShaperDebug: \n";
+    ss << "Num of Timestamps: " << g_NetShaperDebug.numTimestamps << std::endl;
+    for (std::size_t i = 0; i < g_NetShaperDebug.numTimestamps; i++) {
+      ss << "Timestamp[" << i << "]: " << g_NetShaperDebug.timestamps[i].tv_sec << "s " << g_NetShaperDebug.timestamps[i].tv_nsec << "ns, bytes: " << g_NetShaperDebug.size[i] << std::endl;
     }
+    log(DEBUG, ss.str());
+#endif
+    }
+
+  void Client::handleScmTimestamping(const struct scm_timestamping *ts) {
+    if (txTimestampIndex < BUF_SIZE) {
+        txTimestamps[txTimestampIndex] = ts->ts[2];
+        ++txTimestampIndex;
+    }
+  }
+
 }
