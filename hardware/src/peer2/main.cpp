@@ -106,7 +106,10 @@ int main(int argc, char *argv[]) {
     shapedServer = new ShapedServer{config};
     sleep(1);
     std::cout << "Peer is ready!" << std::endl;
-    std::vector<std::function<void()>> callbacks;
+    std::vector<std::function<void()>> callbacks = {
+        []() {
+            shapedServer->printStats();
+        }};
     // Wait for signal to exit
     waitForSignal(true, callbacks);
   }

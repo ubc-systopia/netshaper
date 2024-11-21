@@ -80,6 +80,8 @@ private:
 
 public:
 
+  void printStats();
+
   /**
    * @brief Constructor for shapedServer
    * @param peer2Config The config struct that configures this instance

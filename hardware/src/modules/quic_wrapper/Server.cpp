@@ -11,6 +11,17 @@
 #include "Server.h"
 
 namespace QUIC {
+    void Server::printStats() {
+        std::stringstream ss;
+        for (size_t i = 0; i < g_NetShaperDebug.numTimestamps; ++i) {
+            ss << "RX timestamp [" << i << "]: " << std::to_string(g_NetShaperDebug.timestamps[i].tv_sec) << "s " <<
+                std::to_string(g_NetShaperDebug.timestamps[i].tv_nsec) << "ns\n";
+        }
+#ifdef DEBUGGING
+        log(DEBUG, ss.str());
+#endif
+    }
+
   void Server::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
     auto localTime = std::localtime(&time);

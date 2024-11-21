@@ -80,6 +80,12 @@ ShapedServer::ShapedServer(config::Peer2Config &peer2Config) :
   updateQueueStatus.detach();
 }
 
+void ShapedServer::printStats() {
+    if (shapedServer != nullptr) {
+        shapedServer->printStats();
+    }
+}
+
 inline void ShapedServer::initialiseSHM(int numStreams, size_t queueSize) {
   auto shmAddr = helpers::initialiseSHM(numStreams, appName, queueSize, true);
 

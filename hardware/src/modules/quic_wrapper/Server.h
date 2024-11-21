@@ -53,6 +53,8 @@ namespace QUIC {
 
     bool send(MsQuicStream *stream, uint8_t *data, size_t length) override;
 
+    void printStats();
+
   private:
     MsQuicConfiguration *configuration;
     MsQuicAutoAcceptListener *listener;
