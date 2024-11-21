@@ -258,7 +258,7 @@ namespace helpers {
       if (DPDecision != 0) {
 #ifdef RECORD_STATS
         totalIter++;
-        updateStats(DECISION, (end - start).count() / 1000);
+        updateStats(DECISION, (end - start).count() );
 #endif
         // Enqueue data for quic to send.
         auto maxBytesToSend = DPDecision / divisor;
@@ -275,8 +275,8 @@ namespace helpers {
           preparedBuffers.push_back(prepareDummy(dummySize));
           end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
-          updateStats(PREP, (end - start).count() / 1000);
-          updateStats(DECISION_PREP, (end - loopStart).count() / 1000);
+          updateStats(PREP, (end - start).count() );
+          updateStats(DECISION_PREP, (end - loopStart).count() );
 #endif
           //if (std::chrono::steady_clock::now() < mask)
           //  std::this_thread::sleep_until(mask);
@@ -297,7 +297,7 @@ namespace helpers {
             }
             end = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
-            updateStats(ENQUEUE, (end - start).count() / 1000);
+            updateStats(ENQUEUE, (end - start).count() );
 #endif
             //if (std::chrono::steady_clock::now() < mask)
             //  std::this_thread::sleep_until(mask);
@@ -315,7 +315,7 @@ namespace helpers {
       auto loopEnd = std::chrono::steady_clock::now();
 #ifdef RECORD_STATS
       if (DPDecision > 0)
-        updateStats(LOOP, (loopEnd - loopStart).count() / 1000);
+        updateStats(LOOP, (loopEnd - loopStart).count() );
 #endif
       //if (std::chrono::steady_clock::now() < decisionSleepUntil) {
       //  std::this_thread::sleep_until(decisionSleepUntil);

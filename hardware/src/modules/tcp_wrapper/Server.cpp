@@ -49,16 +49,11 @@ namespace TCP {
   void Server::printStats() {
 #ifdef DEBUGGING
     log(DEBUG, "Server destructed");
+    log(DEBUG, "Num of timestamps: " + std::to_string(timestampIndex));
 #endif
     for (int i = 0; i < timestampIndex; ++i) {
         std::stringstream ss;
         ss << "RX Timestamp " << i << ": " << timestamps[i].tv_sec << "." << timestamps[i].tv_nsec << std::endl;
-        log(DEBUG, ss.str());
-    }
-
-    for (int i = 0; i < copyIntoBufferIndex; ++i) {
-        std::stringstream ss;
-        ss << "Copy times[" << i << "]: " << unshapedToShaped[i] << " ns" << std::endl;
         log(DEBUG, ss.str());
     }
   }
@@ -125,7 +120,7 @@ namespace TCP {
     struct hwtstamp_config cfg;
     memset(&ifr, 0, sizeof(ifr));
     memset(&cfg, 0, sizeof(cfg));
-    strncpy(ifr.ifr_name, "enp1s0f0np0", sizeof(ifr.ifr_name));
+    strncpy(ifr.ifr_name, "enp1s0f1np1", sizeof(ifr.ifr_name));
 
     cfg.tx_type = HWTSTAMP_TX_ON;
     cfg.rx_filter = HWTSTAMP_FILTER_ALL;
@@ -229,15 +224,8 @@ namespace TCP {
       return;
     }
 
-    auto begin = std::chrono::high_resolution_clock::now();
     // Read data from the client socket
     receiveData(clientSocket, clientAddress);
-    auto end = std::chrono::high_resolution_clock::now();
-    int duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-    if (copyIntoBufferIndex < BUF_SIZE) {
-        unshapedToShaped[copyIntoBufferIndex] = duration_ns;
-        ++copyIntoBufferIndex;
-    }
   }
 
   void Server::receiveData(int socket, std::string &clientAddress) {
@@ -355,11 +343,9 @@ namespace TCP {
   }
 
   void Server::handleScmTimestamping(const struct scm_timestamping *ts) {
-    for (size_t i = 0; i < sizeof(ts->ts) / sizeof(*ts->ts); i++) {
-        if (timestampIndex < BUF_SIZE) {
-            timestamps[timestampIndex] = ts->ts[i];
-            ++timestampIndex;
-        }
+    if (timestampIndex < BUF_SIZE) {
+        timestamps[timestampIndex] = ts->ts[2];
+        ++timestampIndex;
     }
   }
 }

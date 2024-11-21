@@ -10,6 +10,7 @@
 #endif
 
 #include "msquic.hpp"
+#include <linux/errqueue.h>
 #include <string>
 #include <functional>
 #include "../Common.h"
@@ -49,6 +50,9 @@ namespace QUIC {
 
 
   private:
+    int tx_timestamping_fd;
+    struct sockaddr_in tx_timestamping_addr;
+
     std::mutex connectionLock;
     std::condition_variable connected;
     bool isConnected = false;
@@ -58,8 +62,12 @@ namespace QUIC {
 
     // Timestamps
     static constexpr std::size_t QUIC_ELAPSED_TIME_SIZE = 16384;
-    std::size_t timestampIndex = 0;
-    int copyToQuic[QUIC_ELAPSED_TIME_SIZE];
+
+    std::size_t txTimestampIndex = 0;
+    struct timespec txTimestamps[QUIC_ELAPSED_TIME_SIZE];
+
+    std::size_t extraProcessingTimestampIndex = 0;
+    int extraProcessingTimestamps[QUIC_ELAPSED_TIME_SIZE];
 
 
     /**
@@ -92,6 +100,8 @@ namespace QUIC {
                                              QUIC_STREAM_EVENT *event);
 
     void log(logLevels logLevel, const std::string &log) override;
+
+    void handleScmTimestamping(const struct scm_timestamping *ts);
   };
 }
 
