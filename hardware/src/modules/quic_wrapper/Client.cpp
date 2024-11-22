@@ -14,8 +14,6 @@
 #include <ctime>
 #include <iomanip>
 
-#define BUF_SIZE 16384
-
 namespace QUIC {
   void Client::log(logLevels level, const std::string &log) {
     auto time = std::time(nullptr);
@@ -24,6 +22,9 @@ namespace QUIC {
     switch (level) {
       case DEBUG:
         levelStr = "QuicClient:DEBUG: ";
+        break;
+      case INFO:
+        levelStr = "QuicClient:INFO: ";
         break;
       case ERROR:
         levelStr = "QuicClient:ERROR: ";
@@ -367,89 +368,11 @@ namespace QUIC {
     ss << "[Stream " << stream->ID() << "] ";
     ss << std::to_string(length) << "bytes sent successfully";
     log(DEBUG, ss.str());
-
-    //auto begin = std::chrono::high_resolution_clock::now();
-    //sendto(tx_timestamping_fd, data, length, 0, (struct sockaddr *) &tx_timestamping_addr, sizeof(tx_timestamping_addr));
-
-    //char buf[BUF_SIZE];
-    //struct iovec iov = (struct iovec){.iov_base = buf, .iov_len = BUF_SIZE};
-    //char ctrl[2048];
-    //struct msghdr msg = (struct msghdr){
-    //                                    .msg_name = &tx_timestamping_addr,
-    //                                    .msg_namelen = sizeof tx_timestamping_addr,
-    //                                    .msg_iov = &iov,
-    //                                    .msg_iovlen = 1,
-    //                                    .msg_control = ctrl,
-    //                                    .msg_controllen = sizeof ctrl,
-    //                                    .msg_flags = 0
-    //};
-    //while (recvmsg(tx_timestamping_fd, &msg, MSG_ERRQUEUE) > 0) {
-    //  struct cmsghdr *cmsg;
-    //  for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-    //    if (cmsg->cmsg_level == SOL_SOCKET) {
-    //        struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
-    //        std::stringstream ss;
-    //        switch (cmsg->cmsg_type) {
-    //            case SO_TIMESTAMPING:
-    //            case SO_TIMESTAMPNS:
-    //                handleScmTimestamping(ts);
-
-    //                ss << "[Stream " << stream->ID() << "] ";
-    //                ss << "Got a timestamp " << txTimestampIndex - 1;
-    //                log(DEBUG, ss.str());
-    //                break;
-    //            default:
-    //                break;
-    //        }
-    //    }
-    //  }
-    //}
-    //auto end = std::chrono::high_resolution_clock::now();
-    //auto elapsed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-    //    end - begin).count();
-    //if (extraProcessingTimestampIndex < QUIC_ELAPSED_TIME_SIZE) {
-    //  extraProcessingTimestamps[extraProcessingTimestampIndex] = elapsed_ns;
-    //  extraProcessingTimestampIndex++;
-    //} 
-    //ss = std::stringstream();
-    //ss << "[Stream " << stream->ID() << "] "; 
-    //ss << "Processed at timestamp " << extraProcessingTimestampIndex - 1;
-    //log(DEBUG, ss.str());
 #endif
     return true;
   }
 
-    void Client::printCopyStats() {
-#ifdef DEBUGGING
-      std::stringstream ss;
-      ss << "TX Timestamping: \n";
-      for (std::size_t i = 0; i < txTimestampIndex; i++) {
-        ss << "TX[" << i << "]: " << txTimestamps[i].tv_sec << "s " << txTimestamps[i].tv_nsec << "ns" << std::endl;
-      }
-      log(DEBUG, ss.str());
+  void Client::printCopyStats() {}
 
-      ss = std::stringstream();
-      ss << "Extra Processing: \n";
-      for (std::size_t i = 0; i < extraProcessingTimestampIndex; i++) {
-        ss << "Extra[" << i << "]: " << extraProcessingTimestamps[i] << "ns" << std::endl;
-      }
-      log(DEBUG, ss.str());
-
-    ss = std::stringstream();
-    ss << "g_NetShaperDebug: \n";
-    ss << "Num of Timestamps: " << g_NetShaperDebug.numTimestamps << std::endl;
-    for (std::size_t i = 0; i < g_NetShaperDebug.numTimestamps; i++) {
-      ss << "Timestamp[" << i << "]: " << g_NetShaperDebug.timestamps[i].tv_sec << "s " << g_NetShaperDebug.timestamps[i].tv_nsec << "ns, bytes: " << g_NetShaperDebug.size[i] << std::endl;
-    }
-    log(DEBUG, ss.str());
-#endif
-    }
-
-  void Client::handleScmTimestamping(const struct scm_timestamping *ts) {
-    if (txTimestampIndex < BUF_SIZE) {
-        txTimestamps[txTimestampIndex] = ts->ts[2];
-        ++txTimestampIndex;
-    }
-  }
-
+  void Client::handleScmTimestamping(const struct scm_timestamping *ts) {}
 }

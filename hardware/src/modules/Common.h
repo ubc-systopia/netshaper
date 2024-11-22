@@ -10,7 +10,7 @@
 #include <iostream>
 
 enum logLevels {
-  ERROR, WARNING, DEBUG
+  ERROR, WARNING, INFO, DEBUG
 };
 
 inline std::ostream &

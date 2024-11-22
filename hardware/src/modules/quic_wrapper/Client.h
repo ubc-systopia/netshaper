@@ -60,16 +60,6 @@ namespace QUIC {
     MsQuicConfiguration *configuration;
     MsQuicConnection *connection;
 
-    // Timestamps
-    static constexpr std::size_t QUIC_ELAPSED_TIME_SIZE = 16384;
-
-    std::size_t txTimestampIndex = 0;
-    struct timespec txTimestamps[QUIC_ELAPSED_TIME_SIZE];
-
-    std::size_t extraProcessingTimestampIndex = 0;
-    int extraProcessingTimestamps[QUIC_ELAPSED_TIME_SIZE];
-
-
     /**
      * @brief load the client configuration
      * @param noServerValidation Don't validate the server certificate

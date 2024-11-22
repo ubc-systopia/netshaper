@@ -52,13 +52,11 @@ namespace TCP {
       shutdown(remoteSocket, SHUT_WR);
     }
 
-    int remoteSocket;
-
   private:
     std::string remoteHost;
     int remotePort;
     const enum logLevels logLevel;
-//    int remoteSocket;
+    int remoteSocket;
 
     /**
      * @brief If log level set by user is equal or more verbose than the log

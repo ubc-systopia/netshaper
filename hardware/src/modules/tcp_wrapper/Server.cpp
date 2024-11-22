@@ -47,14 +47,12 @@ namespace TCP {
   }
 
   void Server::printStats() {
-#ifdef DEBUGGING
-    log(DEBUG, "Server destructed");
-    log(DEBUG, "Num of timestamps: " + std::to_string(timestampIndex));
-#endif
+    log(INFO, "Server destructed");
+    log(INFO, "Num of timestamps: " + std::to_string(timestampIndex));
     for (int i = 0; i < timestampIndex; ++i) {
         std::stringstream ss;
         ss << "RX Timestamp " << i << ": " << timestamps[i].tv_sec << "." << timestamps[i].tv_nsec << std::endl;
-        log(DEBUG, ss.str());
+        log(INFO, ss.str());
     }
   }
 
@@ -116,20 +114,22 @@ namespace TCP {
       return SERVER_SOCKET_ERROR;
     }
 
-    struct ifreq ifr;
-    struct hwtstamp_config cfg;
-    memset(&ifr, 0, sizeof(ifr));
-    memset(&cfg, 0, sizeof(cfg));
-    strncpy(ifr.ifr_name, "enp1s0f1np1", sizeof(ifr.ifr_name));
+    if (bindAddr != "0.0.0.0") {
+        struct ifreq ifr;
+        struct hwtstamp_config cfg;
+        memset(&ifr, 0, sizeof(ifr));
+        memset(&cfg, 0, sizeof(cfg));
+        getLocalIfName(bindAddr, ifr.ifr_name);
 
-    cfg.tx_type = HWTSTAMP_TX_ON;
-    cfg.rx_filter = HWTSTAMP_FILTER_ALL;
+        cfg.tx_type = HWTSTAMP_TX_ON;
+        cfg.rx_filter = HWTSTAMP_FILTER_ALL;
 
-    ifr.ifr_data = (char *)&cfg;
+        ifr.ifr_data = (char *)&cfg;
 
-    if (ioctl(serverSocket, SIOCSHWTSTAMP, &ifr) < 0) {
-     log(ERROR, "Could not set hardware timestamping");
-      return SERVER_SETSOCKOPT_ERROR;
+        if (ioctl(serverSocket, SIOCSHWTSTAMP, &ifr) < 0) {
+         log(ERROR, "Could not set hardware timestamping");
+          return SERVER_SETSOCKOPT_ERROR;
+        }
     }
 
     int optVal = 1;
@@ -138,9 +138,7 @@ namespace TCP {
       return SERVER_SETSOCKOPT_ERROR;
     }
 
-    int timestampingVal = SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_TX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE
-        | SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RAW_HARDWARE | SOF_TIMESTAMPING_SYS_HARDWARE | 
-        SOF_TIMESTAMPING_SOFTWARE;
+    uint32_t timestampingVal = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
     if (setsockopt(serverSocket, SOL_SOCKET, SO_TIMESTAMPING, &timestampingVal,
                      sizeof(timestampingVal)) < 0) {
       return SERVER_SETSOCKOPT_ERROR;
@@ -248,8 +246,7 @@ namespace TCP {
     };
     // Read from fromSocket and send to toSocket
     while((bytesReceived = recvmsg(socket, &msg, 0)) > 0) {
-        handleTimestamps(&msg);
-    //while ((bytesReceived = recv(socket, buffer, BUF_SIZE, 0)) > 0) {
+      handleTimestamps(&msg);
 #ifdef DEBUGGING
       log(DEBUG, "Data received on socket " + std::to_string(socket));
 #endif
@@ -301,6 +298,9 @@ namespace TCP {
       case DEBUG:
         levelStr = "TcpServer:DEBUG: ";
         break;
+      case INFO:
+        levelStr = "TcpServer:INFO: ";
+        break;
       case ERROR:
         levelStr = "TcpServer:ERROR: ";
         break;
@@ -316,13 +316,6 @@ namespace TCP {
 
   void Server::handleTimestamps(msghdr *hdr) {
     for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(hdr); cmsg; cmsg = CMSG_NXTHDR(hdr, cmsg)) {
-        if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) {
-            struct sock_extended_err *ext =
-                (struct sock_extended_err *)CMSG_DATA(cmsg);
-            (void) ext;
-            continue;
-        }
-
         if (cmsg->cmsg_level != SOL_SOCKET)
           continue;
 
@@ -347,5 +340,38 @@ namespace TCP {
         timestamps[timestampIndex] = ts->ts[2];
         ++timestampIndex;
     }
+  }
+
+  bool Server::getLocalIfName(const std::string &localAddress, char* ifName) {
+      struct ifaddrs *ifaddr;
+
+      getifaddrs(&ifaddr);
+
+      for (; ifaddr != NULL; ifaddr = ifaddr->ifa_next) {
+          if (ifaddr->ifa_addr == NULL) {
+              continue;
+          }
+
+          if (ifaddr->ifa_addr->sa_family == AF_INET && inetFamily == AF_INET) {
+            struct sockaddr_in *addr = (struct sockaddr_in *)ifaddr->ifa_addr;
+            struct in4_addr localAddr;
+            inet_pton(AF_INET, localAddress.c_str(), &localAddr);
+            if (addr->sin_addr.s_addr == localAddr.s_addr) {
+              strcpy(ifName, ifaddr->ifa_name);
+            }
+          }
+
+          if (ifaddr->ifa_addr->sa_family == AF_INET6 && inetFamily == AF_INET6) {
+            struct sockaddr_in6 *addr = (struct sockaddr_in6 *)ifaddr->ifa_addr;
+            struct in6_addr localAddr;
+            inet_pton(AF_INET6, localAddress.c_str(), &localAddr);
+            if (addr->sin6_addr.s6_addr == localAddr.s6_addr) {
+              strcpy(ifName, ifaddr->ifa_name);
+              return true;
+            }
+          }
+      }
+
+      return false;
   }
 }

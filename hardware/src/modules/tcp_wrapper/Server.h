@@ -144,6 +144,8 @@ namespace TCP {
     void handleTimestamps(msghdr *msg);
 
     void handleScmTimestamping(const struct scm_timestamping *ts);
+
+    bool getLocalIfName(const std::string& localAddress, std::string& localIfName);
   };
 }
 
