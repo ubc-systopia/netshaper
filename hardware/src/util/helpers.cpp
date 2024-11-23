@@ -18,6 +18,25 @@ static std::atomic<int> totalIter = 0;
 static std::atomic<int> failedDPMask = 0;
 static std::atomic<int> failedPrepMask = 0;
 static std::atomic<int> failedEnqueueMask = 0;
+
+constexpr std::size_t BUF_SIZE = 16384;
+
+struct ProfilingStats {
+    std::chrono::time_point<std::chrono::high_resolution_clock> loopStart;
+    std::chrono::time_point<std::chrono::high_resolution_clock> loopEnd;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> decisionStart;
+    std::chrono::time_point<std::chrono::high_resolution_clock> decisionEnd;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> decisionPrepStart;
+    std::chrono::time_point<std::chrono::high_resolution_clock> decisionPrepEnd;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> enqueueStart;
+    std::chrono::time_point<std::chrono::high_resolution_clock> enqueueEnd;
+};
+
+std::size_t profilingIndex = 0;
+std::array<ProfilingStats, BUF_SIZE> profilingStats;
 #endif
 
 namespace helpers {
@@ -121,6 +140,44 @@ namespace helpers {
         maskDurations << std::endl;
         maskDurations.close();
       }
+
+      std::ofstream profilingStatsCsv;
+      profilingStatsCsv.open("profilingStats.csv");
+      profilingStatsCsv << "Loop Start,Loop End,Decision Start,Decision End,Decision Prep Start,Decision Prep End,Enqueue Start,Enqueue End\n";
+      for (std::size_t i = 0; i < profilingIndex; i++) {
+        auto &profilingStat = profilingStats[i];
+        std::cout << "[" << i << "]" << "Loop: "
+            << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.loopStart.time_since_epoch()).count()
+            << " " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.loopEnd.time_since_epoch()).count()
+            << std::endl
+            << "Decision: " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.decisionStart.time_since_epoch()).count()
+            << " " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.decisionEnd.time_since_epoch()).count()
+            << std::endl
+            << "Decision Prep: " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.decisionPrepStart.time_since_epoch()).count()
+            << " " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.decisionPrepEnd.time_since_epoch()).count()
+            << std::endl
+            << "Enqueue: " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.enqueueStart.time_since_epoch()).count()
+            << " " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.enqueueEnd.time_since_epoch()).count()
+            << std::endl;
+
+        profilingStatsCsv << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.loopStart.time_since_epoch()).count() << ","
+            << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.loopEnd.time_since_epoch()).count() << ","
+            << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.decisionStart.time_since_epoch()).count() << ","
+            << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.decisionEnd.time_since_epoch()).count() << ","
+            << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.decisionPrepStart.time_since_epoch()).count() << ","
+            << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.decisionPrepEnd.time_since_epoch()).count() << ","
+            << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.enqueueStart.time_since_epoch()).count() << ","
+            << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStat.enqueueEnd.time_since_epoch()).count() << "\n";
+      }
+      profilingStatsCsv.close();
+
+      std::ofstream quicTxStatsCsv;
+      quicTxStatsCsv.open("quicTxStats.csv");
+      quicTxStatsCsv << "TxTimestamps\n";
+      for (std::size_t i = 0; i < g_NetShaperDebug.numTimestamps; ++i) {
+        quicTxStatsCsv << g_NetShaperDebug.timestamps[i].tv_sec << "." << g_NetShaperDebug.timestamps[i].tv_nsec << "\n";
+      }
+      quicTxStatsCsv.close();
     }
     std::cout << "Stats written. Exiting "
               << (isShapedProcess ? "shaped" : "unshaped") << " process"
@@ -225,10 +282,8 @@ namespace helpers {
     maskEnqueueDurationUs = 1000;
 #endif
     auto mask = std::chrono::steady_clock::now();
-    auto decisionSleepUntil = std::chrono::steady_clock::now();
-    auto sendingSleepUntil = std::chrono::steady_clock::now();
-    auto start = std::chrono::steady_clock::now();
-    auto end = start;
+    auto decisionSleepUntil = std::chrono::high_resolution_clock::now();
+    auto sendingSleepUntil = std::chrono::high_resolution_clock::now();
     while (true) {
 #ifdef SHAPING
       decisionSleepUntil += std::chrono::microseconds(decisionInterval);
@@ -236,20 +291,24 @@ namespace helpers {
       decisionSleepUntil = std::chrono::steady_clock::now() +
                            std::chrono::microseconds(decisionInterval);
 #endif
-      auto loopStart = std::chrono::steady_clock::now();
+      auto loopStart = std::chrono::high_resolution_clock::now();
       // Masked DP Decision Time
       mask = std::chrono::steady_clock::now() +
              std::chrono::microseconds(maskDPDecisionUs);
-      start = std::chrono::steady_clock::now();
+      auto decisionStart = std::chrono::high_resolution_clock::now();
       mapLock.lock_shared();
       auto aggregatedSize = helpers::getAggregatedQueueSize(queuesToStream);
       mapLock.unlock_shared();
       auto DPDecision = noiseGenerator->getDPDecision(aggregatedSize);
-      end = std::chrono::steady_clock::now();
+      auto decisionEnd = std::chrono::high_resolution_clock::now();
       //if (std::chrono::steady_clock::now() < mask)
       //  std::this_thread::sleep_until(mask);
 #ifdef RECORD_STATS
       //else if (maskDPDecisionUs > 0) failedDPMask++;
+      std::chrono::time_point<std::chrono::high_resolution_clock> decisionPrepStart;
+      std::chrono::time_point<std::chrono::high_resolution_clock> decisionPrepEnd;
+      std::chrono::time_point<std::chrono::high_resolution_clock> enqueueStart;
+      std::chrono::time_point<std::chrono::high_resolution_clock> enqueueEnd;
 #endif
 
 #ifndef SHAPING
@@ -258,7 +317,7 @@ namespace helpers {
       if (DPDecision != 0) {
 #ifdef RECORD_STATS
         totalIter++;
-        updateStats(DECISION, (end - start).count() );
+        updateStats(DECISION, (decisionEnd - decisionStart).count());
 #endif
         // Enqueue data for quic to send.
         auto maxBytesToSend = DPDecision / divisor;
@@ -268,15 +327,15 @@ namespace helpers {
           // Masked Prep time
           mask = std::chrono::steady_clock::now() +
                  std::chrono::microseconds(maskPrepDurationUs);
-          start = std::chrono::steady_clock::now();
+          decisionPrepStart = std::chrono::high_resolution_clock::now();
           size_t dataSize = std::min(aggregatedSize, maxBytesToSend);
           size_t dummySize = maxBytesToSend - dataSize;
           auto preparedBuffers = prepareData(dataSize);
           preparedBuffers.push_back(prepareDummy(dummySize));
-          end = std::chrono::steady_clock::now();
+          decisionPrepEnd = std::chrono::high_resolution_clock::now();
 #ifdef RECORD_STATS
-          updateStats(PREP, (end - start).count() );
-          updateStats(DECISION_PREP, (end - loopStart).count() );
+          updateStats(PREP, (decisionPrepEnd - decisionPrepStart).count() );
+          updateStats(DECISION_PREP, (decisionPrepEnd - loopStart).count() );
 #endif
           //if (std::chrono::steady_clock::now() < mask)
           //  std::this_thread::sleep_until(mask);
@@ -286,7 +345,7 @@ namespace helpers {
           int err = pthread_rwlock_wrlock(&quicSendLock);
           mask = std::chrono::steady_clock::now() +
                  std::chrono::microseconds(maskEnqueueDurationUs);
-          start = std::chrono::steady_clock::now();
+          enqueueStart = std::chrono::high_resolution_clock::now();
           if (err == 0) {
             for (auto preparedBuffer: preparedBuffers) {
               if (preparedBuffer.stream == nullptr
@@ -295,9 +354,9 @@ namespace helpers {
               placeInQuicQueues(preparedBuffer.stream, preparedBuffer.buffer,
                                 preparedBuffer.length);
             }
-            end = std::chrono::steady_clock::now();
+            enqueueEnd = std::chrono::high_resolution_clock::now();
 #ifdef RECORD_STATS
-            updateStats(ENQUEUE, (end - start).count() );
+            updateStats(ENQUEUE, (enqueueEnd - enqueueStart).count() );
 #endif
             //if (std::chrono::steady_clock::now() < mask)
             //  std::this_thread::sleep_until(mask);
@@ -312,10 +371,24 @@ namespace helpers {
       } else {
         prepareData(0); // For state management of client who disconnected
       }
-      auto loopEnd = std::chrono::steady_clock::now();
+      auto loopEnd = std::chrono::high_resolution_clock::now();
 #ifdef RECORD_STATS
       if (DPDecision > 0)
         updateStats(LOOP, (loopEnd - loopStart).count() );
+
+      if (aggregatedSize > 0 && profilingIndex < BUF_SIZE) {
+          profilingStats[profilingIndex] = {
+              .loopStart = loopStart,
+              .loopEnd = loopEnd,
+              .decisionStart = decisionStart,
+              .decisionEnd = decisionEnd,
+              .decisionPrepStart = decisionPrepStart,
+              .decisionPrepEnd = decisionPrepEnd,
+              .enqueueStart = enqueueStart,
+              .enqueueEnd = loopEnd
+          };
+          ++profilingIndex;
+      }
 #endif
       //if (std::chrono::steady_clock::now() < decisionSleepUntil) {
       //  std::this_thread::sleep_until(decisionSleepUntil);

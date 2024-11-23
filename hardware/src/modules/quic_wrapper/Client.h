@@ -50,9 +50,6 @@ namespace QUIC {
 
 
   private:
-    int tx_timestamping_fd;
-    struct sockaddr_in tx_timestamping_addr;
-
     std::mutex connectionLock;
     std::condition_variable connected;
     bool isConnected = false;

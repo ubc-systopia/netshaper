@@ -22,9 +22,6 @@ using namespace helpers;
 
 class UnshapedServer : public Unshaped {
 private:
-  int copyIntoBufferIndex = 0;
-  int unshapedToShaped[BUF_SIZE];
-
   config::Peer1Config peer1Config;
   std::string serverAddr;
 

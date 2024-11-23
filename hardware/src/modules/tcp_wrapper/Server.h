@@ -18,6 +18,7 @@
 #endif
 
 
+#include <chrono>
 #include <iostream>
 #include <linux/net_tstamp.h>
 #include <linux/errqueue.h>
@@ -79,9 +80,15 @@ namespace TCP {
     int inetFamily = 0; //Valid values are AF_INET or AF_INET6
     const enum logLevels logLevel;
 
+    struct ProfilingStats {
+        struct timespec rxTimestamp;
+        std::chrono::time_point<std::chrono::high_resolution_clock> beforeOnReceive;
+        std::chrono::time_point<std::chrono::high_resolution_clock> afterOnReceive;
+    };
+
     // Timestamps
-    int timestampIndex = 0;
-    struct timespec timestamps[BUF_SIZE];
+    std::size_t profilingIndex = 0;
+    std::array<ProfilingStats, BUF_SIZE> profilingStats;
 
     /**
      * @brief If log level set by user is equal or more verbose than the log
@@ -141,11 +148,11 @@ namespace TCP {
                        uint8_t *buffer, size_t length,
                        enum connectionStatus connStatus)> onReceive;
 
-    void handleTimestamps(msghdr *msg);
+    struct timespec handleTimestamps(msghdr *msg);
 
-    void handleScmTimestamping(const struct scm_timestamping *ts);
+    struct timespec handleScmTimestamping(const struct scm_timestamping *ts);
 
-    bool getLocalIfName(const std::string& localAddress, std::string& localIfName);
+    bool getLocalIfName(const std::string& localAddress, char* localIfName);
   };
 }
 

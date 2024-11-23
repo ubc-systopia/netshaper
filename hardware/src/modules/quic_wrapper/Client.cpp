@@ -248,45 +248,6 @@ namespace QUIC {
                  logLevels _logLevel,
                  uint64_t idleTimeoutMs) : configuration(nullptr),
                                            connection(nullptr) {
-    memset(&tx_timestamping_addr, 0, sizeof(tx_timestamping_addr));
-    tx_timestamping_addr.sin_family = AF_INET;
-    tx_timestamping_addr.sin_port = htons(1234);
-    if (inet_pton(AF_INET, "192.168.6.2", &tx_timestamping_addr.sin_addr) <= 0) {
-      log(ERROR, "Invalid address/ Address not supported");
-      throw std::runtime_error("Invalid address/ Address not supported");
-    }
-
-    tx_timestamping_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (tx_timestamping_fd < 0) {
-      log(ERROR, "Socket creation failed");
-      throw std::runtime_error("Socket creation failed");
-    }
-
-    struct ifreq ifr;
-    struct hwtstamp_config cfg;
-    memset(&ifr, 0, sizeof(ifr));
-    memset(&cfg, 0, sizeof(cfg));
-    strncpy(ifr.ifr_name, "enp1s0f0np0", sizeof(ifr.ifr_name));
-
-    cfg.tx_type = HWTSTAMP_TX_ON;
-    cfg.rx_filter = HWTSTAMP_FILTER_ALL;
-
-    ifr.ifr_data = (char *)&cfg;
-
-    if (ioctl(tx_timestamping_fd, SIOCSHWTSTAMP, &ifr) < 0) {
-     log(ERROR, "Could not set hardware timestamping");
-     throw std::runtime_error("Could not set hardware timestamping");
-    }
-
-    uint32_t timestampingVal = SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_TX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE
-        | SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RAW_HARDWARE |
-        SOF_TIMESTAMPING_SOFTWARE;
-    if (setsockopt(tx_timestamping_fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampingVal,
-                     sizeof(timestampingVal)) < 0) {
-        log(ERROR, "Setting socket options failed");
-        throw std::runtime_error("Setting socket options failed");
-    }
-
     reg = new MsQuicRegistration{appName.c_str(), profile, autoCleanup};
     this->idleTimeoutMs = idleTimeoutMs;
     onReceive = std::move(onReceiveFunc);

@@ -4,6 +4,9 @@
 
 #include "Server.h"
 
+#include <ctime>
+#include <fstream>
+#include <ifaddrs.h>
 #include <linux/net_tstamp.h>
 #include <linux/sockios.h>
 #include <net/if.h>
@@ -48,12 +51,27 @@ namespace TCP {
 
   void Server::printStats() {
     log(INFO, "Server destructed");
-    log(INFO, "Num of timestamps: " + std::to_string(timestampIndex));
-    for (int i = 0; i < timestampIndex; ++i) {
+    log(INFO, "Num of timestamps: " + std::to_string(profilingIndex));
+    for (std::size_t i = 0; i < profilingIndex; ++i) {
         std::stringstream ss;
-        ss << "RX Timestamp " << i << ": " << timestamps[i].tv_sec << "." << timestamps[i].tv_nsec << std::endl;
+        ss << "[" << i << "] "
+           << "Rx: " << profilingStats[i].rxTimestamp.tv_sec << "."
+           << profilingStats[i].rxTimestamp.tv_nsec << " "
+           << "Before onReceive: " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].beforeOnReceive.time_since_epoch()).count() << " "
+           << "After onReceive: " << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].afterOnReceive.time_since_epoch()).count();
         log(INFO, ss.str());
     }
+
+    std::ofstream tcpServerStatsCsv;
+    tcpServerStatsCsv.open("tcpServerStats.csv");
+    tcpServerStatsCsv << "RxTimestamp,BeforeOnReceive,AfterOnReceive\n";
+    for (std::size_t i = 0; i < profilingIndex; ++i) {
+        tcpServerStatsCsv << profilingStats[i].rxTimestamp.tv_sec << "."
+                          << profilingStats[i].rxTimestamp.tv_nsec << ","
+                          << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].beforeOnReceive.time_since_epoch()).count() << ","
+                          << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].afterOnReceive.time_since_epoch()).count() << "\n";
+    }
+    tcpServerStatsCsv.close();
   }
 
   void Server::startListening() {
@@ -246,11 +264,19 @@ namespace TCP {
     };
     // Read from fromSocket and send to toSocket
     while((bytesReceived = recvmsg(socket, &msg, 0)) > 0) {
-      handleTimestamps(&msg);
+      struct timespec rxTime = handleTimestamps(&msg);
 #ifdef DEBUGGING
       log(DEBUG, "Data received on socket " + std::to_string(socket));
 #endif
+      auto begin = std::chrono::high_resolution_clock::now();
       onReceive(socket, clientAddress, buffer, bytesReceived, ONGOING);
+      auto end = std::chrono::high_resolution_clock::now();
+      profilingStats[profilingIndex] = {
+          .rxTimestamp = rxTime,
+          .beforeOnReceive = begin,
+          .afterOnReceive = end
+      };
+      ++profilingIndex;
     }
 
     if (bytesReceived < 0) {
@@ -314,32 +340,27 @@ namespace TCP {
     }
   }
 
-  void Server::handleTimestamps(msghdr *hdr) {
+  struct timespec Server::handleTimestamps(msghdr *hdr) {
     for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(hdr); cmsg; cmsg = CMSG_NXTHDR(hdr, cmsg)) {
         if (cmsg->cmsg_level != SOL_SOCKET)
           continue;
 
+        struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
         switch (cmsg->cmsg_type) {
-            case SO_TIMESTAMPNS: {
-              struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
-              handleScmTimestamping(ts);
-            } break;
-            case SO_TIMESTAMPING: {
-              struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
-              handleScmTimestamping(ts);
-            } break;
+            case SO_TIMESTAMPNS:
+            case SO_TIMESTAMPING:
+              return handleScmTimestamping(ts);
             default:
               /* Ignore other cmsg options */
               break;
         }
     }
+
+    return {};
   }
 
-  void Server::handleScmTimestamping(const struct scm_timestamping *ts) {
-    if (timestampIndex < BUF_SIZE) {
-        timestamps[timestampIndex] = ts->ts[2];
-        ++timestampIndex;
-    }
+  struct timespec Server::handleScmTimestamping(const struct scm_timestamping *ts) {
+      return ts->ts[2];
   }
 
   bool Server::getLocalIfName(const std::string &localAddress, char* ifName) {
@@ -354,7 +375,7 @@ namespace TCP {
 
           if (ifaddr->ifa_addr->sa_family == AF_INET && inetFamily == AF_INET) {
             struct sockaddr_in *addr = (struct sockaddr_in *)ifaddr->ifa_addr;
-            struct in4_addr localAddr;
+            struct in_addr localAddr;
             inet_pton(AF_INET, localAddress.c_str(), &localAddr);
             if (addr->sin_addr.s_addr == localAddr.s_addr) {
               strcpy(ifName, ifaddr->ifa_name);

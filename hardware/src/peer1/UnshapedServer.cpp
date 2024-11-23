@@ -231,12 +231,6 @@ bool UnshapedServer::receivedUnshapedData(int fromSocket,
         //    std::chrono::microseconds(shapedProcessLoopInterval));
 #endif
       }
-      auto end = std::chrono::high_resolution_clock::now();
-      int duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-          end - begin).count();
-      if (copyIntoBufferIndex < BUF_SIZE) {
-        unshapedToShaped[copyIntoBufferIndex++] = duration_ns;
-      }
       return true;
     }
     case FIN: {
@@ -307,16 +301,5 @@ void UnshapedServer::log(logLevels level, const std::string &log) {
 void UnshapedServer::printStats() {
     if (unshapedServer != nullptr) {
         unshapedServer->printStats();
-    }
-#ifdef DEBUGGING
-    log(DEBUG, "Num of copyIntoBuffer: " + std::to_string(copyIntoBufferIndex));
-#endif
-
-    for (int i = 0; i < copyIntoBufferIndex; ++i) {
-        std::stringstream ss;
-        ss << "Copy times[" << i << "]: " << unshapedToShaped[i] << " ns" << std::endl;
-#ifdef DEBUGGING
-        log(DEBUG, ss.str());
-#endif
     }
 }
