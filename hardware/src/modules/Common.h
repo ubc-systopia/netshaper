@@ -22,6 +22,9 @@ operator<<(std::ostream &os, const logLevels &level) {
     case WARNING:
       os << "WARNING";
       break;
+    case INFO:
+      os << "INFO";
+      break;
     case DEBUG:
       os << "DEBUG";
       break;
