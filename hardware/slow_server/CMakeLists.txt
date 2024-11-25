@@ -3,9 +3,7 @@ project(slowTestServer CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
-endif()
+set(CMAKE_BUILD_TYPE Release)
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unknown-pragmas")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")

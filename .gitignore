@@ -12,3 +12,7 @@ hardware/msquic/*
 *results
 helper_local.sh
 
+hardware/test_client/*
+hardware/slow_server/*
+hardware/src/test_client/*
+hardware/src/slow_server/*
