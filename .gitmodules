@@ -8,3 +8,6 @@
 [submodule "hardware/web_client/wrk2"]
 	path = hardware/web_client/wrk2
 	url = https://github.com/ubc-systopia/wrk2.git
+[submodule "hardware/src/modules/program_options"]
+	path = hardware/src/modules/program_options
+	url = git@github.com:boostorg/program_options.git
