@@ -49,6 +49,7 @@ int main(int argc, char **argv) {
 
         TCP::Client client(remoteAddress, remotePort);
         runTest(client, numIterations, numBytes, timeBetweenMessagesS);
+        client.sendFIN();
 
     } catch (const boost::program_options::error &e) {
         std::cerr << e.what() << std::endl;
