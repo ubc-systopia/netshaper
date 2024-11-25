@@ -21,6 +21,7 @@ int main(int argc, char **argv) {
     try {
         boost::program_options::options_description desc{"Options for client"};
         desc.add_options()
+            ("help,h", "Help screen")
             ("remoteAddress", value<std::string>()->required(), "The remote address to connect to")
             ("remotePort", value<int>()->default_value(8000)->required(), "The remote port to connect to")
             ("numIterations", value<int>()->default_value(100)->required(), "The number of iterations to run")
@@ -40,6 +41,11 @@ int main(int argc, char **argv) {
         std::cout << "Running client, connecting to: " << remoteAddress << ":" << remotePort << std::endl;
         std::cout << "Sending " << numIterations << " messages of numBytes " << " bytes with " << timeBetweenMessagesS
             << " seconds between messages" << std::endl;
+
+        if (vm.count("help")) {
+            std::cout << desc << std::endl;
+            return 0;
+        }
 
         TCP::Client client(remoteAddress, remotePort);
         runTest(client, numIterations, numBytes, timeBetweenMessagesS);
