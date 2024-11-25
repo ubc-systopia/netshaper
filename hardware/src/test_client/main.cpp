@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
         int timeBetweenMessagesS = vm["timeBetweenMessagesS"].as<int>();
 
         std::cout << "Running client, connecting to: " << remoteAddress << ":" << remotePort << std::endl;
-        std::cout << "Sending " << numIterations << " messages of numBytes " << " bytes with " << timeBetweenMessagesS
+        std::cout << "Sending " << numIterations << " messages of " << numBytes << " bytes with " << timeBetweenMessagesS
             << " seconds between messages" << std::endl;
 
         if (vm.count("help")) {
