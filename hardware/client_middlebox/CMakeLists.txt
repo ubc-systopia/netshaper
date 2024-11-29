@@ -25,6 +25,9 @@ if (UNIX)
 else ()
   message(FATAL_ERROR "FATAL: Only Linux is supported at this time")
 endif ()
+
+set(QUIC_USE_DPDK TRUE)
+
 message(STATUS "QUIC Platform: ${CX_PLATFORM}")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 
