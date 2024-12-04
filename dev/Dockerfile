@@ -22,3 +22,5 @@ RUN apt-get install -y libmsquic libssl-dev
 RUN ln -s /usr/lib/x86_64-linux-gnu/libmsquic.so.2 /usr/lib/x86_64-linux-gnu/libmsquic.so
 
 ENV PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/mellanox/dpdk/lib/x86_64-linux-gnu/pkgconfig:/opt/mellanox/doca/lib/x86_64-linux-gnu/pkgconfig:/opt/mellanox/flexio/lib/pkgconfig
+
+RUN git clone https://github.com/itsarune/f-stack.git /tmp/f-stack && cd /tmp/f-stack/lib && git checkout mlx5 && make && make install && cd /

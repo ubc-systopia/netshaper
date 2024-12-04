@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include "../../../msquic/src/inc/external_sync.h"
+#include "ff_api.h"
 
 pthread_rwlock_t quicSendLock;
 
@@ -80,13 +81,14 @@ inline config::Peer1Config loadConfig(char *configFileName) {
 int main(int argc, char *argv[]) {
   pthread_rwlock_init(&quicSendLock, nullptr);
   // Load configurations
-  if (argc != 2) {
+  if (argc != 3) {
     std::cerr <<
               "No config file entered! Please call this using `./peer_1 "
-              "config.json`" << std::endl;
+              "config.json config.ini`" << std::endl;
     exit(1);
   }
   auto config = loadConfig(argv[1]);
+  assert(ff_init(argc-1, argv+1) == 0);
 
   if (fork() == 0) {
     // Child process - Unshaped Server
