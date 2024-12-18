@@ -4,7 +4,7 @@ project(minesVPN C CXX)
 set(CMAKE_CXX_STANDARD 23)  #TODO: Add stacktrace after gcc starts supporting it
 set(CMAKE_C_STANDARD 23)
 
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unknown-pragmas")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
