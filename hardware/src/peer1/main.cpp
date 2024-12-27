@@ -117,5 +117,7 @@ int main(int argc, char *argv[]) {
         }};
     // Wait for signal to exit
     waitForSignal(true, printStats);
+    ff_wait_run();
+    ff_stop_run();
   }
 }
