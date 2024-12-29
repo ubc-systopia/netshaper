@@ -89,7 +89,9 @@ int main(int argc, char *argv[]) {
   }
   auto config = loadConfig(argv[1]);
   //g_FstackArgs = {.argc = argc-1, .argv = argv+1};
-  ff_init(argc-1, argv+1);
+  //ff_init(argc-1, argv+1);
+  ff_init_load_config(argc-1, argv+1);
+  ff_init_freebsd();
 
   if (fork() == 0) {
     // Child process - Unshaped Server
