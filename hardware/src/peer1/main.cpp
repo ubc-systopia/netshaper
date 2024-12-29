@@ -88,6 +88,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   auto config = loadConfig(argv[1]);
+  //g_FstackArgs = {.argc = argc-1, .argv = argv+1};
   ff_init(argc-1, argv+1);
 
   if (fork() == 0) {
