@@ -7,6 +7,9 @@
 #include <sstream>
 #include <fstream>
 #include <shared_mutex>
+
+#include <ff_api.h>
+
 #include "helpers.h"
 #include "config.h"
 #include "../modules/PerfEval.h"
@@ -174,9 +177,12 @@ namespace helpers {
       std::ofstream quicTxStatsCsv;
       quicTxStatsCsv.open("quicTxStats.csv");
       quicTxStatsCsv << "TxTimestamps\n";
-      for (std::size_t i = 0; i < g_NetShaperDebug.numTimestamps; ++i) {
-        quicTxStatsCsv << g_NetShaperDebug.timestamps[i].tv_sec << "." << g_NetShaperDebug.timestamps[i].tv_nsec << "\n";
+      for (std::size_t i = 0; i < g_fstack_txTimestamps.numTimestamps; ++i) {
+        quicTxStatsCsv << "0" << "." << g_fstack_txTimestamps.timestamps << "\n";
       }
+      //for (std::size_t i = 0; i < g_NetShaperDebug.numTimestamps; ++i) {
+      //  quicTxStatsCsv << g_NetShaperDebug.timestamps[i].tv_sec << "." << g_NetShaperDebug.timestamps[i].tv_nsec << "\n";
+      //}
       quicTxStatsCsv.close();
     }
     std::cout << "Stats written. Exiting "
