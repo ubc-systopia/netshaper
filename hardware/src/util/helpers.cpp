@@ -178,7 +178,11 @@ namespace helpers {
       quicTxStatsCsv.open("quicTxStats.csv");
       quicTxStatsCsv << "TxTimestamps\n";
       for (std::size_t i = 0; i < g_fstack_txTimestamps.numTimestamps; ++i) {
-        quicTxStatsCsv << "0" << "." << g_fstack_txTimestamps.timestamps[i] << "\n";
+        std::cout << "Tx: " << g_fstack_txTimestamps.timestamps[i].tv_sec << "." << g_fstack_txTimestamps.timestamps[i].tv_nsec << "\n";
+        std::cout << "Tx Hw: " << g_fstack_txTimestamps.rawHwTimestamps[i] << std::endl;
+
+        quicTxStatsCsv << g_fstack_txTimestamps.timestamps[i].tv_sec << "." << g_fstack_txTimestamps.timestamps[i].tv_nsec << ","
+            << g_fstack_txTimestamps.rawHwTimestamps[i] << "\n";
       }
       //for (std::size_t i = 0; i < g_NetShaperDebug.numTimestamps; ++i) {
       //  quicTxStatsCsv << g_NetShaperDebug.timestamps[i].tv_sec << "." << g_NetShaperDebug.timestamps[i].tv_nsec << "\n";
