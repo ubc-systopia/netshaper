@@ -66,8 +66,8 @@ namespace TCP {
     tcpServerStatsCsv.open("tcpServerStats.csv");
     tcpServerStatsCsv << "RxTimestamp,BeforeOnReceive,AfterOnReceive\n";
     for (std::size_t i = 0; i < profilingIndex; ++i) {
-        tcpServerStatsCsv << profilingStats[i].rxTimestamp.tv_sec << "."
-                          << profilingStats[i].rxTimestamp.tv_nsec << ","
+        int64_t rxTimeNs = profilingStats[i].rxTimestamp.tv_sec * 1000000000 + profilingStats[i].rxTimestamp.tv_nsec;
+        tcpServerStatsCsv << rxTimeNs << ","
                           << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].beforeOnReceive.time_since_epoch()).count() << ","
                           << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].afterOnReceive.time_since_epoch()).count() << "\n";
     }
@@ -271,12 +271,14 @@ namespace TCP {
       auto begin = std::chrono::high_resolution_clock::now();
       onReceive(socket, clientAddress, buffer, bytesReceived, ONGOING);
       auto end = std::chrono::high_resolution_clock::now();
-      profilingStats[profilingIndex] = {
-          .rxTimestamp = rxTime,
-          .beforeOnReceive = begin,
-          .afterOnReceive = end
-      };
-      ++profilingIndex;
+      if (profilingIndex < BUF_SIZE) {
+          profilingStats[profilingIndex] = {
+              .rxTimestamp = rxTime,
+              .beforeOnReceive = begin,
+              .afterOnReceive = end
+          };
+          ++profilingIndex;
+      }
     }
 
     if (bytesReceived < 0) {
