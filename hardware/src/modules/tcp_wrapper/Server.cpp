@@ -247,6 +247,9 @@ namespace TCP {
       case DEBUG:
         levelStr = "TcpServer:DEBUG: ";
         break;
+      case INFO:
+        levelStr = "TcpServer:INFO: ";
+        break;
       case ERROR:
         levelStr = "TcpServer:ERROR: ";
         break;

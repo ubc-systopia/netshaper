@@ -13,6 +13,7 @@ using json = nlohmann::json;
 
 NLOHMANN_JSON_SERIALIZE_ENUM(logLevels, {
   { DEBUG, "DEBUG" },
+  { INFO, "INFO" },
   { WARNING, "WARNING" },
   { ERROR, "ERROR" },
 })

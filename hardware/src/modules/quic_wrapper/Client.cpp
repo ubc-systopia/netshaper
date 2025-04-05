@@ -18,6 +18,9 @@ namespace QUIC {
       case DEBUG:
         levelStr = "QuicClient:DEBUG: ";
         break;
+      case INFO:
+        levelStr = "QuicClient:INFO: ";
+        break;
       case ERROR:
         levelStr = "QuicClient:ERROR: ";
         break;

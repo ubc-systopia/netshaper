@@ -278,6 +278,9 @@ void UnshapedServer::log(logLevels level, const std::string &log) {
     case DEBUG:
       levelStr = "UnshapedServer:DEBUG: ";
       break;
+    case INFO:
+      levelStr = "UnshapedServer:INFO: ";
+      break;
     case ERROR:
       levelStr = "UnshapedServer:ERROR: ";
       break;

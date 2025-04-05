@@ -19,6 +19,9 @@ namespace QUIC {
       case DEBUG:
         levelStr = "QuicServer:DEBUG: ";
         break;
+      case INFO:
+        levelStr = "QuicServer:INFO: ";
+        break;
       case ERROR:
         levelStr = "QuicServer:ERROR: ";
         break;

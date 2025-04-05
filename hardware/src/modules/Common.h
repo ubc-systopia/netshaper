@@ -10,7 +10,7 @@
 #include <iostream>
 
 enum logLevels {
-  ERROR, WARNING, DEBUG
+  ERROR, WARNING, INFO, DEBUG
 };
 
 inline std::ostream &
@@ -21,6 +21,9 @@ operator<<(std::ostream &os, const logLevels &level) {
       break;
     case WARNING:
       os << "WARNING";
+      break;
+    case INFO:
+      os << "INFO";
       break;
     case DEBUG:
       os << "DEBUG";

@@ -337,6 +337,9 @@ void ShapedClient::log(logLevels level, const std::string &log) {
     case DEBUG:
       levelStr = "ShapedClient:DEBUG: ";
       break;
+    case INFO:
+      levelStr = "ShapedClient:INFO: ";
+      break;
     case ERROR:
       levelStr = "ShapedClient:ERROR: ";
       break;
