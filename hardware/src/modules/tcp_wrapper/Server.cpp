@@ -4,6 +4,13 @@
 
 #include "Server.h"
 
+#include <ctime>
+#include <fstream>
+#include <ifaddrs.h>
+#include <linux/net_tstamp.h>
+#include <linux/sockios.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
 #include <utility>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -43,6 +50,22 @@ namespace TCP {
     log(DEBUG, "Server destructed");
 #endif
     exit(0);
+  }
+
+  void Server::saveStats() {
+    log(INFO, "Server destructed");
+    log(INFO, "Num of timestamps: " + std::to_string(profilingIndex));
+
+    std::ofstream tcpServerStatsCsv;
+    tcpServerStatsCsv.open("tcpServerStats.csv");
+    tcpServerStatsCsv << "RxTimestamp,BeforeOnReceive,AfterOnReceive\n";
+    for (std::size_t i = 0; i < profilingIndex; ++i) {
+        tcpServerStatsCsv << profilingStats[i].rxTimestamp.tv_sec << "."
+                          << profilingStats[i].rxTimestamp.tv_nsec << ","
+                          << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].beforeOnReceive.time_since_epoch()).count() << ","
+                          << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].afterOnReceive.time_since_epoch()).count() << "\n";
+    }
+    tcpServerStatsCsv.close();
   }
 
   void Server::startListening() {
@@ -103,9 +126,33 @@ namespace TCP {
       return SERVER_SOCKET_ERROR;
     }
 
+    if (bindAddr != "0.0.0.0") {
+        struct ifreq ifr;
+        struct hwtstamp_config cfg;
+        memset(&ifr, 0, sizeof(ifr));
+        memset(&cfg, 0, sizeof(cfg));
+        getLocalIfName(bindAddr, ifr.ifr_name);
+
+        cfg.tx_type = HWTSTAMP_TX_ON;
+        cfg.rx_filter = HWTSTAMP_FILTER_ALL;
+
+        ifr.ifr_data = (char *)&cfg;
+
+        if (ioctl(serverSocket, SIOCSHWTSTAMP, &ifr) < 0) {
+         log(ERROR, "Could not set hardware timestamping");
+          return SERVER_SETSOCKOPT_ERROR;
+        }
+    }
+
     int optVal = 1;
     if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &optVal, sizeof
         (optVal)) < 0) {
+      return SERVER_SETSOCKOPT_ERROR;
+    }
+
+    uint32_t timestampingVal = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_TIMESTAMPING, &timestampingVal,
+                     sizeof(timestampingVal)) < 0) {
       return SERVER_SETSOCKOPT_ERROR;
     }
 
@@ -192,19 +239,55 @@ namespace TCP {
 
   void Server::receiveData(int socket, std::string &clientAddress) {
     ssize_t bytesReceived;  // Number of bytes received
-    uint8_t buffer[BUF_SIZE];
+    uint8_t buffer[PROFILING_BUF_SIZE];
 
-    // Read from fromSocket and send to toSocket
-    while ((bytesReceived = recv(socket, buffer, BUF_SIZE, 0)) > 0) {
+    while (true) {
+        // Read from fromSocket and send to toSocket
+
+        char ctrl[2048];
+        struct iovec iov = {
+            .iov_base = buffer,
+            .iov_len = PROFILING_BUF_SIZE
+        };
+        struct msghdr msg = {
+            .msg_name = nullptr,
+            .msg_namelen = 0,
+            .msg_iov = &iov,
+            .msg_iovlen = 1, .msg_control = ctrl,
+            .msg_controllen = sizeof(ctrl),
+            .msg_flags = 0
+        };
+
+        if constexpr (ENABLE_PROFILING) {
+            bytesReceived = recvmsg(socket, &msg, 0);
+        } else {
+            bytesReceived = recv(socket, buffer, PROFILING_BUF_SIZE, 0);
+        }
+        if (bytesReceived >= 0) {
+            std::chrono::time_point<std::chrono::high_resolution_clock> beforeOnReceive;
+            struct timespec rxTime;
+            if constexpr (ENABLE_PROFILING) {
+                rxTime = getTimestamp(&msg);
+                beforeOnReceive = std::chrono::high_resolution_clock::now();
+            }
+            onReceive(socket, clientAddress, buffer, bytesReceived, ONGOING);
+            if constexpr (ENABLE_PROFILING) {
+                if (profilingIndex < PROFILING_BUF_SIZE) {
+                    auto afterOnReceive = std::chrono::high_resolution_clock::now();
+                    profilingStats[profilingIndex].rxTimestamp = rxTime;
+                    profilingStats[profilingIndex].beforeOnReceive = beforeOnReceive;
+                    profilingStats[profilingIndex].afterOnReceive = afterOnReceive;
+                    profilingIndex++;
+                }
+            }
 #ifdef DEBUGGING
-      log(DEBUG, "Data received on socket " + std::to_string(socket));
+          log(DEBUG, "Data received on socket " + std::to_string(socket));
 #endif
-      onReceive(socket, clientAddress, buffer, bytesReceived, ONGOING);
-    }
-
-    if (bytesReceived < 0) {
-      log(ERROR, "Client at " + clientAddress + " disconnected abruptly with "
+        } else {
+            log(ERROR, "Client at " + clientAddress + " disconnected abruptly with "
                                                 "error " + strerror(errno));
+            break;
+        }
     }
     // Stop other processes from using these sockets
 #ifdef DEBUGGING
@@ -261,5 +344,61 @@ namespace TCP {
       std::cerr << std::put_time(localTime, "[%H:%M:%S] ") << levelStr
                 << log << std::endl;
     }
+  }
+
+  struct timespec Server::getTimestamp(msghdr *hdr) {
+    for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(hdr); cmsg; cmsg = CMSG_NXTHDR(hdr, cmsg)) {
+        if (cmsg->cmsg_level != SOL_SOCKET)
+          continue;
+
+        struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
+        switch (cmsg->cmsg_type) {
+            case SO_TIMESTAMPNS:
+            case SO_TIMESTAMPING:
+                return getHwTimestamp(ts);
+            default:
+              /* Ignore other cmsg options */
+              break;
+        }
+    }
+
+    return {};
+  }
+
+  struct timespec Server::getHwTimestamp(const struct scm_timestamping *ts) {
+      return ts->ts[2];
+  }
+
+  bool Server::getLocalIfName(const std::string &localAddress, char* ifName) {
+      struct ifaddrs *ifaddr;
+
+      getifaddrs(&ifaddr);
+
+      for (; ifaddr != NULL; ifaddr = ifaddr->ifa_next) {
+          if (ifaddr->ifa_addr == NULL) {
+              continue;
+          }
+
+          if (ifaddr->ifa_addr->sa_family == AF_INET && inetFamily == AF_INET) {
+            struct sockaddr_in *addr = (struct sockaddr_in *)ifaddr->ifa_addr;
+            struct in_addr localAddr;
+            inet_pton(AF_INET, localAddress.c_str(), &localAddr);
+            if (addr->sin_addr.s_addr == localAddr.s_addr) {
+              strcpy(ifName, ifaddr->ifa_name);
+            }
+          }
+
+          if (ifaddr->ifa_addr->sa_family == AF_INET6 && inetFamily == AF_INET6) {
+            struct sockaddr_in6 *addr = (struct sockaddr_in6 *)ifaddr->ifa_addr;
+            struct in6_addr localAddr;
+            inet_pton(AF_INET6, localAddress.c_str(), &localAddr);
+            if (addr->sin6_addr.s6_addr == localAddr.s6_addr) {
+              strcpy(ifName, ifaddr->ifa_name);
+              return true;
+            }
+          }
+      }
+
+      return false;
   }
 }

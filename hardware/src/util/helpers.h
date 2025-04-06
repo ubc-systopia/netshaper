@@ -129,8 +129,9 @@ namespace helpers {
  * @param isShapedProcess Used to identify whether the process is the shaped
  * or the unshaped process (only used when compiled with RECORD_STATS) to
  * print/save the relevant statistics
+ * @param callbacks Callbacks to execute when a signal is received
  */
-  void waitForSignal(bool isShapedProcess);
+  void waitForSignal(bool isShapedProcess, std::vector<std::function<void()>> &callbacks);
 
   /**
    * @brief Initialise Shared Memory in the given process

@@ -69,6 +69,10 @@ public:
 
   [[noreturn]] void getUpdatedConnectionStatus() override;
 
+  /**
+   * Save profiling data for this ShapedClient
+   */
+  void saveStats();
 };
 
 

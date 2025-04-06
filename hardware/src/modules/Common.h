@@ -9,6 +9,12 @@
 #include <vector>
 #include <iostream>
 
+#ifdef PROFILE
+constexpr bool ENABLE_PROFILING = true;
+#else
+constexpr bool ENABLE_PROFILING = false;
+#endif
+
 enum logLevels {
   ERROR, WARNING, INFO, DEBUG
 };

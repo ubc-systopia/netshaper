@@ -87,6 +87,10 @@ public:
 
   [[noreturn]] void getUpdatedConnectionStatus() override;
 
+  /**
+   * @brief Save profiling data.
+   */
+  void saveStats();
 };
 
 

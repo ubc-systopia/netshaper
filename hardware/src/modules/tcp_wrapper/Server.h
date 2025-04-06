@@ -5,7 +5,7 @@
 #ifndef MINESVPN_TCP_SERVER_H
 #define MINESVPN_TCP_SERVER_H
 
-#define BUF_SIZE 16384
+#define PROFILING_BUF_SIZE 16384
 #define BACKLOG 20 // Number of pending connections the queue should hold
 #define SERVER_SOCKET_ERROR (-1)
 #define SERVER_SETSOCKOPT_ERROR (-2)
@@ -67,6 +67,7 @@ namespace TCP {
       shutdown(socket, SHUT_WR);
     };
 
+    void saveStats();
 
   private:
     std::string bindAddr;
@@ -74,6 +75,16 @@ namespace TCP {
     int localSocket;
     int inetFamily = 0; //Valid values are AF_INET or AF_INET6
     const enum logLevels logLevel;
+
+    struct ProfilingStats {
+        struct timespec rxTimestamp;
+        std::chrono::time_point<std::chrono::high_resolution_clock> beforeOnReceive;
+        std::chrono::time_point<std::chrono::high_resolution_clock> afterOnReceive;
+    };
+
+    // Timestamps
+    std::size_t profilingIndex = 0;
+    std::array<ProfilingStats, PROFILING_BUF_SIZE> profilingStats;
 
     /**
      * @brief If log level set by user is equal or more verbose than the log
@@ -133,6 +144,31 @@ namespace TCP {
                        uint8_t *buffer, size_t length,
                        enum connectionStatus connStatus)> onReceive;
 
+    /**
+     * @brief Get the timestamp from the CMsg
+     *
+     * @param msg The CMsg to get the timestamp from
+     * @return The timestamp
+     */
+    struct timespec getTimestamp(msghdr *msg);
+
+    /**
+     * @brief Get the hardware timestamp from the SCM_TIMESTAMPING struct.
+     *
+     * @param ts The SCM_TIMESTAMPING struct to get the timestamp from
+     * @return The hardware timestamp
+     */
+    struct timespec getHwTimestamp(const struct scm_timestamping *ts);
+
+    /**
+     * @brief Get the interface name, given the local address.
+     *
+     * @param localAddr The local address to get the interface name from
+     * @param localIfName Buffer to store the interface name
+     *
+     * @return true if the interface name was found, false otherwise
+     */
+    bool getLocalIfName(const std::string &localAddr, char *localIfName);
   };
 }
 
