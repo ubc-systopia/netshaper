@@ -18,6 +18,8 @@
 #endif
 
 
+#include <linux/time.h>
+#include <linux/errqueue.h>
 #include <iostream>
 #include <unistd.h>
 #include <sys/socket.h>
