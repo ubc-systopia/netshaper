@@ -17,11 +17,14 @@ constexpr bool ENABLE_PROFILING = false;
 
 enum ImplementationType {
     VANILLA,
-    OFFLOAD_SINGLE_THREADED
+    OFFLOAD_SINGLE_THREADED,
+    OFFLOAD_MULTI_THREADED
 };
 
 #if IMPLEMENTATION == 1
 constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::OFFLOAD_SINGLE_THREADED;
+#elif IMPLEMENTATION == 2
+constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::OFFLOAD_MULTI_THREADED;
 #else
 constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::VANILLA;
 #endif
