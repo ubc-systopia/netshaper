@@ -2,6 +2,8 @@
 // Created by Rut Vora
 //
 
+#include <ff_api.h>
+
 #include <thread>
 #include <functional>
 #include <sstream>
@@ -162,8 +164,14 @@ namespace helpers {
         std::ofstream quicTxStatsCsv;
         quicTxStatsCsv.open("quicTxStats.csv");
         quicTxStatsCsv << "TxTimestamps\n";
-        for (std::size_t i = 0; i < g_MsQuicTxProfile.numTimestamps; ++i) {
-          quicTxStatsCsv << g_MsQuicTxProfile.timestamps[i].tv_sec << "." << g_MsQuicTxProfile.timestamps[i].tv_nsec << "\n";
+        if constexpr (CURRENT_IMPLEMENTATION == ImplementationType::VANILLA) {
+            for (std::size_t i = 0; i < g_MsQuicTxProfile.numTimestamps; ++i) {
+                  quicTxStatsCsv << g_MsQuicTxProfile.timestamps[i].tv_sec << "." << g_MsQuicTxProfile.timestamps[i].tv_nsec << "\n";
+            }
+        } else {
+            for (std::size_t i = 0; i < g_FstackTxProfile.numTimestamps; ++i) {
+              quicTxStatsCsv << g_FstackTxProfile.rawHwTimestamps[i] << "\n";
+            }
         }
         quicTxStatsCsv.close();
       }

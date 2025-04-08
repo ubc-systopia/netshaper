@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include "../../../msquic/src/inc/external_sync.h"
+#include "ff_api.h"
 
 pthread_rwlock_t quicSendLock;
 
@@ -80,13 +81,26 @@ inline config::Peer1Config loadConfig(char *configFileName) {
 int main(int argc, char *argv[]) {
   pthread_rwlock_init(&quicSendLock, nullptr);
   // Load configurations
-  if (argc != 2) {
-    std::cerr <<
+  if constexpr (CURRENT_IMPLEMENTATION == ImplementationType::VANILLA) {
+      if (argc != 2) {
+        std::cerr <<
               "No config file entered! Please call this using `./peer_1 "
               "config.json`" << std::endl;
-    exit(1);
+        exit(1);
+      }
+  } else {
+    if (argc != 3) {
+      std::cerr <<
+            "No config file entered! Please call this using `./peer_1 "
+            "config.json config.ini`" << std::endl;
+      exit(1);
+    }
   }
   auto config = loadConfig(argv[1]);
+  if constexpr (CURRENT_IMPLEMENTATION != ImplementationType::VANILLA) {
+      ff_init_load_config(argc-1, argv+1);
+      ff_init_freebsd();
+  }
 
   if (fork() == 0) {
     // Child process - Unshaped Server
@@ -112,5 +126,9 @@ int main(int argc, char *argv[]) {
     std::vector<std::function<void()>> callbacks;
     // Wait for signal to exit
     waitForSignal(true, callbacks);
+    if constexpr (CURRENT_IMPLEMENTATION != ImplementationType::VANILLA) {
+        ff_wait_run();
+        ff_stop_run();
+    }
   }
 }

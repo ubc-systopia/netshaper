@@ -38,6 +38,15 @@ find_package(nlohmann_json REQUIRED)
 add_compile_definitions(SHAPING) # Enables shaping (else, just proxies data)
 #add_compile_definitions(PROFILE) # Enables profiling
 
+set(SHAPING_IMPLEMENTATION "VANILLA") # Shaping implementation ("VANILLA", "OFFLOAD_SINGLE_THREADED")
+if (SHAPING_IMPLEMENTATION STREQUAL "OFFLOAD_SINGLE_THREADED")
+    message(STATUS "Building F-stack single-threaded implementation")
+    add_compile_definitions(IMPLEMENTATION=1)
+else()
+    message(STATUS "Building vanilla NetShaper implementation")
+    add_compile_definitions(IMPLEMENTATION=0)
+endif()
+
 include_directories(../msquic/src/inc)
 
 add_subdirectory(../msquic msquic)

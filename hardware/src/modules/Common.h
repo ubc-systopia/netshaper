@@ -15,6 +15,17 @@ constexpr bool ENABLE_PROFILING = true;
 constexpr bool ENABLE_PROFILING = false;
 #endif
 
+enum ImplementationType {
+    VANILLA,
+    OFFLOAD_SINGLE_THREADED
+};
+
+#if IMPLEMENTATION == 1
+constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::OFFLOAD_SINGLE_THREADED;
+#else
+constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::VANILLA;
+#endif
+
 enum logLevels {
   ERROR, WARNING, INFO, DEBUG
 };
