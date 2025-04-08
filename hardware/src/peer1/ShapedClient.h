@@ -68,11 +68,6 @@ public:
   std::vector<PreparedBuffer> prepareData(size_t dataSize) override;
 
   [[noreturn]] void getUpdatedConnectionStatus() override;
-
-  /**
-   * Save profiling data for this ShapedClient
-   */
-  void saveStats();
 };
 
 

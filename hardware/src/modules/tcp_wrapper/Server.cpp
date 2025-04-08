@@ -7,8 +7,8 @@
 #include <ctime>
 #include <fstream>
 #include <ifaddrs.h>
-#include <linux/net_tstamp.h>
 #include <linux/sockios.h>
+#include <linux/net_tstamp.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <utility>

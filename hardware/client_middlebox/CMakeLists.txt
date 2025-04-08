@@ -36,7 +36,7 @@ find_package(nlohmann_json REQUIRED)
 #add_compile_definitions(DEBUGGING) # Enables DEBUG logs
 #add_compile_definitions(RECORD_STATS) # Enables internal timestamps
 add_compile_definitions(SHAPING) # Enables shaping (else, just proxies data)
-add_compile_definitions(PROFILE) # Enables profiling
+#add_compile_definitions(PROFILE) # Enables profiling
 
 include_directories(../msquic/src/inc)
 

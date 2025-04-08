@@ -80,12 +80,6 @@ ShapedServer::ShapedServer(config::Peer2Config &peer2Config) :
   updateQueueStatus.detach();
 }
 
-void ShapedServer::saveStats() {
-    if constexpr (ENABLE_PROFILING) && (shapedServer ! nullptr) {
-        shapedServer->saveStats();
-    }
-}
-
 inline void ShapedServer::initialiseSHM(int numStreams, size_t queueSize) {
   auto shmAddr = helpers::initialiseSHM(numStreams, appName, queueSize, true);
 
@@ -382,6 +376,9 @@ void ShapedServer::log(logLevels level, const std::string &log) {
   switch (level) {
     case DEBUG:
       levelStr = "ShapedServer:DEBUG: ";
+      break;
+    case INFO:
+      levelStr = "ShapedServer:INFO: ";
       break;
     case ERROR:
       levelStr = "ShapedServer:ERROR: ";

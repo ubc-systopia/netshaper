@@ -86,13 +86,6 @@ ShapedClient::ShapedClient(config::Peer1Config &peer1Config) {
   updateQueueStatus.detach();
 }
 
-void ShapedClient::saveStats() {
-    if constexpr (ENABLE_PROFILING) && (shapedClient != nullptr) {
-        shapedClient->saveStats();
-    }
-}
-
-
 QueuePair ShapedClient::findQueuesByID(uint64_t queueID) {
   for (const auto &[queues, stream]: *queuesToStream) {
     if (queues.toShaped->ID == queueID) {

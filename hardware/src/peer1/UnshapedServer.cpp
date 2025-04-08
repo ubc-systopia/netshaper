@@ -295,3 +295,11 @@ void UnshapedServer::log(logLevels level, const std::string &log) {
   std::cerr << std::put_time(localTime, "[%H:%M:%S] ")
             << levelStr << log << std::endl;
 }
+
+void UnshapedServer::saveStats() {
+    if constexpr (ENABLE_PROFILING) {
+        if (unshapedServer != nullptr) {
+            unshapedServer->saveStats();
+        }
+    }
+}
