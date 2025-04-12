@@ -80,6 +80,7 @@ namespace config {
    * connection between the middleboxes will be terminated
    * @param shaperCores The core/s on which the shaper thread should run
    * @param workerCores The core/s on which the QUIC worker thread/s should run
+   * @param txInterface The interface to track timestamps of departing packets
    */
   struct ShapedClient {
     std::string peer2Addr = "localhost";
@@ -94,6 +95,7 @@ namespace config {
     uint64_t idleTimeout = 100000;
     std::vector<int> shaperCores{};
     std::vector<int> workerCores{};
+    std::string txInterface;
   };
   /**
    * @param logLevel The level of logging required. For DEBUG, the program

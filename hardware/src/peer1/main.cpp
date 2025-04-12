@@ -102,6 +102,10 @@ int main(int argc, char *argv[]) {
       ff_init_freebsd();
   }
 
+  std::string interfaceName = config.shapedClient.txInterface;
+  g_tx_interface = static_cast<char*>(malloc(sizeof(char) * (interfaceName.length()+1)));
+  strcpy(g_tx_interface, interfaceName.c_str());
+
   if (fork() == 0) {
     // Child process - Unshaped Server
     unshapedServer = new UnshapedServer{config};
@@ -131,4 +135,5 @@ int main(int argc, char *argv[]) {
         ff_stop_run();
     }
   }
+  free(g_tx_interface);
 }
