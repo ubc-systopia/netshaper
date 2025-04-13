@@ -238,6 +238,10 @@ namespace config {
         config.shapedClient.workerCores =
             shapedClientJson["workerCores"].get<std::vector<int>>();
       }
+      if (shapedClientJson.contains("txInterface")) {
+        config.shapedClient.txInterface =
+            shapedClientJson["txInterface"].get<std::string>();
+      }
     }
     if (j.contains("unshapedServer")) {
       const auto &unshapedServerJson = j["unshapedServer"];
@@ -372,6 +376,7 @@ namespace config {
     os << "Idle Timeout: " << shapedClient.idleTimeout << "\n";
     os << "Shaper Cores: " << shapedClient.shaperCores << "\n";
     os << "Worker Cores: " << shapedClient.workerCores << "\n";
+    os << "Tx Interface: " << shapedClient.txInterface << "\n";
     return os;
   }
 

@@ -239,7 +239,7 @@ namespace TCP {
 
   void Server::receiveData(int socket, std::string &clientAddress) {
     ssize_t bytesReceived;  // Number of bytes received
-    uint8_t buffer[PROFILING_BUF_SIZE];
+    uint8_t buffer[BUF_SIZE];
 
     while (true) {
         // Read from fromSocket and send to toSocket
@@ -261,9 +261,9 @@ namespace TCP {
         if constexpr (ENABLE_PROFILING) {
             bytesReceived = recvmsg(socket, &msg, 0);
         } else {
-            bytesReceived = recv(socket, buffer, PROFILING_BUF_SIZE, 0);
+            bytesReceived = recv(socket, buffer, BUF_SIZE, 0);
         }
-        if (bytesReceived >= 0) {
+        if (bytesReceived > 0) {
             std::chrono::time_point<std::chrono::high_resolution_clock> beforeOnReceive;
             struct timespec rxTime;
             if constexpr (ENABLE_PROFILING) {
