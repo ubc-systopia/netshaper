@@ -97,14 +97,16 @@ int main(int argc, char *argv[]) {
     }
   }
   auto config = loadConfig(argv[1]);
-  if constexpr (CURRENT_IMPLEMENTATION == ImplementationType::VANILLA) {
-      std::string interfaceName = config.shapedClient.txInterface;
-      g_tx_interface = static_cast<char*>(malloc(sizeof(char) * (interfaceName.length()+1)));
-      strcpy(g_tx_interface, interfaceName.c_str());
-  } else {
+  if constexpr (CURRENT_IMPLEMENTATION != ImplementationType::VANILLA) {
       ff_init_load_config(argc-1, argv+1);
       ff_init_freebsd();
   }
+
+#if IMPLEMENTATION == 0
+  std::string interfaceName = config.shapedClient.txInterface;
+  g_tx_interface = static_cast<char*>(malloc(sizeof(char) * (interfaceName.length()+1)));
+  strcpy(g_tx_interface, interfaceName.c_str());
+#endif
 
   if (fork() == 0) {
     // Child process - Unshaped Server
@@ -130,11 +132,13 @@ int main(int argc, char *argv[]) {
     std::vector<std::function<void()>> callbacks;
     // Wait for signal to exit
     waitForSignal(true, callbacks);
-    if constexpr (CURRENT_IMPLEMENTATION == ImplementationType::VANILLA) {
-        free(g_tx_interface);
-    } else {
+    if constexpr (CURRENT_IMPLEMENTATION != ImplementationType::VANILLA) {
         ff_wait_run();
         ff_stop_run();
     }
+
+#if IMPLEMENTATION == 0
+    free(g_tx_interface);
+#endif
   }
 }
