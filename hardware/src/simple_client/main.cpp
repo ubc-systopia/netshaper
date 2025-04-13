@@ -10,7 +10,7 @@ void runTest(TCP::Client& client, int numIterations, std::size_t numBytes, int t
         buffer.push_back(charset[rand() % charset.size()]);
     }
     for (int i = 0; i < numIterations; i++) {
-        std::this_thread::sleep_for(std::chrono::seconds(timeBetweenMessagesMs));
+        std::this_thread::sleep_for(std::chrono::milliseconds(timeBetweenMessagesMs));
         client.sendData(buffer.data(), buffer.size());
     }
 }
