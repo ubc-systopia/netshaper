@@ -22,10 +22,13 @@ enum ImplementationType {
 };
 
 #if IMPLEMENTATION == 1
+#pragma message "Building single-threaded kernel bypass NetShaper"
 constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::OFFLOAD_SINGLE_THREADED;
 #elif IMPLEMENTATION == 2
+#pragma message "Building multi-threaded kernel bypass NetShaper"
 constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::OFFLOAD_MULTI_THREADED;
 #else
+#pragma message "Building nanilla NetShaper"
 constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::VANILLA;
 #endif
 
