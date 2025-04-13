@@ -15,6 +15,8 @@ constexpr bool ENABLE_PROFILING = true;
 constexpr bool ENABLE_PROFILING = false;
 #endif
 
+constexpr int NANOSECONDS_PER_SECOND = 1E9;
+
 enum ImplementationType {
     VANILLA,
     OFFLOAD_SINGLE_THREADED,

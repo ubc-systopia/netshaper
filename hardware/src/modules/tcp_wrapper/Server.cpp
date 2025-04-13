@@ -60,8 +60,7 @@ namespace TCP {
     tcpServerStatsCsv.open("tcpServerStats.csv");
     tcpServerStatsCsv << "RxTimestamp,BeforeOnReceive,AfterOnReceive\n";
     for (std::size_t i = 0; i < profilingIndex; ++i) {
-        tcpServerStatsCsv << profilingStats[i].rxTimestamp.tv_sec << "."
-                          << profilingStats[i].rxTimestamp.tv_nsec << ","
+        tcpServerStatsCsv << profilingStats[i].rxTimestamp.tv_sec*NANOSECONDS_PER_SECOND + profilingStats[i].rxTimestamp.tv_nsec << ","
                           << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].beforeOnReceive.time_since_epoch()).count() << ","
                           << std::chrono::duration_cast<std::chrono::nanoseconds>(profilingStats[i].afterOnReceive.time_since_epoch()).count() << "\n";
     }
