@@ -6,6 +6,7 @@
 #define MINESVPN_TCP_SERVER_H
 
 #define PROFILING_BUF_SIZE 16384
+#define BUF_SIZE 16384
 #define BACKLOG 20 // Number of pending connections the queue should hold
 #define SERVER_SOCKET_ERROR (-1)
 #define SERVER_SETSOCKOPT_ERROR (-2)
