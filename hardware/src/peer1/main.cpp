@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
     }
   }
   auto config = loadConfig(argv[1]);
-  if constexpr (CURRENT_IMPLEMENTATION != ImplementationType::VANILLA) {
+  if constexpr (CURRENT_IMPLEMENTATION == ImplementationType::VANILLA) {
       std::string interfaceName = config.shapedClient.txInterface;
       g_tx_interface = static_cast<char*>(malloc(sizeof(char) * (interfaceName.length()+1)));
       strcpy(g_tx_interface, interfaceName.c_str());
