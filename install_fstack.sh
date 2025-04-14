@@ -1,4 +1,4 @@
 cd hardware/fstack/lib
 make clean
-make
+make $1
 sudo -E make install

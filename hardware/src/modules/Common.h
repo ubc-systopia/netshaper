@@ -15,6 +15,8 @@ constexpr bool ENABLE_PROFILING = true;
 constexpr bool ENABLE_PROFILING = false;
 #endif
 
+constexpr int NANOSECONDS_PER_SECOND = 1E9;
+
 enum ImplementationType {
     VANILLA,
     OFFLOAD_SINGLE_THREADED,
@@ -22,10 +24,13 @@ enum ImplementationType {
 };
 
 #if IMPLEMENTATION == 1
+#pragma message "Building single-threaded kernel bypass NetShaper"
 constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::OFFLOAD_SINGLE_THREADED;
 #elif IMPLEMENTATION == 2
+#pragma message "Building multi-threaded kernel bypass NetShaper"
 constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::OFFLOAD_MULTI_THREADED;
 #else
+#pragma message "Building nanilla NetShaper"
 constexpr ImplementationType CURRENT_IMPLEMENTATION = ImplementationType::VANILLA;
 #endif
 

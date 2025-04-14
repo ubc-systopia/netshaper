@@ -166,7 +166,7 @@ namespace helpers {
         quicTxStatsCsv << "TxTimestamps\n";
         if constexpr (CURRENT_IMPLEMENTATION == ImplementationType::VANILLA) {
             for (std::size_t i = 0; i < g_MsQuicTxProfile.numTimestamps; ++i) {
-                  quicTxStatsCsv << g_MsQuicTxProfile.timestamps[i].tv_sec << "." << g_MsQuicTxProfile.timestamps[i].tv_nsec << "\n";
+                  quicTxStatsCsv << g_MsQuicTxProfile.timestamps[i].tv_sec*NANOSECONDS_PER_SECOND + g_MsQuicTxProfile.timestamps[i].tv_nsec << "\n";
             }
         } else {
             for (std::size_t i = 0; i < g_FstackTxProfile.numTimestamps; ++i) {
